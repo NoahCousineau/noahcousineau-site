@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
+/*
+  DESIGN TOKENS
+  -------------
+  Placeholders until Noah's Illustrator direction lands.
+  Change values here and the whole site follows — nothing is hard-coded downstream.
+*/
+@theme {
+  /* Color */
+  --color-ink: #0d0d0d;
+  --color-paper: #f4f1ea;
+  --color-accent: #ff4d1f;
+  --color-muted: #7a7772;
+
+  /* Type scale — fluid, clamps between mobile and desktop */
+  --text-display: clamp(3rem, 12vw, 11rem);
+  --text-title: clamp(2rem, 6vw, 5rem);
+  --text-heading: clamp(1.5rem, 3vw, 2.5rem);
+  --text-body: clamp(1rem, 1.15vw, 1.25rem);
+  --text-caption: 0.8125rem;
+
+  /* Motion vocabulary — durations & easings live in one place
+     so the whole site shares a personality */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --dur-fast: 0.35s;
+  --dur-base: 0.7s;
+  --dur-slow: 1.2s;
+
+  /* Layout */
+  --gutter: clamp(1rem, 4vw, 4rem);
+  --maxw: 90rem;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  /* Lenis drives scrolling; native smooth would fight it */
+  scroll-behavior: auto;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-size: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  margin: 0;
+}
+
+/* Accessibility: kill all motion when the OS asks for it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
