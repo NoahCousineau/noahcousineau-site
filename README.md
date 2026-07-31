@@ -23,8 +23,8 @@ design and motion are placeholders awaiting Illustrator direction.
 npm run dev      # http://localhost:3000
 npm run build    # production build
 npm run lint
-node qa-responsive.mjs  # overflow + JS errors at 3 breakpoints
-node qa-assets.mjs      # every image decodes on every project page
+npm run qa:responsive   # overflow + JS errors at 3 breakpoints
+npm run qa:assets       # every image decodes on every project page
 ```
 
 Both QA scripts need a server running (`npm run dev` or `npm run start`).
