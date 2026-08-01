@@ -1,43 +1,72 @@
-import Link from "next/link";
-import { projects } from "@/lib/projects";
+import Image from "next/image";
 
 /*
-  HOME — placeholder.
-  Deliberately plain. This is the page that gets fully rebuilt
-  from Noah's Illustrator direction; no point styling it twice.
+  HOMEPAGE — built from Noah's rough Illustrator sketch (01-homepage/Homepage - Rough.ai).
+  Composition (top → bottom): portrait · "portfolio" label · name + role ·
+  body paragraph · black block at the foot.
+
+  This is the STATIC skeleton. Motion (loading animation, scroll reveals) is a
+  later pass — Noah is leaving artboard notes for that. Layout first, react in
+  browser, layer animation on after. Colors come from the sketch's vectors.
 */
+
+const COPY = {
+  label: "portfolio",
+  name: "Noah Cousineau",
+  role: "is a Los Angeles-based graphic designer.",
+  body: [
+    "He uses wit, play, and humor, to create visual",
+    "identities, art direct, and solve your visual problems.",
+  ],
+};
+
 export default function Home() {
   return (
-    <main className="px-[--gutter] py-[18vh] max-w-[--maxw] mx-auto">
+    <main className="px-[--gutter] max-w-[60rem] mx-auto flex flex-col items-center text-center">
+      {/* Portrait — top of the column, as drawn */}
+      <div className="mt-[14vh] mb-[8vh] w-[clamp(180px,42vw,360px)]">
+        <Image
+          src="/assets/home/portrait.webp"
+          alt="Noah Cousineau portrait"
+          width={538}
+          height={678}
+          sizes="(max-width: 768px) 42vw, 360px"
+          className="w-full h-auto"
+          priority
+        />
+      </div>
+
+      {/* "portfolio" label */}
       <p
-        className="uppercase tracking-widest text-[color:var(--color-muted)] mb-6"
-        style={{ fontSize: "var(--text-caption)" }}
+        className="uppercase tracking-[0.35em] mb-[6vh]"
+        style={{ fontSize: "var(--text-caption)", color: "var(--color-muted)" }}
       >
-        Scaffold · awaiting design direction
+        {COPY.label}
       </p>
 
+      {/* Name + role */}
       <h1
-        className="uppercase font-bold leading-[0.85] tracking-tight"
-        style={{ fontSize: "var(--text-display)" }}
+        className="leading-[0.92] tracking-tight max-w-[16ch]"
+        style={{ fontSize: "var(--text-title)" }}
       >
-        Noah
-        <br />
-        Cousineau
+        <span className="block font-bold uppercase">{COPY.name}</span>
+        <span className="block font-normal normal-case mt-3">{COPY.role}</span>
       </h1>
 
-      <p className="mt-10 max-w-[46ch] leading-relaxed">
-        Graphic designer, artist, all of the above. Being silly is serious work.
+      {/* Body paragraph */}
+      <p className="mt-[6vh] max-w-[34ch] leading-relaxed" style={{ color: "var(--color-ink)" }}>
+        {COPY.body.map((line, i) => (
+          <span key={i} className="block">
+            {line}
+          </span>
+        ))}
       </p>
 
-      <div className="mt-16 flex gap-8 uppercase tracking-widest"
-           style={{ fontSize: "var(--text-caption)" }}>
-        <Link href="/work" className="underline underline-offset-4">
-          Work ({projects.length})
-        </Link>
-        <Link href="/about" className="underline underline-offset-4">
-          About
-        </Link>
-      </div>
+      {/* Black block at the foot — placeholder for CTA / next section */}
+      <div
+        className="mt-[14vh] w-[clamp(180px,42vw,320px)] aspect-square bg-[color:var(--color-ink)]"
+        aria-hidden
+      />
     </main>
   );
 }
