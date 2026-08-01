@@ -8,6 +8,13 @@ import Image from "next/image";
   This is the STATIC skeleton. Motion (loading animation, scroll reveals) is a
   later pass — Noah is leaving artboard notes for that. Layout first, react in
   browser, layer animation on after. Colors come from the sketch's vectors.
+
+  DESIGN INTENT (tracked): the portrait head area is a RESERVED ROTATION ZONE.
+  Plan is a Bill-Nye-style turntable — a sequence of head photos shot at even
+  angular steps, played back as a 3D spin (auto / scroll / cursor-driven TBD).
+  When built, swap the <Image> below for a turntable component that takes a
+  frame folder. Surrounding layout stays unchanged. Capture spec to follow
+  when Noah is ready to shoot. Nothing to build yet.
 */
 
 const COPY = {
@@ -23,7 +30,8 @@ const COPY = {
 export default function Home() {
   return (
     <main className="px-[--gutter] max-w-[60rem] mx-auto flex flex-col items-center text-center">
-      {/* Portrait — top of the column, as drawn */}
+      {/* PORTRAIT — RESERVED ROTATION ZONE (turntable, later phase).
+          Swap this <Image> for a HeadTurntable component when frames exist. */}
       <div className="mt-[14vh] mb-[8vh] w-[clamp(180px,42vw,360px)]">
         <Image
           src="/assets/home/portrait.webp"
