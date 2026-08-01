@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
+import Nav from "@/components/Nav";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -22,7 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <SmoothScroll>{children}</SmoothScroll>
+        <SmoothScroll>
+          <Nav />
+          {children}
+        </SmoothScroll>
       </body>
     </html>
   );

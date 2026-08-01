@@ -79,7 +79,35 @@ ProjectNav       prev · all work · next
 Adding a project = add an entry to `projects.json` and drop assets into
 `public/assets/<slug>/`. No new route file needed.
 
-## Outstanding
+## Password gate
+
+All project pages (`/work`, `/work/[slug]`) sit behind a single password. Enter
+it once, all 13 projects unlock, and you move freely between them. Return from
+any project goes to Home or About — exactly the flowchart.
+
+**Where the password lives:** `SITE_PASSWORD` env var on Vercel (and locally for
+dev). Set it before deploy. Default locally is unset, which makes `/api/unlock`
+return 500 until configured — that's intentional, not a bug.
+
+**How it works:**
+
+- `src/proxy.ts` — Next.js 16 "Proxy" (the renamed Middleware). Runs before any
+  gated request and 307-redirects to `/password` if the cookie is missing or
+  invalid. No un-gated content ever renders.
+- `src/app/api/unlock/route.ts` — checks the password (constant-time compare)
+  and, on success, has `src/lib/gate.ts` issue a signed (HMAC) httpOnly cookie.
+- `src/lib/gate.ts` — signing + verification. A forged cookie fails the HMAC
+  check and is rejected.
+
+**Honest limitation:** this is a portfolio gate, not real authorization. The
+cookie stops casual browsing and can't be forged, but the image files in
+`/public/assets` remain reachable by direct URL. That's the normal tradeoff for
+a portfolio and matches what the old Webflow password did. If you ever need
+genuine protection for a specific client project, that's a different
+conversation (private storage + signed expiring URLs).
+
+**To change the password:** set `SITE_PASSWORD` on Vercel. Old cookies keep
+working until they expire (1 year) — bump `GATE_SECRET` to invalidate everyone.
 
 - [ ] Home page design + load animation (9 letter SVGs are vectors, individually animatable)
 - [ ] About page design
