@@ -27,9 +27,9 @@ export default function Description() {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         handRef.current,
-        { rotate: 90 },  // Start pointing straight up
+        { rotate: 0 },  // Start pointing straight up
         {
-          rotate: -90,  // End pointing straight down
+          rotate: 180,  // End pointing straight down
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
