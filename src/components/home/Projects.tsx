@@ -55,6 +55,10 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
     ? "/videos/Image_FB_Cousineau_Noah_ArtCenter College of Design.mp4"
     : (cell.isIndex ? null : HOVER_VIDEO[cell.slug]);
   const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
+  
+  // Sprouts gets extra zoom (2x)
+  const isSpouts = cell.slug === "sprouts-farmers-market";
+  const hoverScale = isSpouts ? "scale-220" : "scale-110";
 
   const play = () => {
     if (vid && videoRef.current) {
@@ -90,7 +94,7 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
           loop
           playsInline
           preload="metadata"
-          className="absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-110 transition-[opacity,transform] duration-700 ease-out"
+          className={`absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:${hoverScale} transition-[opacity,transform] duration-700 ease-out`}
         />
       )}
       {/* Title + disciplines — centered inside white box, centered in grid cell.
