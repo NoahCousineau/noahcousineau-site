@@ -53,7 +53,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={2337} className="overflow-hidden">
+    <Stage heightUnits={2437} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -74,7 +74,7 @@ export default function Description() {
         {/* Line 3 y1441 */}
         <Place x={36} y={1441} className="z-10">
           <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            your <span className="italic" style={serif}>visual problems</span>.
+            your <span className="italic" style={serif}>visual problems</span><span className="italic" style={serif}>.</span>
           </FitText>
         </Place>
 
@@ -98,9 +98,9 @@ export default function Description() {
           </div>
         </Place>
 
-        {/* "His work can be seen below" y1655 — 100u space after */}
-        <Place x={45} y={1655} className="z-10">
-          <FitText maxWidthUnits={1600} fontSizeUnits={96} className="leading-[1] tracking-tight">
+        {/* "His work can be seen below" y1755 (100u lower) — same size as line 1 */}
+        <Place x={45} y={1755} className="z-10">
+          <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
             His work can be seen below
           </FitText>
         </Place>
