@@ -75,9 +75,9 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
   return (
     <Link
       href={href}
+      className="group absolute inset-0 block w-full h-full"
       onMouseEnter={play}
       onMouseLeave={stop}
-      className="group absolute inset-0 block"
     >
       {/* Video fills the entire grid cell width and height, edge-to-edge.
           object-cover maintains aspect ratio while filling the space. */}
