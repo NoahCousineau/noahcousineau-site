@@ -11,7 +11,7 @@ export default function WorkIndex() {
   return (
     <main className="px-[--gutter] py-[16vh] max-w-[--maxw] mx-auto">
       <h1
-        className="uppercase font-bold leading-[0.85] tracking-tight mb-[10vh]"
+        className="uppercase leading-[0.85] tracking-tight mb-[10vh]"
         style={{ fontSize: "var(--text-display)" }}
       >
         Work

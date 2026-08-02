@@ -5,26 +5,34 @@
   -------------
   Change values here and the whole site follows — nothing is hard-coded downstream.
 
-  FONTS (from Noah's sketch): Akzidenz-Grotesk (headings/sans) + Quinn Text (serif accent).
-  Both are Adobe Fonts — not freely downloadable. Drop the licensed .woff2 files into
-  /public/fonts and the @font-face stubs below will pick them up. Until then we fall
-  back to near-equivalents (Helvetica Neue stacks for Akzidenz, a Georgia stack for Quinn)
-  so layout and spacing are already correct and only the exact faces swap later.
+  FONTS — exactly two, per Noah's spec (both Adobe Fonts, not freely downloadable):
+    Akzidenz-Grotesk REGULAR  — all sans/body/heading text (no bold weight in use)
+    Quinn Text ITALIC         — every serif accent, always italic, never upright
+  Drop the licensed .woff2 files into /public/fonts and the @font-face stubs
+  below pick them up automatically. Until then we fall back to near-equivalents
+  (Helvetica Neue for Akzidenz, Georgia italic for Quinn) so layout, spacing,
+  and margins are already correct — only the exact letterforms swap later.
+  Text placement uses FitText (src/components/home/FitText.tsx) to guarantee
+  no bleed past the artboard margin, regardless of which font is active.
 */
 @font-face {
   font-family: "Akzidenz-Grotesk";
-  src: url("/fonts/Akzidenz-Grotesk.woff2") format("woff2");
-  font-weight: 100 900;
+  src: url("/fonts/Akzidenz-Grotesk-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Quinn Text";
-  src: url("/fonts/Quinn-Text.woff2") format("woff2");
+  src: url("/fonts/Quinn-Text-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
   font-display: swap;
 }
 
 @theme {
-  /* Type families — real faces resolve via @font-face; fallbacks keep layout intact */
+  /* Type families — only two faces site-wide. Sans = regular weight only;
+     serif = italic only. Do not introduce a bold weight or a third face. */
   --font-sans: "Akzidenz-Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-serif: "Quinn Text", Georgia, "Times New Roman", serif;
 

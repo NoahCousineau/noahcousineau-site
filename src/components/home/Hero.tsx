@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
-import { Stage, Place, uFont } from "./Stage";
+import { Stage, Place } from "./Stage";
+import { FitText } from "./FitText";
 
 const STARBURST =
   "M50.00,0.00 L54.44,16.29 L62.94,1.70 L63.01,18.59 L75.00,6.70 L70.70,23.03 L85.36,14.64 L76.97,29.30 L93.30,25.00 L81.41,36.99 L98.30,37.06 L83.71,45.56 L100.00,50.00 L83.71,54.44 L98.30,62.94 L81.41,63.01 L93.30,75.00 L76.97,70.70 L85.36,85.36 L70.70,76.97 L75.00,93.30 L63.01,81.41 L62.94,98.30 L54.44,83.71 L50.00,100.00 L45.56,83.71 L37.06,98.30 L36.99,81.41 L25.00,93.30 L29.30,76.97 L14.64,85.36 L23.03,70.70 L6.70,75.00 L18.59,63.01 L1.70,62.94 L16.29,54.44 L0.00,50.00 L16.29,45.56 L1.70,37.06 L18.59,36.99 L6.70,25.00 L23.03,29.30 L14.64,14.64 L29.30,23.03 L25.00,6.70 L36.99,18.59 L37.06,1.70 L45.56,16.29 Z";
@@ -12,8 +13,11 @@ const STARBURST =
  * HERO — master slice y100–1000.
  * B&W cut-out head (RESERVED ROTATION ZONE) on a spiky yellow STARBURST
  * (annotated "animation of changing paper shapes" — placeholder slow spin/scale
- * until the real shape system). Name "noah cousineau" bold sans right of head,
- * "graphic design" in italic serif beneath. Starburst box x73–875, head x218–693.
+ * until the real shape system). "noah cousineau" — Akzidenz Regular (no bold,
+ * per spec) — right of head; "graphic design" in Quinn Text Italic beneath.
+ * FitText caps the name+label block at 830 units so it can NEVER bleed past
+ * the artboard's right margin (x1877 = the same margin the description uses),
+ * regardless of which font is currently active.
  */
 export default function Hero() {
   const headRef = useRef<HTMLDivElement>(null);
@@ -29,7 +33,6 @@ export default function Hero() {
         yoyo: true,
         repeat: -1,
       });
-      // starburst placeholder: slow rotate + gentle pulse (stands in for morphing paper)
       gsap.to(burstRef.current, {
         rotate: 360,
         duration: 40,
@@ -49,6 +52,9 @@ export default function Hero() {
     return () => ctx.revert();
   }, []);
 
+  // Right column caps at the artboard margin (x1877), starting at x990 -> 887 units max
+  const RIGHT_MAX_W = 887;
+
   return (
     <Stage heightUnits={1000} className="overflow-hidden">
       {/* Spiky yellow starburst behind head, x73–875 y104–898 */}
@@ -58,7 +64,7 @@ export default function Hero() {
         </svg>
       </Place>
 
-      {/* B&W head — rotation zone, centered in the starburst (burst center x474).
+      {/* B&W head — rotation zone, centered in the starburst.
           unoptimized so the transparent WebP cutout keeps its alpha
           (next/image otherwise flattens to JPEG on a white background). */}
       <Place x={250} y={230} w={430} h={541} className="z-10">
@@ -76,26 +82,28 @@ export default function Hero() {
         </div>
       </Place>
 
-      {/* "noah" x990 y378 fs179 bold sans lowercase */}
-      <Place x={990} y={360} className="z-10">
-        <span className="block font-bold lowercase leading-[0.8]" style={{ fontSize: uFont(150) }}>
+      {/* "noah" x990 y378 fs179 — Akzidenz Regular, never bleeds past x1877 */}
+      <Place x={990} y={378} className="z-10">
+        <FitText maxWidthUnits={RIGHT_MAX_W} fontSizeUnits={179} className="block lowercase leading-[0.85]">
           noah
-        </span>
+        </FitText>
       </Place>
       {/* "cousineau" x1066 y463 fs179 */}
-      <Place x={1010} y={500} className="z-10">
-        <span className="block font-bold lowercase leading-[0.8]" style={{ fontSize: uFont(150) }}>
+      <Place x={1066} y={463} className="z-10">
+        <FitText maxWidthUnits={RIGHT_MAX_W - 76} fontSizeUnits={179} className="block lowercase leading-[0.85]">
           cousineau
-        </span>
+        </FitText>
       </Place>
-      {/* "graphic design" x997 y607 fs73 — italic serif */}
-      <Place x={997} y={660} className="z-10">
-        <span
+      {/* "graphic design" x997 y607 fs73 — Quinn Text Italic */}
+      <Place x={997} y={607} className="z-10">
+        <FitText
+          maxWidthUnits={RIGHT_MAX_W - 7}
+          fontSizeUnits={73}
           className="block italic lowercase leading-[0.95]"
-          style={{ fontSize: uFont(73), fontFamily: "var(--font-serif)" }}
+          style={{ fontFamily: "var(--font-serif)" }}
         >
           graphic design
-        </span>
+        </FitText>
       </Place>
     </Stage>
   );

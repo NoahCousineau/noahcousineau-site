@@ -71,7 +71,7 @@ export default function PasswordPage() {
         Protected
       </p>
       <h1
-        className="uppercase font-bold leading-[0.85] tracking-tight mb-10"
+        className="uppercase leading-[0.85] tracking-tight mb-10"
         style={{ fontSize: "var(--text-title)" }}
       >
         Enter Password

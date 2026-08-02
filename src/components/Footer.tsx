@@ -101,12 +101,12 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* RIGHT — brush logo */}
+        {/* RIGHT — logo, Akzidenz Regular (no bold, per spec) */}
         <div className="flex justify-center md:justify-end">
           <Link
             href="/"
-            className="font-bold uppercase tracking-tight leading-none"
-            style={{ fontSize: "clamp(2rem,4vw,3.5rem)" }}
+            className="lowercase tracking-tight leading-none"
+            style={{ fontSize: "clamp(1.75rem,3.5vw,3rem)" }}
           >
             cousineau
           </Link>

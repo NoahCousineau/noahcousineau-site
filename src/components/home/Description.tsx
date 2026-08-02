@@ -3,14 +3,17 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
-import { Stage, Place, uFont } from "./Stage";
+import { Stage, Place } from "./Stage";
+import { FitText } from "./FitText";
 
 /**
  * DESCRIPTION — master slice y1000–2366.
- * Editorial: three big single lines at x36, mixed case, with italic-serif
- * emphasis on "graphic designer" and "visual problems"; thin horizontal RULES
- * sit in the gaps BETWEEN lines. Pointing finger (drop shadow) rotates on
- * scroll: "resistance at first, then swings down fast with easy ease."
+ * Editorial: three big single lines at x36 (Akzidenz Regular, no bold — per
+ * spec), with Quinn Text Italic emphasis on "graphic designer" and "visual
+ * problems"; thin horizontal RULES sit in the gaps between lines. Pointing
+ * finger (drop shadow) rotates on scroll: "resistance at first, then swings
+ * down fast with easy ease." FitText caps every line at the artboard's right
+ * margin (x1877, i.e. 1841 units from x36) so nothing can bleed off-screen.
  */
 export default function Description() {
   const root = useRef<HTMLDivElement>(null);
@@ -43,40 +46,40 @@ export default function Description() {
     </Place>
   );
 
-  const bigLine: React.CSSProperties = { fontSize: uFont(105), whiteSpace: "nowrap" };
-  const serif: React.CSSProperties = { fontFamily: "var(--font-serif)" };
+  const LINE_MAX_W = 1841; // x36 -> x1877, the artboard's right margin
+  const serif = { fontFamily: "var(--font-serif)" };
 
   return (
     <Stage heightUnits={2366} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
-          <span className="block font-bold leading-[1] tracking-tight" style={bigLine}>
-            Noah Cousineau is a <span className="italic font-normal" style={serif}>graphic designer</span>
-          </span>
+          <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
+            Noah Cousineau is a <span className="italic" style={serif}>graphic designer</span>
+          </FitText>
         </Place>
         {rule(1240)}
 
         {/* Line 2 y1265 */}
         <Place x={36} y={1265} className="z-10">
-          <span className="block font-bold leading-[1] tracking-tight" style={bigLine}>
+          <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
             who uses wit, play, and humor to solve
-          </span>
+          </FitText>
         </Place>
         {rule(1424)}
 
         {/* Line 3 y1441 */}
         <Place x={36} y={1441} className="z-10">
-          <span className="block font-bold leading-[1] tracking-tight" style={bigLine}>
-            your <span className="italic font-normal" style={serif}>visual problems</span>.
-          </span>
+          <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
+            your <span className="italic" style={serif}>visual problems</span>.
+          </FitText>
         </Place>
 
         {/* "His work can be seen below" y2237 */}
         <Place x={45} y={2237} className="z-10">
-          <span className="block font-bold leading-[1] tracking-tight" style={{ fontSize: uFont(96), whiteSpace: "nowrap" }}>
+          <FitText maxWidthUnits={1600} fontSizeUnits={96} className="leading-[1] tracking-tight">
             His work can be seen below
-          </span>
+          </FitText>
         </Place>
 
         {/* Pointing finger — drop shadow, rotates up→down on scroll. Box x806 y1655 */}

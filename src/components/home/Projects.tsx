@@ -2,7 +2,8 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { Stage, Place, uFont } from "./Stage";
+import { Stage, Place } from "./Stage";
+import { FitText } from "./FitText";
 import { HOVER_VIDEO } from "@/lib/projects";
 
 /**
@@ -30,13 +31,15 @@ const CELLS: Cell[] = [
   { slug: "other", line1: "other", line2: "work", disciplines: "posters · commentary · visual identity", isIndex: true },
 ];
 
-// artboard coords
+// artboard coords — divider sits at x956; columns must stop short of it
+const DIVIDER_X = 956;
 const LEFT_X = 184;
+const LEFT_W = DIVIDER_X - LEFT_X - 20; // 752, leaves a gap before the divider
 const RIGHT_X = 1010;
-const CELL_W = 780;
+const RIGHT_W = 1877 - RIGHT_X - 20; // stops short of the artboard's right margin
 const RULES = [2587, 3192, 3738, 4160]; // horizontal rules (4th closes 3rd row)
 
-function Cell({ cell }: { cell: Cell }) {
+function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const vid = cell.isIndex ? null : HOVER_VIDEO[cell.slug];
   const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
@@ -48,6 +51,9 @@ function Cell({ cell }: { cell: Cell }) {
       videoRef.current.currentTime = 0;
     }
   };
+
+  // Text must fit inside the cell minus its own box's max-w-92% and padding
+  const textMaxW = widthUnits * 0.92 - 24;
 
   return (
     <Link
@@ -70,17 +76,19 @@ function Cell({ cell }: { cell: Cell }) {
       )}
       {/* Title + disciplines — get a white box on hover for legibility */}
       <div className="absolute left-0 top-[8%] max-w-[92%] group-hover:bg-white transition-colors duration-300 px-[calc(var(--u)*10)] py-[calc(var(--u)*8)]">
-        <span className="block font-bold lowercase leading-[0.9]" style={{ fontSize: uFont(120) }}>
+        <FitText maxWidthUnits={textMaxW} fontSizeUnits={120} className="block lowercase leading-[0.9]">
           {cell.line1}
           <br />
           {cell.line2}
-        </span>
-        <span
+        </FitText>
+        <FitText
+          maxWidthUnits={textMaxW}
+          fontSizeUnits={37}
           className="block italic lowercase mt-[calc(var(--u)*20)]"
-          style={{ fontSize: uFont(37), fontFamily: "var(--font-serif)" }}
+          style={{ fontFamily: "var(--font-serif)" }}
         >
           {cell.disciplines}
-        </span>
+        </FitText>
       </div>
     </Link>
   );
@@ -98,7 +106,7 @@ export default function Projects() {
         </Place>
       ))}
       {/* Vertical center divider spanning the full grid (first→last rule) */}
-      <Place x={956} y={2587} w={6} h={4160 - 2587} className="z-20">
+      <Place x={DIVIDER_X} y={2587} w={6} h={4160 - 2587} className="z-20">
         <div className="w-full h-full" style={{ background: "var(--color-ink)" }} />
       </Place>
 
@@ -107,12 +115,13 @@ export default function Projects() {
         const col = i % 2;
         const row = Math.floor(i / 2);
         const x = col === 0 ? LEFT_X : RIGHT_X;
+        const w = col === 0 ? LEFT_W : RIGHT_W;
         const y = RULES[row] + 20;
         const h = (RULES[row + 1] ?? 3738 + 400) - RULES[row] - 40;
         return (
-          <Place key={cell.slug} x={x} y={y} w={CELL_W} h={h} className="z-10">
+          <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
-              <Cell cell={cell} />
+              <Cell cell={cell} widthUnits={w} />
             </div>
           </Place>
         );

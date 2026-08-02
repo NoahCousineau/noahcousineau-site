@@ -17,7 +17,7 @@ export default function About() {
   return (
     <main className="px-[--gutter] py-[16vh] max-w-[--maxw] mx-auto">
       <h1
-        className="uppercase font-bold leading-[0.85] tracking-tight"
+        className="uppercase leading-[0.85] tracking-tight"
         style={{ fontSize: "var(--text-display)" }}
       >
         About Me

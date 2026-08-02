@@ -20,7 +20,7 @@ export default function Nav() {
       <nav className="flex items-center justify-between px-[--gutter] py-5">
         <Link
           href="/"
-          className="uppercase tracking-widest font-bold"
+          className="uppercase tracking-widest"
           style={{ fontSize: "var(--text-caption)" }}
         >
           Noah Cousineau

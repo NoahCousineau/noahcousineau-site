@@ -21,7 +21,7 @@ export function ProjectHero({ project }: { project: Project }) {
   return (
     <header className="px-[--gutter] pt-[18vh] pb-[10vh] max-w-[--maxw] mx-auto">
       <h1
-        className="font-bold uppercase leading-[0.85] tracking-tight"
+        className="uppercase leading-[0.85] tracking-tight"
         style={{ fontSize: "var(--text-display)" }}
       >
         {project.title}
