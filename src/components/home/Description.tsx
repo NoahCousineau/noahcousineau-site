@@ -33,8 +33,8 @@ export default function Description() {
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
-            start: "center 75%",
-            end: "bottom 40%",
+            start: "50% center",  // Start when image is 50% in view
+            end: "60% center",    // Complete when image is 60% in view
             scrub: 1.2,
           },
         }
@@ -93,7 +93,7 @@ export default function Description() {
         <Place x={806} y={1655} w={308} h={523} className="z-20">
           <div
             ref={handRef}
-            className="w-full [transform-origin:50%_50%]"
+            className="w-full [transform-origin:50%_50%] scale-75"
           >
             <Image
               src="/assets/home/pointing-hand.png"
