@@ -3,13 +3,12 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Stage, Place, uFont } from "./Stage";
 
 /**
- * DESCRIPTION — second homepage area.
- * The sketch: text + lines as drawn; a pointing hand that, as you scroll down,
- * first points UP, then rotates DOWN (with "resistance" to the rotation — i.e.
- * an eased, slightly springy turn rather than a linear spin).
+ * DESCRIPTION — master slice y1000–2366.
+ * Three left-aligned lines at x36 (fs~135). "His work can be seen below" x45 y2237.
+ * Pointing hand image box x806–1114 y1655–2200, rotates up→down on scroll.
  */
 const LINES = [
   "Noah Cousineau is a graphic designer",
@@ -18,16 +17,13 @@ const LINES = [
 ];
 
 export default function Description() {
-  const root = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    gsap.registerPlugin(ScrollTrigger);
-
+    gsap.registerPlugin();
     const ctx = gsap.context(() => {
-      // Hand starts pointing up (-90deg) and rotates down to 0 as we scroll
-      // through the section. "Resistance" = ease that eases out hard at the end.
       gsap.fromTo(
         handRef.current,
         { rotate: -90 },
@@ -36,8 +32,8 @@ export default function Description() {
           ease: "power2.out",
           scrollTrigger: {
             trigger: root.current,
-            start: "top 70%",
-            end: "bottom 40%",
+            start: "top 75%",
+            end: "bottom 45%",
             scrub: 1,
           },
         }
@@ -47,44 +43,40 @@ export default function Description() {
   }, []);
 
   return (
-    <section
-      ref={root}
-      className="relative min-h-[80svh] flex items-center px-[--gutter] max-w-[--maxw] mx-auto"
-    >
-      <div className="max-w-[40ch]">
+    <Stage heightUnits={2366} className="overflow-hidden" id="desc-root">
+      <div ref={root} className="absolute inset-0">
         {LINES.map((line, i) => (
-          <p
-            key={i}
-            className="font-bold uppercase leading-[1.05] tracking-tight"
-            style={{ fontSize: "var(--text-heading)" }}
-          >
-            {line}
-          </p>
+          <Place key={i} x={36} y={1081 + i * (1265 - 1081)} className="z-10">
+            <span
+              className="block font-bold uppercase leading-[0.95]"
+              style={{ fontSize: uFont(135) }}
+            >
+              {line}
+            </span>
+          </Place>
         ))}
 
-        <p
-          className="uppercase tracking-widest mt-10 opacity-60"
-          style={{ fontSize: "var(--text-caption)" }}
-        >
-          His work can be seen below
-        </p>
-      </div>
+        {/* "His work can be seen below" x45 y2237 fs129 */}
+        <Place x={45} y={2237} className="z-10">
+          <span className="block uppercase leading-[0.95]" style={{ fontSize: uFont(90) }}>
+            His work can be seen below
+          </span>
+        </Place>
 
-      {/* Pointing hand — rotates from up to down on scroll */}
-      <div
-        ref={handRef}
-        className="absolute right-[--gutter] bottom-[10vh] w-[clamp(120px,18vw,220px)] [transform-origin:70%_30%]"
-        aria-hidden
-      >
-        <Image
-          src="/assets/home/pointing-hand.png"
-          alt=""
-          width={566}
-          height={316}
-          sizes="(max-width: 768px) 18vw, 220px"
-          className="w-full h-auto"
-        />
+        {/* Pointing hand — rotates up to down on scroll, box x806 y1655 w308 h523 */}
+        <Place x={806} y={1655} w={308} h={523} className="z-20">
+          <div ref={handRef} className="w-full [transform-origin:70%_30%]">
+            <Image
+              src="/assets/home/pointing-hand.png"
+              alt=""
+              width={566}
+              height={316}
+              sizes="20vw"
+              className="w-full h-auto"
+            />
+          </div>
+        </Place>
       </div>
-    </section>
+    </Stage>
   );
 }

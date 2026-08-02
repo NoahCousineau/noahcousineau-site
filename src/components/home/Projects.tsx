@@ -3,17 +3,40 @@
 import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { projects, HOVER_VIDEO, HOVER_FALLBACK } from "@/lib/projects";
+import { Stage, Place, uFont } from "./Stage";
+import { HOVER_VIDEO, HOVER_FALLBACK } from "@/lib/projects";
 
 /**
- * PROJECTS — third homepage area.
- * Grid of project tiles. On hover (pointer devices) the tile's video plays;
- * on touch / no-hover, the cover image shows. Titles sit in a white box for
- * legibility. Valley Strong has no video → image + CSS shimmer fallback.
+ * PROJECTS — master slice y2600–4100. Two columns (x186 / x1145), three rows
+ * (y2728 / 3329 / 3848). Titles fs~232 in white boxes. The six tiles shown on
+ * the sketch: Sprouts, Corita, SoCal Earth, Valley Strong, Forced Perspective,
+ * and a final "other / work" tile that links to the full index.
  */
-function Tile({ slug, title }: { slug: string; title: string }) {
+const TILES: { slug: string; label: string; isIndex?: boolean }[] = [
+  { slug: "sprouts-farmers-market", label: "sprouts / farmers market" },
+  { slug: "corita-art-center", label: "corita / art center" },
+  { slug: "socal-earth", label: "socal / earth" },
+  { slug: "valley-strong-credit-union", label: "valley strong / credit union" },
+  { slug: "forced-perspective", label: "forced / perspective" },
+  { slug: "other", label: "other / work", isIndex: true },
+];
+
+const COL_X = [186, 1145];
+const ROW_Y = [2728, 3329, 3848];
+const TILE_W = 630;
+const TILE_H = 232;
+
+function Tile({
+  slug,
+  label,
+  isIndex,
+}: {
+  slug: string;
+  label: string;
+  isIndex?: boolean;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const vid = HOVER_VIDEO[slug];
+  const vid = isIndex ? null : HOVER_VIDEO[slug];
 
   function play() {
     if (!vid || !videoRef.current) return;
@@ -25,14 +48,14 @@ function Tile({ slug, title }: { slug: string; title: string }) {
     videoRef.current.currentTime = 0;
   }
 
+  const href = isIndex ? "/work" : `/work/${slug}`;
+
   return (
     <Link
-      href={`/work/${slug}`}
-      className="group relative block aspect-[4/3] overflow-hidden bg-black"
+      href={href}
+      className="group relative block w-full h-full overflow-hidden bg-black"
       onMouseEnter={play}
       onMouseLeave={stop}
-      onFocus={play}
-      onBlur={stop}
     >
       {vid ? (
         <video
@@ -45,23 +68,22 @@ function Tile({ slug, title }: { slug: string; title: string }) {
           className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
         />
       ) : (
-        // No video: image with a slow zoom + sheen to imply motion
         <div className="absolute inset-0">
           <Image
             src={HOVER_FALLBACK[slug] ?? "/assets/home/portrait.webp"}
-            alt={title}
+            alt={label}
             fill
-            sizes="(max-width: 640px) 50vw, 25vw"
+            sizes="33vw"
             className="object-cover scale-100 group-hover:scale-105 transition-transform duration-700"
           />
           <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/0 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
         </div>
       )}
-
-      {/* Title in white box for legibility */}
-      <div className="relative z-10 m-4 inline-block bg-white text-[color:var(--color-ink)] px-3 py-1.5 uppercase tracking-wide font-bold"
-           style={{ fontSize: "var(--text-caption)" }}>
-        {title}
+      <div
+        className="relative z-10 m-[calc(var(--u)*24)] inline-block bg-white text-[color:var(--color-ink)] px-3 py-1.5 uppercase font-bold leading-none"
+        style={{ fontSize: uFont(30) }}
+      >
+        {label}
       </div>
     </Link>
   );
@@ -69,18 +91,18 @@ function Tile({ slug, title }: { slug: string; title: string }) {
 
 export default function Projects() {
   return (
-    <section className="px-[--gutter] py-[10vh] max-w-[--maxw] mx-auto">
-      <h2
-        className="uppercase font-bold tracking-tight mb-[6vh]"
-        style={{ fontSize: "var(--text-heading)" }}
-      >
-        Selected Work
-      </h2>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-[--gutter]">
-        {projects.map((p) => (
-          <Tile key={p.slug} slug={p.slug} title={p.title} />
-        ))}
-      </div>
-    </section>
+    <Stage heightUnits={4200} className="overflow-hidden">
+      <Place x={45} y={2619} className="z-10">
+        <span className="block uppercase opacity-60" style={{ fontSize: uFont(35) }}>
+          Links to projects. Animation plays on hover
+        </span>
+      </Place>
+
+      {TILES.map((t, i) => (
+        <Place key={t.slug} x={COL_X[i % 2]} y={ROW_Y[Math.floor(i / 2)]} w={TILE_W} h={TILE_H}>
+          <Tile slug={t.slug} label={t.label} isIndex={t.isIndex} />
+        </Place>
+      ))}
+    </Stage>
   );
 }
