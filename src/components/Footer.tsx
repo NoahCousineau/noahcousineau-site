@@ -65,7 +65,7 @@ function AnalogClock() {
 export default function Footer() {
   return (
     <footer className="bg-[color:var(--color-ink)] text-[color:var(--color-paper)] w-full">
-      <div className="mx-auto max-w-[1920px] px-[calc(var(--u)*40)] py-[6vh] flex flex-col md:flex-row md:items-center md:justify-between gap-10">
+      <div className="mx-auto max-w-[1920px] px-[calc(var(--u)*15)] py-[6vh] flex flex-col md:flex-row md:items-center md:justify-between gap-10">
         {/* LEFT GROUP — clock (larger) + contact, left-aligned to the clock.
             Stacks vertically below ~480px so the clock+contact row can't
             force horizontal scroll on small phones. */}

@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { Stage, Place } from "./Stage";
-import { FitText } from "./FitText";
 import { HOVER_VIDEO } from "@/lib/projects";
 
 /**
@@ -94,22 +93,20 @@ function Cell({ cell }: { cell: Cell }) {
         />
       )}
       {/* Title + disciplines — centered inside white box in the cell center.
-          Pure white, 560×340u size. Consistent type treatment across all tiles. */}
+          Pure white, 560×340u size. ALL type sized identically across all tiles,
+          based on Sprouts Farmers Market as the reference. */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="bg-white flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 40)` }}>
-          <FitText maxWidthUnits={BOX_WIDTH - 80} fontSizeUnits={120} className="lowercase leading-[1.1] text-left">
+          {/* Title: fixed 110u font, no FitText variation */}
+          <div className="lowercase leading-[1.1] text-left" style={{ fontFamily: "var(--font-sans)", fontSize: `calc(var(--u) * 110)`, width: `calc(var(--u) * ${BOX_WIDTH - 80})` }}>
             {cell.line1}
             <br />
             {cell.line2}
-          </FitText>
-          <FitText
-            maxWidthUnits={BOX_WIDTH - 80}
-            fontSizeUnits={40}
-            className="italic lowercase mt-[calc(var(--u)*24)] text-left"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
+          </div>
+          {/* Disciplines: fixed 38u italic serif, no FitText variation */}
+          <div className="italic lowercase mt-[calc(var(--u)*24)] text-left" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * 38)`, width: `calc(var(--u) * ${BOX_WIDTH - 80})` }}>
             {cell.disciplines}
-          </FitText>
+          </div>
         </div>
       </div>
     </Link>

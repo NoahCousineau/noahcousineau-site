@@ -29,7 +29,7 @@ export default function Description() {
         handRef.current,
         { rotate: 0 },
         {
-          rotate: -180,  // Rotate clockwise (negative value for clockwise)
+          rotate: 180,  // Rotate counterclockwise (positive value)
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
@@ -53,7 +53,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={2440} className="overflow-hidden">
+    <Stage heightUnits={2337} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -78,15 +78,12 @@ export default function Description() {
           </FitText>
         </Place>
 
-        {/* "His work can be seen below" y2237 */}
+        {/* "His work can be seen below" y2237 — no rule line, 100u space after */}
         <Place x={45} y={2237} className="z-10">
           <FitText maxWidthUnits={1600} fontSizeUnits={96} className="leading-[1] tracking-tight">
             His work can be seen below
           </FitText>
         </Place>
-        {/* Rule line sits WELL BELOW the text.
-            Added 50u extra space before projects grid. */}
-        {rule(2430)}
 
         {/* Pointing finger — animates based on scroll position.
             At the top of the page: points upward (-45°). As user scrolls down
