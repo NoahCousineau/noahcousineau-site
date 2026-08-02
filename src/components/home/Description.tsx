@@ -33,8 +33,8 @@ export default function Description() {
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
-            start: "50% center",  // Start when image is 50% in view
-            end: "60% center",    // Complete when image is 60% in view
+            start: "70% center",  // Start later (was 50%)
+            end: "80% center",    // Complete later (was 60%)
             scrub: 1.2,
           },
         }
@@ -53,7 +53,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={3046} className="overflow-hidden">
+    <Stage heightUnits={3146} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -85,11 +85,11 @@ export default function Description() {
           </FitText>
         </Place>
 
-        {/* Pointing finger at y2287 — 100u below text, animates based on scroll position.
+        {/* Pointing finger at y2387 — 100u below text, animates based on scroll position.
             At the top of the page: points upward. As user scrolls down
             through the Description section, smoothly rotates to point downward.
             Transform origin is centered. */}
-        <Place x={806} y={2287} w={308} h={523} className="z-20">
+        <Place x={806} y={2387} w={308} h={523} className="z-20">
           <div
             ref={handRef}
             className="w-full [transform-origin:50%_50%] scale-75"
@@ -105,8 +105,8 @@ export default function Description() {
           </div>
         </Place>
 
-        {/* Rule line below hand */}
-        {rule(2446)}
+        {/* Rule line below text — 159u below "His work can be seen below" at y2187 */}
+        {rule(2346)}
       </div>
     </Stage>
   );
