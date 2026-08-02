@@ -79,8 +79,8 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
       onMouseLeave={stop}
       className="group absolute inset-0 block"
     >
-      {/* Video fills the entire grid cell from black line to black line.
-          Overflow hidden on parent ensures clean edges. */}
+      {/* Video fills the entire grid cell, edge-to-edge.
+          Overflow hidden on parent ensures no spillover. */}
       {vid && (
         <video
           ref={videoRef}
@@ -89,7 +89,8 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
           loop
           playsInline
           preload="metadata"
-          className="absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-150 transition-[opacity,transform] duration-700 ease-out"
+          className="absolute inset-0 object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-110 transition-[opacity,transform] duration-700 ease-out"
+          style={{ width: '100%', height: '100%' }}
         />
       )}
       {/* Title + disciplines — centered inside white box, centered in grid cell.
