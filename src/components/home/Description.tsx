@@ -53,7 +53,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={3196} className="overflow-hidden">
+    <Stage heightUnits={3046} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -78,11 +78,18 @@ export default function Description() {
           </FitText>
         </Place>
 
-        {/* Pointing finger at y2237 — animates based on scroll position.
+        {/* "His work can be seen below" y2187 (moved up 250u from y2437) */}
+        <Place x={45} y={2187} className="z-10">
+          <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
+            His work can be seen below
+          </FitText>
+        </Place>
+
+        {/* Pointing finger at y2287 — 100u below text, animates based on scroll position.
             At the top of the page: points upward. As user scrolls down
             through the Description section, smoothly rotates to point downward.
             Transform origin is centered. */}
-        <Place x={806} y={2237} w={308} h={523} className="z-20">
+        <Place x={806} y={2287} w={308} h={523} className="z-20">
           <div
             ref={handRef}
             className="w-full [transform-origin:50%_50%] scale-75"
@@ -98,15 +105,8 @@ export default function Description() {
           </div>
         </Place>
 
-        {/* "His work can be seen below" y2437 (100u below hand) */}
-        <Place x={45} y={2437} className="z-10">
-          <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            His work can be seen below
-          </FitText>
-        </Place>
-
-        {/* Rule line below "His work can be seen below" */}
-        {rule(2596)}
+        {/* Rule line below hand */}
+        {rule(2446)}
       </div>
     </Stage>
   );
