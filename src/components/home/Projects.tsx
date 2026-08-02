@@ -69,9 +69,9 @@ function Cell({ cell }: { cell: Cell }) {
     }
   };
 
-  // Fixed white box size (match the largest needed, "socal earth")
-  const BOX_WIDTH = 350; // units, fixed size for all tiles
-  const BOX_HEIGHT = 120; // units, fixed height for all tiles
+  // Fixed white box size per Noah's spec: 560×340 in current view
+  const BOX_WIDTH = 560;   // units in artboard space
+  const BOX_HEIGHT = 340;  // units in artboard space
 
   return (
     <Link
@@ -80,8 +80,8 @@ function Cell({ cell }: { cell: Cell }) {
       onMouseLeave={stop}
       className="group absolute inset-0 block"
     >
-      {/* Video fills the cell on hover, with a significant zoom-in (Ken Burns).
-          Overflow hidden on parent ensures video doesn't spill beyond grid lines. */}
+      {/* Video fills the entire grid cell from black line to black line.
+          Overflow hidden on parent ensures clean edges. */}
       {vid && (
         <video
           ref={videoRef}
@@ -94,18 +94,18 @@ function Cell({ cell }: { cell: Cell }) {
         />
       )}
       {/* Title + disciplines — centered inside white box in the cell center.
-          Pure white, fixed size across all tiles. */}
+          Pure white, 560×340u size. Consistent type treatment across all tiles. */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white px-[calc(var(--u)*30)] py-[calc(var(--u)*20)] flex flex-col items-start text-left" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})` }}>
-          <FitText maxWidthUnits={BOX_WIDTH - 60} fontSizeUnits={80} className="lowercase leading-[1.2] text-left">
+        <div className="bg-white flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 40)` }}>
+          <FitText maxWidthUnits={BOX_WIDTH - 80} fontSizeUnits={120} className="lowercase leading-[1.1] text-left">
             {cell.line1}
             <br />
             {cell.line2}
           </FitText>
           <FitText
-            maxWidthUnits={BOX_WIDTH - 60}
-            fontSizeUnits={28}
-            className="italic lowercase mt-[calc(var(--u)*8)] text-left"
+            maxWidthUnits={BOX_WIDTH - 80}
+            fontSizeUnits={40}
+            className="italic lowercase mt-[calc(var(--u)*24)] text-left"
             style={{ fontFamily: "var(--font-serif)" }}
           >
             {cell.disciplines}
