@@ -68,9 +68,9 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
     }
   };
 
-  // Fixed white box size: 50% grid cell width, 70% grid cell height
-  const BOX_WIDTH = widthUnits * 0.5;   // 50% of grid cell width
-  const BOX_HEIGHT = heightUnits * 0.7;  // 70% of grid cell height
+  // Fixed white box size: 80% grid cell width, 60% grid cell height
+  const BOX_WIDTH = widthUnits * 0.8;   // 80% of grid cell width
+  const BOX_HEIGHT = heightUnits * 0.6;  // 60% of grid cell height
 
   return (
     <Link
