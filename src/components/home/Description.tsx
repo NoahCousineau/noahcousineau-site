@@ -27,9 +27,9 @@ export default function Description() {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         handRef.current,
-        { rotate: -90 },  // Start pointing straight up
+        { rotate: 90 },  // Start pointing straight up
         {
-          rotate: 90,  // End pointing straight down
+          rotate: -90,  // End pointing straight down
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
@@ -93,7 +93,7 @@ export default function Description() {
         <Place x={806} y={1655} w={308} h={523} className="z-20">
           <div
             ref={handRef}
-            className="w-full [transform-origin:70%_30%]"
+            className="w-full [transform-origin:50%_50%]"
           >
             <Image
               src="/assets/home/pointing-hand.png"
