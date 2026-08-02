@@ -56,7 +56,7 @@ export default function Hero() {
   const RIGHT_MAX_W = 887;
 
   return (
-    <Stage heightUnits={300} className="overflow-hidden">
+    <Stage heightUnits={900} className="overflow-hidden">
       {/* Spiky yellow starburst behind head, x73–875 y104–898 */}
       <Place x={73} y={104} w={802} h={794} className="z-0">
         <svg ref={burstRef} viewBox="0 0 100 100" className="w-full h-full">
