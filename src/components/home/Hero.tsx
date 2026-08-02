@@ -49,7 +49,7 @@ export default function Hero() {
   const RIGHT_MAX_W = 887;
 
   return (
-    <Stage heightUnits={700} className="overflow-hidden">
+    <Stage heightUnits={1200} className="overflow-hidden">
       {/* Spiky yellow starburst behind head, x73–875 y104–898 */}
       <Place x={73} y={104} w={802} h={794} className="z-0">
         <svg ref={burstRef} viewBox="0 0 100 100" className="w-full h-full">
@@ -58,7 +58,7 @@ export default function Hero() {
       </Place>
 
       {/* Rotating head animation — interactive drag-to-spin */}
-      <Place x={250} y={230} w={430} h={541} className="z-10 flex items-center justify-center">
+      <Place x={200} y={180} w={530} h={641} className="z-10 flex items-center justify-center">
         <RotatingHead 
           isDarkMode={false}
           variant="staggered"
