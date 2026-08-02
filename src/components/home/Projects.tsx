@@ -135,8 +135,8 @@ export default function Projects() {
         const row = Math.floor(i / 2);
         const x = col === 0 ? LEFT_X : RIGHT_X;
         const w = col === 0 ? LEFT_W : RIGHT_W;
-        const y = RULES[row] + 20;
-        const h = ROW_H - 40;
+        const y = RULES[row];  // Start at the rule line, no offset
+        const h = ROW_H;  // Full row height, no reduction
         return (
           <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
