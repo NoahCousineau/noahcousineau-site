@@ -59,7 +59,7 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
   const play = () => {
     if (vid && videoRef.current) {
       videoRef.current.currentTime = videoRef.current.duration * 0.5; // start halfway
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch((err) => console.error("Video play error:", err));
     }
   };
   const stop = () => {
@@ -87,15 +87,15 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
           muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
           className="absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-150 transition-[opacity,transform] duration-700 ease-out"
         />
       )}
-      {/* Title + disciplines — left-aligned inside white box, consistent sizing
-          across all tiles. Benchmarked against Sprouts hover-on. */}
+      {/* Title + disciplines — centered inside white box in the cell center.
+          Pure white background, left-aligned text within the box. */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white/95 group-hover:bg-white transition-colors duration-300 px-[calc(var(--u)*40)] py-[calc(var(--u)*32)] w-full flex flex-col items-start text-left">
-          <FitText maxWidthUnits={textMaxW} fontSizeUnits={80} className="lowercase leading-[0.9] text-left">
+        <div className="bg-white px-[calc(var(--u)*40)] py-[calc(var(--u)*32)] w-fit flex flex-col items-start text-left">
+          <FitText maxWidthUnits={textMaxW} fontSizeUnits={80} className="lowercase leading-[1.2] text-left">
             {cell.line1}
             <br />
             {cell.line2}

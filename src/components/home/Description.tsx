@@ -27,9 +27,9 @@ export default function Description() {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         handRef.current,
-        { rotate: -45 },
+        { rotate: 0 },
         {
-          rotate: 45,
+          rotate: 180,
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
@@ -53,7 +53,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={2340} className="overflow-hidden">
+    <Stage heightUnits={2360} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -84,8 +84,8 @@ export default function Description() {
             His work can be seen below
           </FitText>
         </Place>
-        {/* Rule line sits BELOW the text, not through it */}
-        {rule(2300)}
+        {/* Rule line sits WELL BELOW the text, not through it */}
+        {rule(2360)}
 
         {/* Pointing finger — animates based on scroll position.
             At the top of the page: points upward (-45°). As user scrolls down
