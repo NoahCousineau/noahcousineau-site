@@ -56,9 +56,8 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
     : (cell.isIndex ? null : HOVER_VIDEO[cell.slug]);
   const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
   
-  // Sprouts gets extra zoom (2x)
+  // Sprouts gets extra zoom (2x = 220%)
   const isSpouts = cell.slug === "sprouts-farmers-market";
-  const hoverScale = isSpouts ? "scale-220" : "scale-110";
 
   const play = () => {
     if (vid && videoRef.current) {
@@ -94,7 +93,7 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
           loop
           playsInline
           preload="metadata"
-          className={`absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:${hoverScale} transition-[opacity,transform] duration-700 ease-out`}
+          className={`absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 ${isSpouts ? "group-hover:scale-[2.2]" : "group-hover:scale-110"} transition-[opacity,transform] duration-700 ease-out`}
         />
       )}
       {/* Title + disciplines — centered inside white box, centered in grid cell.
@@ -122,9 +121,9 @@ export default function Projects() {
     <Stage heightUnits={GRID_LOCAL_HEIGHT + 20} className="overflow-hidden">
       {/* red-note annotation is a NOTE and intentionally NOT rendered */}
 
-      {/* Horizontal rules full width x36–1877, EVEN spacing */}
+      {/* Horizontal rules spanning left column to divider to right column edge */}
       {RULES.map((y) => (
-        <Place key={y} x={36} y={y} w={1841} className="z-20">
+        <Place key={y} x={LEFT_X} y={y} w={LEFT_W + 6 + RIGHT_W} className="z-20">
           <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
         </Place>
       ))}
