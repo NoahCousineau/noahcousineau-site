@@ -33,7 +33,7 @@ export default function Description() {
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
-            start: "top 75%",
+            start: "center 75%",  // Starts partway through, so hand is fully visible first
             end: "bottom 40%",
             scrub: 1.2,
           },
@@ -53,7 +53,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={2360} className="overflow-hidden">
+    <Stage heightUnits={2390} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -84,8 +84,9 @@ export default function Description() {
             His work can be seen below
           </FitText>
         </Place>
-        {/* Rule line sits WELL BELOW the text, not through it */}
-        {rule(2360)}
+        {/* Rule line sits WELL BELOW the text, not through it.
+            Extra space added after the rule before projects grid. */}
+        {rule(2380)}
 
         {/* Pointing finger — animates based on scroll position.
             At the top of the page: points upward (-45°). As user scrolls down

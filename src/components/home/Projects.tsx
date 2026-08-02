@@ -48,7 +48,7 @@ const GRID_LOCAL_HEIGHT = 1575; // same span the sketch's grid occupied (reduced
 const ROW_H = GRID_LOCAL_HEIGHT / 3;
 const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row), not 4
 
-function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
+function Cell({ cell }: { cell: Cell }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // "other" (index project) gets the ArtCenter video; regular projects use HOVER_VIDEO
   const vid = cell.slug === "other" 
@@ -69,8 +69,9 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
     }
   };
 
-  // Text must fit inside the white box's own horizontal padding
-  const textMaxW = widthUnits * 0.7;
+  // Fixed white box size (match the largest needed, "socal earth")
+  const BOX_WIDTH = 350; // units, fixed size for all tiles
+  const BOX_HEIGHT = 120; // units, fixed height for all tiles
 
   return (
     <Link
@@ -79,7 +80,8 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
       onMouseLeave={stop}
       className="group absolute inset-0 block"
     >
-      {/* Video fills the cell on hover, with a significant zoom-in (Ken Burns) */}
+      {/* Video fills the cell on hover, with a significant zoom-in (Ken Burns).
+          Overflow hidden on parent ensures video doesn't spill beyond grid lines. */}
       {vid && (
         <video
           ref={videoRef}
@@ -92,18 +94,18 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
         />
       )}
       {/* Title + disciplines — centered inside white box in the cell center.
-          Pure white background, left-aligned text within the box. */}
+          Pure white, fixed size across all tiles. */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white px-[calc(var(--u)*40)] py-[calc(var(--u)*32)] w-fit flex flex-col items-start text-left">
-          <FitText maxWidthUnits={textMaxW} fontSizeUnits={80} className="lowercase leading-[1.2] text-left">
+        <div className="bg-white px-[calc(var(--u)*30)] py-[calc(var(--u)*20)] flex flex-col items-start text-left" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})` }}>
+          <FitText maxWidthUnits={BOX_WIDTH - 60} fontSizeUnits={80} className="lowercase leading-[1.2] text-left">
             {cell.line1}
             <br />
             {cell.line2}
           </FitText>
           <FitText
-            maxWidthUnits={textMaxW}
+            maxWidthUnits={BOX_WIDTH - 60}
             fontSizeUnits={28}
-            className="italic lowercase mt-[calc(var(--u)*16)] text-left"
+            className="italic lowercase mt-[calc(var(--u)*8)] text-left"
             style={{ fontFamily: "var(--font-serif)" }}
           >
             {cell.disciplines}
@@ -141,7 +143,7 @@ export default function Projects() {
         return (
           <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
-              <Cell cell={cell} widthUnits={w} />
+              <Cell cell={cell} />
             </div>
           </Place>
         );

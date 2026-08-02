@@ -21,7 +21,7 @@ import Projects from "@/components/home/Projects";
 export default function Home() {
   return (
     <main
-      className="mx-auto w-full max-w-[1920px] px-[calc(var(--u)*40)]"
+      className="mx-auto w-full max-w-[1920px]"
       style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
     >
       <Hero />
