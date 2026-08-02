@@ -102,8 +102,8 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
             <br />
             {cell.line2}
           </div>
-          {/* Subtitle: fixed 30u italic serif, no variation, single line */}
-          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left whitespace-nowrap" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * 30)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
+          {/* Subtitle: fixed 20u italic serif, no variation, single line */}
+          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left whitespace-nowrap" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * 20)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
             {cell.disciplines}
           </div>
         </div>
