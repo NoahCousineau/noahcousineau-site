@@ -34,13 +34,13 @@ const CELLS: Cell[] = [
   { slug: "other", line1: "other", line2: "work", disciplines: "posters · commentary · visual identity", isIndex: true },
 ];
 
-// artboard coords — make columns symmetrical around the center divider
+// artboard coords — make columns 918u wide, symmetrical around divider
 const DIVIDER_X = 956;
-const MARGIN = 184;  // left margin
-const LEFT_X = MARGIN;
-const LEFT_W = DIVIDER_X - LEFT_X;  // 772 units
-const RIGHT_X = DIVIDER_X + 6;  // divider is 6u wide, starts after it
-const RIGHT_W = LEFT_W;  // same width as left column for symmetry
+const CELL_WIDTH = 918;
+const LEFT_X = DIVIDER_X - CELL_WIDTH;  // 38 (positions left cell to end at divider)
+const RIGHT_X = DIVIDER_X + 6;  // divider is 6u wide, right cell starts after it
+const LEFT_W = CELL_WIDTH;  // 918u
+const RIGHT_W = CELL_WIDTH;  // 918u (same width as left)
 
 // EVEN row heights: 3 rows. All y-values below are LOCAL to this Stage
 // (start at 0), NOT the master artboard's absolute y.
