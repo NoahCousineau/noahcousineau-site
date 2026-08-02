@@ -23,14 +23,13 @@ export default function Description() {
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    gsap.registerPlugin(ScrollTrigger); // MUST register before using scrollTrigger: {} —
-    // omitting this silently no-ops the whole tween (no error, no rotation).
+    gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
       gsap.fromTo(
         handRef.current,
-        { rotate: -90 },
+        { rotate: -45 },
         {
-          rotate: 0,
+          rotate: 45,
           ease: "back.in(1.6)",
           scrollTrigger: {
             trigger: root.current,
@@ -85,16 +84,18 @@ export default function Description() {
             His work can be seen below
           </FitText>
         </Place>
-        {/* Missing rule under "His work can be seen below" — added per feedback.
-            Sits well inside the Stage bottom (2340) so overflow-hidden doesn't clip it. */}
-        {rule(2270)}
+        {/* Rule line sits BELOW the text, not through it */}
+        {rule(2300)}
 
-        {/* Pointing finger — drop shadow, rotates up→down on scroll. Box x806 y1655 */}
+        {/* Pointing finger — animates based on scroll position.
+            At the top of the page: points upward (-45°). As user scrolls down
+            through the Description section, smoothly rotates to point downward
+            (45°). No drop shadow. Transform origin is the hand's wrist so it
+            pivots naturally. */}
         <Place x={806} y={1655} w={308} h={523} className="z-20">
           <div
             ref={handRef}
             className="w-full [transform-origin:70%_30%]"
-            style={{ filter: "drop-shadow(calc(var(--u)*10) calc(var(--u)*14) calc(var(--u)*10) rgba(0,0,0,0.35))" }}
           >
             <Image
               src="/assets/home/pointing-hand.png"

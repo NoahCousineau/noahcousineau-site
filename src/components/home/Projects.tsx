@@ -43,21 +43,25 @@ const RIGHT_X = 1010;
 const RIGHT_W = 1877 - RIGHT_X - 20; // stops short of the artboard's right margin
 
 // EVEN row heights: 3 rows. All y-values below are LOCAL to this Stage
-// (start at 0), NOT the master artboard's absolute y — a Stage's <Place>
-// children are positioned relative to its own top, so using the artboard's
-// absolute y2587 directly here pushed the whole grid ~2600 units below its
-// container and produced a huge blank gap. Keep it local; only x stays in
-// artboard-absolute terms since Stage width tracks the full page width.
-const GRID_LOCAL_HEIGHT = 1595; // same span the sketch's grid occupied
+// (start at 0), NOT the master artboard's absolute y.
+const GRID_LOCAL_HEIGHT = 1575; // same span the sketch's grid occupied (reduced to avoid the line above footer)
 const ROW_H = GRID_LOCAL_HEIGHT / 3;
-const RULES = [0, 1, 2, 3].map((i) => i * ROW_H);
+const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row), not 4
 
 function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const vid = cell.isIndex ? null : HOVER_VIDEO[cell.slug];
+  // "other" (index project) gets the ArtCenter video; regular projects use HOVER_VIDEO
+  const vid = cell.slug === "other" 
+    ? "/videos/Image_FB_Cousineau_Noah_ArtCenter College of Design.mp4"
+    : (cell.isIndex ? null : HOVER_VIDEO[cell.slug]);
   const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
 
-  const play = () => vid && videoRef.current?.play().catch(() => {});
+  const play = () => {
+    if (vid && videoRef.current) {
+      videoRef.current.currentTime = videoRef.current.duration * 0.5; // start halfway
+      videoRef.current.play().catch(() => {});
+    }
+  };
   const stop = () => {
     if (videoRef.current) {
       videoRef.current.pause();
@@ -75,7 +79,7 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
       onMouseLeave={stop}
       className="group absolute inset-0 block"
     >
-      {/* Video fills the cell on hover, with a slow zoom-in (Ken Burns) */}
+      {/* Video fills the cell on hover, with a significant zoom-in (Ken Burns) */}
       {vid && (
         <video
           ref={videoRef}
@@ -84,22 +88,22 @@ function Cell({ cell, widthUnits }: { cell: Cell; widthUnits: number }) {
           loop
           playsInline
           preload="none"
-          className="absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-110 transition-[opacity,transform] duration-700 ease-out"
+          className="absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-150 transition-[opacity,transform] duration-700 ease-out"
         />
       )}
-      {/* Title + disciplines — centered both axes, consistent white box on
-          EVERY tile (matches the Sprouts hover-on benchmark treatment) */}
+      {/* Title + disciplines — left-aligned inside white box, consistent sizing
+          across all tiles. Benchmarked against Sprouts hover-on. */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white/95 group-hover:bg-white transition-colors duration-300 px-[calc(var(--u)*40)] py-[calc(var(--u)*32)] flex flex-col items-center text-center">
-          <FitText maxWidthUnits={textMaxW} fontSizeUnits={110} className="lowercase leading-[0.9] text-center">
+        <div className="bg-white/95 group-hover:bg-white transition-colors duration-300 px-[calc(var(--u)*40)] py-[calc(var(--u)*32)] w-full flex flex-col items-start text-left">
+          <FitText maxWidthUnits={textMaxW} fontSizeUnits={80} className="lowercase leading-[0.9] text-left">
             {cell.line1}
             <br />
             {cell.line2}
           </FitText>
           <FitText
             maxWidthUnits={textMaxW}
-            fontSizeUnits={34}
-            className="italic lowercase mt-[calc(var(--u)*20)] text-center"
+            fontSizeUnits={28}
+            className="italic lowercase mt-[calc(var(--u)*16)] text-left"
             style={{ fontFamily: "var(--font-serif)" }}
           >
             {cell.disciplines}

@@ -85,8 +85,9 @@ export default function Hero() {
       {/* "noah cousineau / graphic design" lockup — embedded from Noah's exact
           SVG (hand-kerned, not reproducible via CSS letter-spacing). Right
           column, capped at the artboard's right margin (x1877) so it can
-          never bleed off-screen; aspect ratio locked to the source SVG. */}
-      <Place x={990} y={330} w={RIGHT_MAX_W} className="z-10">
+          never bleed off-screen; aspect ratio locked to the source SVG.
+          Sized ~15% smaller per feedback. */}
+      <Place x={990} y={360} w={RIGHT_MAX_W * 0.85} className="z-10">
         <HeroLockup />
       </Place>
     </Stage>
