@@ -34,3 +34,7 @@ yarn-error.log*
 # Env
 .env*
 !.env.example
+
+# Large self-hosted media (copy from ~/Desktop/portfolio/newly uploaded assets)
+/public/videos
+/public/fonts
