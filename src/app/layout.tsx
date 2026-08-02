@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
-import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
@@ -23,9 +22,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Typekit — Akzidenz-Grotesk Next Pro (Regular) + Quinn Text (Italic).
+            Only these two faces are used site-wide; see globals.css tokens. */}
+        <link rel="stylesheet" href="https://use.typekit.net/dch7hsa.css" />
+      </head>
       <body>
         <SmoothScroll>
-          <Nav />
           {children}
           <Footer />
         </SmoothScroll>

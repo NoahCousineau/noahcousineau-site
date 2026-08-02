@@ -5,36 +5,25 @@
   -------------
   Change values here and the whole site follows — nothing is hard-coded downstream.
 
-  FONTS — exactly two, per Noah's spec (both Adobe Fonts, not freely downloadable):
-    Akzidenz-Grotesk REGULAR  — all sans/body/heading text (no bold weight in use)
-    Quinn Text ITALIC         — every serif accent, always italic, never upright
-  Drop the licensed .woff2 files into /public/fonts and the @font-face stubs
-  below pick them up automatically. Until then we fall back to near-equivalents
-  (Helvetica Neue for Akzidenz, Georgia italic for Quinn) so layout, spacing,
-  and margins are already correct — only the exact letterforms swap later.
+  FONTS — exactly two, delivered live via Adobe Typekit (link tag in layout.tsx,
+  kit dch7hsa). Real family names come from Adobe's own @font-face rules — do
+  NOT rename them or redeclare local @font-face for these; that's what caused
+  a silent "error" status on document.fonts the first time (leftover stub
+  @font-face pointed at nonexistent /fonts/*.woff2 files while the Typekit
+  stylesheet ALSO registered the real families under different names).
+    Akzidenz-Grotesk REGULAR → "akzidenz-grotesk-next-pro", weight 400 normal
+    Quinn Text ITALIC        → "quinn-text", weight 400 italic
+  Until the Typekit request resolves (or if it's ever offline) these fall back
+  to Helvetica/Georgia italic so layout and spacing stay correct regardless.
   Text placement uses FitText (src/components/home/FitText.tsx) to guarantee
   no bleed past the artboard margin, regardless of which font is active.
 */
-@font-face {
-  font-family: "Akzidenz-Grotesk";
-  src: url("/fonts/Akzidenz-Grotesk-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Quinn Text";
-  src: url("/fonts/Quinn-Text-Italic.woff2") format("woff2");
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
 
 @theme {
   /* Type families — only two faces site-wide. Sans = regular weight only;
      serif = italic only. Do not introduce a bold weight or a third face. */
-  --font-sans: "Akzidenz-Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-serif: "Quinn Text", Georgia, "Times New Roman", serif;
+  --font-sans: "akzidenz-grotesk-next-pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: "quinn-text", Georgia, "Times New Roman", serif;
 
   /* Color — seeded from Noah's rough homepage sketch (draft, will evolve) */
   --color-ink: #0d0d0d;

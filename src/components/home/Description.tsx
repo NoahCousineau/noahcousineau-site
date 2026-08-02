@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "./Stage";
 import { FitText } from "./FitText";
 
@@ -10,10 +11,11 @@ import { FitText } from "./FitText";
  * DESCRIPTION — master slice y1000–2366.
  * Editorial: three big single lines at x36 (Akzidenz Regular, no bold — per
  * spec), with Quinn Text Italic emphasis on "graphic designer" and "visual
- * problems"; thin horizontal RULES sit in the gaps between lines. Pointing
- * finger (drop shadow) rotates on scroll: "resistance at first, then swings
- * down fast with easy ease." FitText caps every line at the artboard's right
- * margin (x1877, i.e. 1841 units from x36) so nothing can bleed off-screen.
+ * problems"; thin horizontal RULES sit in the gaps between lines, PLUS one
+ * more rule directly under "His work can be seen below" (previously missing).
+ * Pointing finger (drop shadow) rotates on scroll: "resistance at first,
+ * then swings down fast with easy ease." FitText caps every line at the
+ * artboard's right margin (x1877, i.e. 1841 units from x36).
  */
 export default function Description() {
   const root = useRef<HTMLDivElement>(null);
@@ -21,6 +23,8 @@ export default function Description() {
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    gsap.registerPlugin(ScrollTrigger); // MUST register before using scrollTrigger: {} —
+    // omitting this silently no-ops the whole tween (no error, no rotation).
     const ctx = gsap.context(() => {
       gsap.fromTo(
         handRef.current,
@@ -50,7 +54,7 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={2366} className="overflow-hidden">
+    <Stage heightUnits={2340} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Line 1 y1081 */}
         <Place x={36} y={1081} className="z-10">
@@ -81,6 +85,9 @@ export default function Description() {
             His work can be seen below
           </FitText>
         </Place>
+        {/* Missing rule under "His work can be seen below" — added per feedback.
+            Sits well inside the Stage bottom (2340) so overflow-hidden doesn't clip it. */}
+        {rule(2270)}
 
         {/* Pointing finger — drop shadow, rotates up→down on scroll. Box x806 y1655 */}
         <Place x={806} y={1655} w={308} h={523} className="z-20">
