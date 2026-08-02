@@ -62,6 +62,7 @@ export default function Hero() {
         <RotatingHead 
           isDarkMode={false}
           variant="staggered"
+          autoRotateSpeed={130}
           containerClassName="w-full h-full"
         />
       </Place>
