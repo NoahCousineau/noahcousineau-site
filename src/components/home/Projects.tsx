@@ -2,62 +2,62 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Stage, Place, uFont } from "./Stage";
-import { HOVER_VIDEO, HOVER_FALLBACK } from "@/lib/projects";
+import { HOVER_VIDEO } from "@/lib/projects";
 
 /**
- * PROJECTS — master slice y2600–4100. Two columns (x186 / x1145), three rows
- * (y2728 / 3329 / 3848). Titles fs~232 in white boxes. The six tiles shown on
- * the sketch: Sprouts, Corita, SoCal Earth, Valley Strong, Forced Perspective,
- * and a final "other / work" tile that links to the full index.
+ * PROJECTS — master slice y2587–3738+. Editorial TABLE grid:
+ *  - thick black rules full-width at y2587 / 3192 / 3738 (row separators)
+ *  - vertical divider down the center (x≈956)
+ *  - each cell: big bold lowercase title (two lines) + italic-serif discipline tags
+ *  - HOVER: video fills the whole cell; title+tags get a white box for legibility
+ * Six tiles from the sketch; "other / work" links to the full index.
  */
-const TILES: { slug: string; label: string; isIndex?: boolean }[] = [
-  { slug: "sprouts-farmers-market", label: "sprouts / farmers market" },
-  { slug: "corita-art-center", label: "corita / art center" },
-  { slug: "socal-earth", label: "socal / earth" },
-  { slug: "valley-strong-credit-union", label: "valley strong / credit union" },
-  { slug: "forced-perspective", label: "forced / perspective" },
-  { slug: "other", label: "other / work", isIndex: true },
+type Cell = {
+  slug: string;
+  line1: string;
+  line2: string;
+  disciplines: string;
+  isIndex?: boolean;
+};
+
+const CELLS: Cell[] = [
+  { slug: "sprouts-farmers-market", line1: "sprouts", line2: "farmers market", disciplines: "print design · motion design · art direction" },
+  { slug: "corita-art-center", line1: "corita", line2: "art center", disciplines: "print design · social media · art direction" },
+  { slug: "socal-earth", line1: "socal", line2: "earth", disciplines: "visual identity · brand strategy · web design" },
+  { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
+  { slug: "forced-perspective", line1: "forced", line2: "perspective", disciplines: "artwork · commentary · visual identity" },
+  { slug: "other", line1: "other", line2: "work", disciplines: "posters · commentary · visual identity", isIndex: true },
 ];
 
-const COL_X = [186, 1145];
-const ROW_Y = [2728, 3329, 3848];
-const TILE_W = 630;
-const TILE_H = 232;
+// artboard coords
+const LEFT_X = 184;
+const RIGHT_X = 1010;
+const CELL_W = 780;
+const RULES = [2587, 3192, 3738, 4160]; // horizontal rules (4th closes 3rd row)
 
-function Tile({
-  slug,
-  label,
-  isIndex,
-}: {
-  slug: string;
-  label: string;
-  isIndex?: boolean;
-}) {
+function Cell({ cell }: { cell: Cell }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const vid = isIndex ? null : HOVER_VIDEO[slug];
+  const vid = cell.isIndex ? null : HOVER_VIDEO[cell.slug];
+  const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
 
-  function play() {
-    if (!vid || !videoRef.current) return;
-    videoRef.current.play().catch(() => {});
-  }
-  function stop() {
-    if (!videoRef.current) return;
-    videoRef.current.pause();
-    videoRef.current.currentTime = 0;
-  }
-
-  const href = isIndex ? "/work" : `/work/${slug}`;
+  const play = () => vid && videoRef.current?.play().catch(() => {});
+  const stop = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
 
   return (
     <Link
       href={href}
-      className="group relative block w-full h-full overflow-hidden bg-black"
       onMouseEnter={play}
       onMouseLeave={stop}
+      className="group absolute inset-0 block"
     >
-      {vid ? (
+      {/* Video fills the cell on hover */}
+      {vid && (
         <video
           ref={videoRef}
           src={vid}
@@ -67,23 +67,20 @@ function Tile({
           preload="none"
           className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
         />
-      ) : (
-        <div className="absolute inset-0">
-          <Image
-            src={HOVER_FALLBACK[slug] ?? "/assets/home/portrait.webp"}
-            alt={label}
-            fill
-            sizes="33vw"
-            className="object-cover scale-100 group-hover:scale-105 transition-transform duration-700"
-          />
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/0 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-        </div>
       )}
-      <div
-        className="relative z-10 m-[calc(var(--u)*24)] inline-block bg-white text-[color:var(--color-ink)] px-3 py-1.5 uppercase font-bold leading-none"
-        style={{ fontSize: uFont(30) }}
-      >
-        {label}
+      {/* Title + disciplines — get a white box on hover for legibility */}
+      <div className="absolute left-0 top-[8%] max-w-[92%] group-hover:bg-white transition-colors duration-300 px-[calc(var(--u)*10)] py-[calc(var(--u)*8)]">
+        <span className="block font-bold lowercase leading-[0.9]" style={{ fontSize: uFont(120) }}>
+          {cell.line1}
+          <br />
+          {cell.line2}
+        </span>
+        <span
+          className="block italic lowercase mt-[calc(var(--u)*20)]"
+          style={{ fontSize: uFont(37), fontFamily: "var(--font-serif)" }}
+        >
+          {cell.disciplines}
+        </span>
       </div>
     </Link>
   );
@@ -91,18 +88,35 @@ function Tile({
 
 export default function Projects() {
   return (
-    <Stage heightUnits={4200} className="overflow-hidden">
-      <Place x={45} y={2619} className="z-10">
-        <span className="block uppercase opacity-60" style={{ fontSize: uFont(35) }}>
-          Links to projects. Animation plays on hover
-        </span>
-      </Place>
+    <Stage heightUnits={4220} className="overflow-hidden">
+      {/* red-note annotation is a NOTE and intentionally NOT rendered */}
 
-      {TILES.map((t, i) => (
-        <Place key={t.slug} x={COL_X[i % 2]} y={ROW_Y[Math.floor(i / 2)]} w={TILE_W} h={TILE_H}>
-          <Tile slug={t.slug} label={t.label} isIndex={t.isIndex} />
+      {/* Horizontal rules full width x36–1877 */}
+      {RULES.map((y) => (
+        <Place key={y} x={36} y={y} w={1841} className="z-20">
+          <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
         </Place>
       ))}
+      {/* Vertical center divider spanning the full grid (first→last rule) */}
+      <Place x={956} y={2587} w={6} h={4160 - 2587} className="z-20">
+        <div className="w-full h-full" style={{ background: "var(--color-ink)" }} />
+      </Place>
+
+      {/* Cells */}
+      {CELLS.map((cell, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const x = col === 0 ? LEFT_X : RIGHT_X;
+        const y = RULES[row] + 20;
+        const h = (RULES[row + 1] ?? 3738 + 400) - RULES[row] - 40;
+        return (
+          <Place key={cell.slug} x={x} y={y} w={CELL_W} h={h} className="z-10">
+            <div className="relative w-full h-full overflow-hidden">
+              <Cell cell={cell} />
+            </div>
+          </Place>
+        );
+      })}
     </Stage>
   );
 }
