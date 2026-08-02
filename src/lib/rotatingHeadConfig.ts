@@ -1,0 +1,37 @@
+// Frame adjustments for the rotating head animation
+// Light mode - staggered variant
+// Y-values set to 0 to keep animation vertically centered (no bobbing)
+
+export const lightModeStaggeredAdjustments = {
+  "1": { x: 30, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 65 },
+  "2": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "3": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "4": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "5": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "6": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "7": { x: -10, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "8": { x: -15, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "9": { x: 20, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "10": { x: 20, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "11": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 63 },
+  "12": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "13": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "14": { x: -10, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 62 },
+  "15": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 64 },
+  "16": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 67 },
+  "17": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 69 },
+  "18": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 70 },
+  "19": { x: 15, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 68 },
+  "20": { x: 40, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 62 },
+  "21": { x: 35, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 66 },
+  "22": { x: 25, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 63 },
+  "23": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "24": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "25": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 61 },
+  "26": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "27": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 60 },
+  "28": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 64 },
+  "29": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 63 },
+  "30": { x: 0, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 65 },
+  "31": { x: 25, y: 0, crop: { left: 0, right: 0, top: 0, bottom: 0 }, scale: 65 },
+};

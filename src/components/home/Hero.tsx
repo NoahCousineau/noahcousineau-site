@@ -5,6 +5,7 @@ import Image from "next/image";
 import { gsap } from "gsap";
 import { Stage, Place } from "./Stage";
 import HeroLockup from "./HeroLockup";
+import RotatingHead from "../RotatingHead";
 
 const STARBURST =
   "M50.00,0.00 L54.44,16.29 L62.94,1.70 L63.01,18.59 L75.00,6.70 L70.70,23.03 L85.36,14.64 L76.97,29.30 L93.30,25.00 L81.41,36.99 L98.30,37.06 L83.71,45.56 L100.00,50.00 L83.71,54.44 L98.30,62.94 L81.41,63.01 L93.30,75.00 L76.97,70.70 L85.36,85.36 L70.70,76.97 L75.00,93.30 L63.01,81.41 L62.94,98.30 L54.44,83.71 L50.00,100.00 L45.56,83.71 L37.06,98.30 L36.99,81.41 L25.00,93.30 L29.30,76.97 L14.64,85.36 L23.03,70.70 L6.70,75.00 L18.59,63.01 L1.70,62.94 L16.29,54.44 L0.00,50.00 L16.29,45.56 L1.70,37.06 L18.59,36.99 L6.70,25.00 L23.03,29.30 L14.64,14.64 L29.30,23.03 L25.00,6.70 L36.99,18.59 L37.06,1.70 L45.56,16.29 Z";
@@ -20,19 +21,11 @@ const STARBURST =
  * regardless of which font is currently active.
  */
 export default function Hero() {
-  const headRef = useRef<HTMLDivElement>(null);
   const burstRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const ctx = gsap.context(() => {
-      gsap.to(headRef.current, {
-        rotateY: 16,
-        duration: 3,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1,
-      });
       gsap.to(burstRef.current, {
         rotate: 360,
         duration: 40,
@@ -64,22 +57,13 @@ export default function Hero() {
         </svg>
       </Place>
 
-      {/* B&W head — rotation zone, centered in the starburst.
-          unoptimized so the transparent WebP cutout keeps its alpha
-          (next/image otherwise flattens to JPEG on a white background). */}
-      <Place x={250} y={230} w={430} h={541} className="z-10">
-        <div ref={headRef} className="w-full [transform-style:preserve-3d] [perspective:1000px]">
-          <Image
-            src="/assets/home/portrait-bw.webp"
-            alt="Noah Cousineau — rotating head (placeholder)"
-            width={538}
-            height={678}
-            sizes="40vw"
-            className="w-full h-auto"
-            unoptimized
-            priority
-          />
-        </div>
+      {/* Rotating head animation — interactive drag-to-spin */}
+      <Place x={250} y={230} w={430} h={541} className="z-10 flex items-center justify-center">
+        <RotatingHead 
+          isDarkMode={false}
+          variant="staggered"
+          containerClassName="w-full h-full"
+        />
       </Place>
 
       {/* "noah cousineau / graphic design" lockup — embedded from Noah's exact
