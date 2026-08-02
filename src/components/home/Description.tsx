@@ -78,19 +78,11 @@ export default function Description() {
           </FitText>
         </Place>
 
-        {/* "His work can be seen below" y2237 — no rule line, 100u space after */}
-        <Place x={45} y={2237} className="z-10">
-          <FitText maxWidthUnits={1600} fontSizeUnits={96} className="leading-[1] tracking-tight">
-            His work can be seen below
-          </FitText>
-        </Place>
-
-        {/* Pointing finger — animates based on scroll position.
-            At the top of the page: points upward (-45°). As user scrolls down
-            through the Description section, smoothly rotates to point downward
-            (45°). No drop shadow. Transform origin is the hand's wrist so it
-            pivots naturally. */}
-        <Place x={806} y={1655} w={308} h={523} className="z-20">
+        {/* Pointing finger at y2237 — animates based on scroll position.
+            At the top of the page: points upward. As user scrolls down
+            through the Description section, smoothly rotates to point downward.
+            Transform origin is centered. */}
+        <Place x={806} y={2237} w={308} h={523} className="z-20">
           <div
             ref={handRef}
             className="w-full [transform-origin:50%_50%] scale-75"
@@ -104,6 +96,13 @@ export default function Description() {
               className="w-full h-auto"
             />
           </div>
+        </Place>
+
+        {/* "His work can be seen below" y1655 — 100u space after */}
+        <Place x={45} y={1655} className="z-10">
+          <FitText maxWidthUnits={1600} fontSizeUnits={96} className="leading-[1] tracking-tight">
+            His work can be seen below
+          </FitText>
         </Place>
       </div>
     </Stage>
