@@ -34,12 +34,12 @@ const CELLS: Cell[] = [
   { slug: "other", line1: "other", line2: "work", disciplines: "posters · commentary · visual identity", isIndex: true },
 ];
 
-// artboard coords — divider sits at x956; columns must stop short of it
+// artboard coords — divider sits at x956; columns must reach to it with no gaps
 const DIVIDER_X = 956;
 const LEFT_X = 184;
-const LEFT_W = DIVIDER_X - LEFT_X - 20; // leaves a gap before the divider
+const LEFT_W = DIVIDER_X - LEFT_X;  // reaches right to the divider, no gap
 const RIGHT_X = 1010;
-const RIGHT_W = 1877 - RIGHT_X - 20; // stops short of the artboard's right margin
+const RIGHT_W = 1877 - RIGHT_X;  // reaches to the right edge, no gap
 
 // EVEN row heights: 3 rows. All y-values below are LOCAL to this Stage
 // (start at 0), NOT the master artboard's absolute y.
