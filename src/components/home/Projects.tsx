@@ -47,7 +47,7 @@ const GRID_LOCAL_HEIGHT = 1575; // same span the sketch's grid occupied (reduced
 const ROW_H = GRID_LOCAL_HEIGHT / 3;
 const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row), not 4
 
-function Cell({ cell }: { cell: Cell }) {
+function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: number; heightUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // "other" (index project) gets the ArtCenter video; regular projects use HOVER_VIDEO
   const vid = cell.slug === "other" 
@@ -68,9 +68,9 @@ function Cell({ cell }: { cell: Cell }) {
     }
   };
 
-  // Fixed white box size per Noah's spec: 560×340 in current view
-  const BOX_WIDTH = 560;   // units in artboard space
-  const BOX_HEIGHT = 340;  // units in artboard space
+  // Fixed white box size: 50% grid cell width, 70% grid cell height
+  const BOX_WIDTH = widthUnits * 0.5;   // 50% of grid cell width
+  const BOX_HEIGHT = heightUnits * 0.7;  // 70% of grid cell height
 
   return (
     <Link
@@ -92,19 +92,18 @@ function Cell({ cell }: { cell: Cell }) {
           className="absolute inset-0 w-full h-full object-cover opacity-0 scale-100 group-hover:opacity-100 group-hover:scale-150 transition-[opacity,transform] duration-700 ease-out"
         />
       )}
-      {/* Title + disciplines — centered inside white box in the cell center.
-          Pure white, 560×340u size. ALL type sized identically across all tiles,
-          based on Sprouts Farmers Market as the reference. */}
+      {/* Title + disciplines — centered inside white box, centered in grid cell.
+          Box is 50% width × 70% height of the grid cell. */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 40)` }}>
-          {/* Title: fixed 110u font, no FitText variation */}
-          <div className="lowercase leading-[1.1] text-left" style={{ fontFamily: "var(--font-sans)", fontSize: `calc(var(--u) * 110)`, width: `calc(var(--u) * ${BOX_WIDTH - 80})` }}>
+        <div className="bg-white flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 30)` }}>
+          {/* Title: fixed 50u font, no variation */}
+          <div className="lowercase leading-[1.1] text-left" style={{ fontFamily: "var(--font-sans)", fontSize: `calc(var(--u) * 50)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
             {cell.line1}
             <br />
             {cell.line2}
           </div>
-          {/* Disciplines: fixed 38u italic serif, no FitText variation */}
-          <div className="italic lowercase mt-[calc(var(--u)*24)] text-left" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * 38)`, width: `calc(var(--u) * ${BOX_WIDTH - 80})` }}>
+          {/* Subtitle: fixed 20u italic serif, no variation */}
+          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * 20)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
             {cell.disciplines}
           </div>
         </div>
@@ -140,7 +139,7 @@ export default function Projects() {
         return (
           <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
-              <Cell cell={cell} />
+              <Cell cell={cell} widthUnits={w} heightUnits={h} />
             </div>
           </Place>
         );
