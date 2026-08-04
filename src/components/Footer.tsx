@@ -6,34 +6,35 @@ import MickeyWatch from "./MickeyWatch";
 
 /**
  * Global footer (on every page). Comp: black bar, per Noah's sketch
- * (Homepage - Rough_Homepage - Static View.png):
- *   - Watch CENTERED in the bar, sized so there's ~30px of black bar
- *     showing above and below it (not stretched edge-to-edge).
- *   - Cousineau logo on the left, ~560px wide, bottom-aligned with the watch.
- *   - Contact info (email, phone, then a thin rule, then social links) on
- *     the right, also bottom-aligned with the watch.
- * Uses a shared bottom edge (items-end + a consistent padding-bottom) so
- * "aligned along the bottom of the watch" holds at any viewport width,
- * since the watch/logo/contact all sit in one flex row anchored to that
- * edge rather than being vertically centered independently.
- *
- * The project grid's center divider (Projects.tsx) stops at the top edge
- * of this bar, per the sketch — no divider line runs through the footer
- * itself, so it isn't reproduced here.
+ * (Homepage - Rough_Homepage - Static View.png), tuned per feedback rounds:
+ *   - Watch is TRUE-CENTERED on the bar's full width (absolutely positioned
+ *     at 50%, independent of the logo/contact block widths — a plain flex
+ *     row with justify-between does NOT center it correctly once the logo
+ *     and contact blocks are different widths, since the flex gap eats
+ *     into one side more than the other).
+ *   - Cousineau logo sits to the LEFT, smaller than before, hugging the
+ *     left edge.
+ *   - Contact info on the right: lowercase Akzidenz (site's sans, the
+ *     default body font — no italic/serif here), 1.5x the base caption
+ *     size, email + phone side by side on one line, then a thin rule,
+ *     then the social links row.
+ *   - Logo and contact are both bottom-aligned with the watch's bottom
+ *     edge (via a shared padding-bottom + items-end on the row, with the
+ *     watch absolutely positioned to that same bottom edge).
  */
 export default function Footer() {
   return (
     <footer className="bg-[color:var(--color-ink)] text-[color:var(--color-paper)] w-full relative">
       <div
-        className="mx-auto max-w-[1920px] relative flex items-end justify-between gap-8 px-[clamp(1.5rem,4vw,4rem)]"
+        className="mx-auto max-w-[1920px] relative flex items-end justify-between px-[clamp(1.5rem,4vw,4rem)]"
         style={{
-          minHeight: "clamp(220px, 26vw, 460px)",
+          minHeight: "clamp(220px, 28vw, 460px)",
           paddingTop: "30px",
           paddingBottom: "30px",
         }}
       >
-        {/* LEFT — Cousineau logo, ~560px wide, bottom-aligned with the watch */}
-        <Link href="/" className="w-[clamp(220px,29.17vw,560px)] shrink-0">
+        {/* LEFT — Cousineau logo: smaller, hugging the left edge */}
+        <Link href="/" className="w-[clamp(140px,16vw,300px)] shrink-0">
           <Image
             src="/assets/home/cousineau-logo-white.svg"
             alt="Cousineau"
@@ -44,24 +45,29 @@ export default function Footer() {
           />
         </Link>
 
-        {/* CENTER — Mickey watch, sized to the bar's height minus the 30px
-            top/bottom margins (aspect-square keeps it a true circle). */}
+        {/* CENTER — Mickey watch, TRUE-centered on the bar (absolute, 50%
+            + translateX), sized to exactly fill the bar's minHeight minus
+            the 30px top/bottom margins — i.e. the SAME formula as the
+            footer row's own minHeight above, minus the 60px of vertical
+            padding, so the watch can never overflow the bar (a prior bug:
+            these two clamp() expressions had drifted out of sync and the
+            watch overflowed above the bar). */}
         <div
-          className="aspect-square shrink-0 mx-auto"
-          style={{ height: "clamp(160px, calc(26vw - 60px), 400px)" }}
+          className="aspect-square absolute left-1/2 -translate-x-1/2 bottom-[30px]"
+          style={{ height: "clamp(160px, calc(28vw - 60px), 400px)" }}
         >
           <MickeyWatch />
         </div>
 
-        {/* RIGHT — contact info (Akzidenz, inherited body font), bottom-
-            aligned with the watch. Email/phone stacked, then a thin rule
-            (same rule weight as the description text's), then the social
-            links row — matching Noah's sketch. */}
+        {/* RIGHT — contact info: lowercase, Akzidenz (font-sans, the site
+            default — matches body text), 1.5x the base caption size. Email
+            + phone sit side by side on one row (not stacked), then a thin
+            rule, then the social links row. */}
         <div
-          className="flex flex-col items-end gap-3 shrink-0"
-          style={{ fontSize: "var(--text-caption)" }}
+          className="flex flex-col items-end gap-3 shrink-0 lowercase"
+          style={{ fontFamily: "var(--font-sans)", fontSize: "calc(var(--text-caption) * 1.5)" }}
         >
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex items-baseline gap-4 whitespace-nowrap">
             <a href="mailto:noah@noahcousineau.com" className="hover:opacity-60 transition-opacity">
               noah@noahcousineau.com
             </a>
@@ -70,10 +76,10 @@ export default function Footer() {
             </a>
           </div>
           <div className="w-full h-[2px] bg-[color:var(--color-paper)]" />
-          <div className="flex gap-5 uppercase tracking-widest">
-            <a href="https://www.instagram.com/cousineau_art_and_design/?hl=en" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">Instagram</a>
-            <a href="https://www.linkedin.com/in/noah-cousineau/" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">LinkedIn</a>
-            <a href="https://www.behance.net/noahcousineau" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">Behance</a>
+          <div className="flex gap-5 tracking-widest">
+            <a href="https://www.instagram.com/cousineau_art_and_design/?hl=en" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">instagram</a>
+            <a href="https://www.linkedin.com/in/noah-cousineau/" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">linkedin</a>
+            <a href="https://www.behance.net/noahcousineau" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">behance</a>
           </div>
         </div>
       </div>
