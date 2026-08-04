@@ -53,43 +53,44 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={3146} className="overflow-hidden">
+    <Stage heightUnits={2266} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
-        {/* Line 1 y1081 */}
-        <Place x={36} y={1081} className="z-10">
+        {/* Line 1 y381 (was y81, moved down 300u) */}
+        <Place x={36} y={381} className="z-10">
           <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
             Noah Cousineau is a <span className="italic" style={serif}>graphic designer</span>
           </FitText>
         </Place>
-        {rule(1240)}
+        {rule(522)}
 
-        {/* Line 2 y1265 */}
-        <Place x={36} y={1265} className="z-10">
+        {/* Line 2 y565 (was y265, moved down 300u) */}
+        <Place x={36} y={565} className="z-10">
           <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
             who uses wit, play, and humor to solve
           </FitText>
         </Place>
-        {rule(1424)}
+        {rule(706)}
 
-        {/* Line 3 y1441 */}
-        <Place x={36} y={1441} className="z-10">
+        {/* Line 3 y741 (was y441, moved down 300u) */}
+        <Place x={36} y={741} className="z-10">
           <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
             your <span className="italic" style={serif}>visual problems</span><span className="italic" style={serif}>.</span>
           </FitText>
         </Place>
+        {rule(882)}
 
-        {/* "His work can be seen below" y2187 (moved up 250u from y2437) */}
-        <Place x={45} y={2187} className="z-10">
+        {/* "His work can be seen below" y1387 (was y1187, moved down 300u) */}
+        <Place x={45} y={1387} className="z-10">
           <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
             His work can be seen below
           </FitText>
         </Place>
 
-        {/* Pointing finger at y2387 — 100u below text, animates based on scroll position.
+        {/* Pointing finger at y1600 — centered closer to text, away from projects grid.
             At the top of the page: points upward. As user scrolls down
             through the Description section, smoothly rotates to point downward.
             Transform origin is centered. */}
-        <Place x={806} y={2387} w={308} h={523} className="z-20">
+        <Place x={806} y={1600} w={308} h={523} className="z-20">
           <div
             ref={handRef}
             className="w-full [transform-origin:50%_50%] scale-75"
@@ -105,8 +106,8 @@ export default function Description() {
           </div>
         </Place>
 
-        {/* Rule line below text — 159u below "His work can be seen below" at y2187 */}
-        {rule(2346)}
+        {/* Rule line below text — 50u below "His work can be seen below" baseline at y1387 */}
+        {rule(1500)}
       </div>
     </Stage>
   );

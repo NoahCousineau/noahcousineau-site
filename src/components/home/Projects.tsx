@@ -30,8 +30,8 @@ const CELLS: Cell[] = [
   { slug: "corita-art-center", line1: "corita", line2: "art center", disciplines: "print design · social media · art direction" },
   { slug: "socal-earth", line1: "socal", line2: "earth", disciplines: "visual identity · brand strategy · web design" },
   { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
-  { slug: "forced-perspective", line1: "forced", line2: "perspective", disciplines: "artwork · commentary · visual identity" },
-  { slug: "other", line1: "other", line2: "work", disciplines: "posters · commentary · visual identity", isIndex: true },
+  { slug: "cultural-olympiad-poster", line1: "cultural", line2: "olympiad", disciplines: "poster · motion design · design contest" },
+  { slug: "other", line1: "other", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true },
 ];
 
 // artboard coords — make columns 918u wide, symmetrical around divider
@@ -50,10 +50,18 @@ const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row)
 
 function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: number; heightUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  // "other" (index project) gets the ArtCenter video; regular projects use HOVER_VIDEO
-  const vid = cell.slug === "other" 
-    ? "/videos/Image_FB_Cousineau_Noah_ArtCenter College of Design.mp4"
-    : (cell.isIndex ? null : HOVER_VIDEO[cell.slug]);
+  // Handle video for swapped projects
+  // "cultural-olympiad" shows the ArtCenter video (forced perspective video)
+  // "other" shows the Cultural Olympiad video
+  let vid: string | null = null;
+  
+  if (cell.slug === "cultural-olympiad-poster") {
+    vid = "/videos/Image_FB_Cousineau_Noah_ArtCenter College of Design.mp4";  // Forced perspective video
+  } else if (cell.slug === "other") {
+    vid = "/videos/Final Thesis Video.mp4";  // Cultural Olympiad video
+  } else if (!cell.isIndex) {
+    vid = HOVER_VIDEO[cell.slug] || null;
+  }
   const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
   
   // Sprouts gets extra zoom (2x = 220%)

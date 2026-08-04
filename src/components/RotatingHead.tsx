@@ -37,6 +37,7 @@ export default function RotatingHead({
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isAutoRotating, setIsAutoRotating] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
+  const [velocity, setVelocity] = useState(0);
 
   // Constants - web-optimized (0.4x scale)
   const TOTAL_FRAMES = 31;
@@ -44,8 +45,8 @@ export default function RotatingHead({
   const GRID_ROWS = 6;
   const FRAME_WIDTH = 960;
   const FRAME_HEIGHT = 1440;
-  const DISPLAY_WIDTH = 1500;  // Increased from 600 (2.5x)
-  const DISPLAY_HEIGHT = 2250;  // Increased from 900 (2.5x)
+  const DISPLAY_WIDTH = 900;
+  const DISPLAY_HEIGHT = 1350;
 
   // Get frame adjustments based on variant
   const frameAdjustments: FrameAdjustmentsMap = variant === 'staggered' 
@@ -80,7 +81,9 @@ export default function RotatingHead({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const safeFrame = ((frameIndex % TOTAL_FRAMES) + TOTAL_FRAMES) % TOTAL_FRAMES;
+    // Round to nearest frame for sprite sheet lookup
+    const roundedFrame = Math.round(frameIndex);
+    const safeFrame = ((roundedFrame % TOTAL_FRAMES) + TOTAL_FRAMES) % TOTAL_FRAMES;
 
     // Calculate position in sprite sheet grid
     const col = safeFrame % GRID_COLS;
@@ -134,6 +137,30 @@ export default function RotatingHead({
     return () => clearInterval(interval);
   }, [isAutoRotating, autoRotateSpeed]);
 
+  // Momentum/inertia animation
+  useEffect(() => {
+    if (isDragging || velocity === 0) return;
+
+    let animationId: number;
+    const animate = () => {
+      setVelocity((prev) => {
+        const newVelocity = prev * 0.95; // Friction factor
+
+        if (Math.abs(newVelocity) < 0.01) {
+          return 0; // Stop when velocity is negligible
+        }
+
+        setCurrentFrame((frame) => (frame + newVelocity / dragSensitivity) % TOTAL_FRAMES);
+        return newVelocity;
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [isDragging, velocity, dragSensitivity, TOTAL_FRAMES]);
+
   // Draw whenever frame changes
   useEffect(() => {
     drawFrame(currentFrame);
@@ -143,24 +170,35 @@ export default function RotatingHead({
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
     setIsAutoRotating(false);
+    setVelocity(0); // Reset velocity when starting new drag
 
     const startX = e.clientX;
     const startFrame = currentFrame;
+    let lastX = startX;
+    let lastTime = Date.now();
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - startX;
-      const frameDelta = Math.round(deltaX / dragSensitivity);
+      const currentX = e.clientX;
+      const currentTime = Date.now();
+      const deltaX = currentX - startX;
+      const frameDelta = deltaX / dragSensitivity; // Use decimal for smooth movement
       setCurrentFrame(startFrame + frameDelta);
+
+      // Calculate velocity for momentum
+      const deltaPixels = currentX - lastX;
+      const deltaTime = Math.max(currentTime - lastTime, 16); // Min 16ms (60fps)
+      const instantVelocity = (deltaPixels / deltaTime) * 16; // Pixels per frame
+      setVelocity(instantVelocity);
+
+      lastX = currentX;
+      lastTime = currentTime;
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-
-      setTimeout(() => {
-        setIsAutoRotating(true);
-      }, resumeRotationDelay);
+      // Don't resume auto-rotation - just let momentum play out
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -171,24 +209,35 @@ export default function RotatingHead({
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
     setIsAutoRotating(false);
+    setVelocity(0);
 
     const startX = e.touches[0].clientX;
     const startFrame = currentFrame;
+    let lastX = startX;
+    let lastTime = Date.now();
 
     const handleTouchMove = (e: TouchEvent) => {
-      const deltaX = e.touches[0].clientX - startX;
-      const frameDelta = Math.round(deltaX / dragSensitivity);
+      const currentX = e.touches[0].clientX;
+      const currentTime = Date.now();
+      const deltaX = currentX - startX;
+      const frameDelta = deltaX / dragSensitivity; // Use decimal for smooth movement
       setCurrentFrame(startFrame + frameDelta);
+
+      // Calculate velocity for momentum
+      const deltaPixels = currentX - lastX;
+      const deltaTime = Math.max(currentTime - lastTime, 16);
+      const instantVelocity = (deltaPixels / deltaTime) * 16;
+      setVelocity(instantVelocity);
+
+      lastX = currentX;
+      lastTime = currentTime;
     };
 
     const handleTouchEnd = () => {
       setIsDragging(false);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
-
-      setTimeout(() => {
-        setIsAutoRotating(true);
-      }, resumeRotationDelay);
+      // Don't resume auto-rotation
     };
 
     document.addEventListener('touchmove', handleTouchMove);
@@ -210,10 +259,6 @@ export default function RotatingHead({
         `}
         style={{ background: 'transparent' }}
       />
-      
-      <div className="text-sm text-gray-500">
-        {isDragging ? 'Drag to spin' : 'Click and drag to spin'}
-      </div>
     </div>
   );
 }
