@@ -109,8 +109,10 @@ export default function Description() {
           </div>
         </Place>
 
-        {/* Rule line below text — 50u below "His work can be seen below" baseline at y1387 */}
-        {rule(1500)}
+        {/* Rule line below text — 36u gap after "His work can be seen below"
+            baseline (y1387 + ~105 line height + 36u), matching the same
+            36u text-to-rule gap used after lines 1–3 above. */}
+        {rule(1528)}
       </div>
     </Stage>
   );

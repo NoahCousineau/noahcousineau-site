@@ -126,7 +126,7 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
 
 export default function Projects() {
   return (
-    <Stage heightUnits={GRID_LOCAL_HEIGHT + 20} className="overflow-hidden">
+    <Stage heightUnits={GRID_LOCAL_HEIGHT} className="overflow-hidden">
       {/* red-note annotation is a NOTE and intentionally NOT rendered */}
 
       {/* Horizontal rules spanning left column to divider to right column edge */}
@@ -135,10 +135,10 @@ export default function Projects() {
           <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
         </Place>
       ))}
-      {/* Vertical center divider spanning the full grid, extended to the
-          Stage's full height (GRID_LOCAL_HEIGHT + 20) so it reaches all
-          the way down to the footer bar with no gap. */}
-      <Place x={DIVIDER_X} y={0} w={6} h={GRID_LOCAL_HEIGHT + 20} className="z-20">
+      {/* Vertical center divider spanning the full grid height — the grid's
+          content (cells) fills the Stage exactly (GRID_LOCAL_HEIGHT), so
+          this reaches the footer bar's top edge with zero gap. */}
+      <Place x={DIVIDER_X} y={0} w={6} h={GRID_LOCAL_HEIGHT} className="z-20">
         <div className="w-full h-full" style={{ background: "var(--color-ink)" }} />
       </Place>
 
