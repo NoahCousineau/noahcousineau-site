@@ -10,91 +10,72 @@ export default function MickeyWatch({
   containerClassName = '',
 }: MickeyWatchProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const framesRef = useRef<Map<number, HTMLImageElement>>(new Map());
-  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const imagesRef = useRef<{
+    minuteHand: HTMLImageElement | null;
+    hourHand: HTMLImageElement | null;
+    body: HTMLImageElement | null;
+  }>({
+    minuteHand: null,
+    hourHand: null,
+    body: null,
+  });
 
-  const TOTAL_FRAMES = 240;
-  const DISPLAY_SIZE = 280;
+  const DISPLAY_WIDTH = 280;
+  const DISPLAY_HEIGHT = 280;
 
-  // SVG design specs
-  const SVG_VIEWBOX_WIDTH = 447.93;
-  const SVG_VIEWBOX_HEIGHT = 936.56;
+  // SVG design specs from your WatchDesign_Axis.svg
   const ROTATION_CENTER_X = 223.96;
   const ROTATION_CENTER_Y = 477.41;
+  const SVG_WIDTH = 447.93;
+  const SVG_HEIGHT = 936.56;
 
-  // Scale calculations
-  const SCALE = DISPLAY_SIZE / SVG_VIEWBOX_WIDTH;
+  // Scale to fit 280px display
+  const SCALE = DISPLAY_WIDTH / SVG_WIDTH;
   const scaledCenterX = ROTATION_CENTER_X * SCALE;
   const scaledCenterY = ROTATION_CENTER_Y * SCALE;
 
-  // Get frame for minute hand angle
-  const getFrameIndex = (angleDeg: number): number => {
-    const normalized = ((angleDeg % 360) + 360) % 360;
-    return Math.round(normalized / 1.5) % TOTAL_FRAMES;
-  };
-
-  // Preload key hand frames (to keep memory reasonable)
+  // Load the images
   useEffect(() => {
-    const keyFrames = [0, 30, 60, 90, 120, 150, 180, 210];
     let loadedCount = 0;
 
-    keyFrames.forEach((frameIdx) => {
+    const loadImage = (src: string, key: keyof typeof imagesRef.current) => {
       const img = new Image();
-      img.src = `/images/mickey-watch/hand_${frameIdx.toString().padStart(3, '0')}.png`;
+      img.src = src;
       img.onload = () => {
-        framesRef.current.set(frameIdx, img);
+        imagesRef.current[key] = img;
         loadedCount++;
-        if (loadedCount === keyFrames.length) {
-          setImagesLoaded(true);
-        }
       };
-    });
+    };
 
-    // Preload current frame too
-    setTimeout(() => {
-      const now = new Date();
-      const minutes = now.getMinutes();
-      const seconds = now.getSeconds();
-      const minuteAngleDeg = minutes * 6 + seconds * 0.1;
-      const frameIdx = getFrameIndex(minuteAngleDeg);
-
-      const img = new Image();
-      img.src = `/images/mickey-watch/hand_${frameIdx.toString().padStart(3, '0')}.png`;
-      img.onload = () => {
-        framesRef.current.set(frameIdx, img);
-      };
-    }, 100);
+    loadImage('/images/mickey-watch/minute-hand.png', 'minuteHand');
+    loadImage('/images/mickey-watch/hour-hand.png', 'hourHand');
+    loadImage('/images/mickey-watch/body.png', 'body');
   }, []);
 
-  // Load on-demand frame
-  const getFrame = (frameIdx: number): HTMLImageElement | null => {
-    let img = framesRef.current.get(frameIdx);
-    if (!img) {
-      img = new Image();
-      img.src = `/images/mickey-watch/hand_${frameIdx.toString().padStart(3, '0')}.png`;
-      framesRef.current.set(frameIdx, img);
-    }
-    return img.complete ? img : null; // Only return if loaded
-  };
+  // Draw the watch
+  const drawWatch = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  // Draw watch face
-  const drawWatchFace = (ctx: CanvasRenderingContext2D) => {
-    // White background
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+
+    // Fill with white background (for the watch face)
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+    ctx.fillRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
-    const radius = (SVG_VIEWBOX_WIDTH / 2 - 25) * SCALE;
-
-    // Watch circle
-    ctx.fillStyle = '#ffffff';
+    // Draw watch face circle border
+    const radius = (SVG_WIDTH / 2 - 25) * SCALE;
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1.5 * SCALE;
     ctx.beginPath();
     ctx.arc(scaledCenterX, scaledCenterY, radius, 0, Math.PI * 2);
-    ctx.fill();
     ctx.stroke();
 
-    // Hour tick marks
+    // Draw hour markers
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 0.7 * SCALE;
     for (let i = 0; i < 12; i++) {
@@ -113,7 +94,7 @@ export default function MickeyWatch({
       ctx.stroke();
     }
 
-    // Numbers (1-12)
+    // Draw numbers (1-12)
     ctx.fillStyle = '#000000';
     ctx.font = `italic ${10 * SCALE}px Georgia, serif`;
     ctx.textAlign = 'center';
@@ -126,34 +107,28 @@ export default function MickeyWatch({
       const y = scaledCenterY + numR * Math.sin(angle);
       ctx.fillText(i.toString(), x, y);
     }
-  };
 
-  // Draw hand (minute hand)
-  const drawHand = (ctx: CanvasRenderingContext2D, image: HTMLImageElement, frameIdx: number) => {
-    if (!image || !image.complete) return;
+    // Get current time
+    const now = new Date();
+    const hours = now.getHours() % 12;
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
 
-    ctx.save();
-    ctx.translate(scaledCenterX, scaledCenterY);
+    // Calculate angles
+    const hourAngleDeg = hours * 30 + minutes * 0.5;
+    const minuteAngleDeg = minutes * 6 + seconds * 0.1;
 
-    // Rotate based on frame index (1.5° per frame)
-    const angleDeg = frameIdx * 1.5;
-    ctx.rotate((angleDeg * Math.PI) / 180);
+    // Draw hour hand (shorter)
+    if (imagesRef.current.hourHand && imagesRef.current.hourHand.complete) {
+      drawHand(ctx, imagesRef.current.hourHand, hourAngleDeg, 0.6);
+    }
 
-    // Scale arm to fit watch
-    const maxReach = (SVG_VIEWBOX_WIDTH / 2 - 40) * SCALE;
-    const imageScale = (maxReach * 2) / image.width;
+    // Draw minute hand (longer)
+    if (imagesRef.current.minuteHand && imagesRef.current.minuteHand.complete) {
+      drawHand(ctx, imagesRef.current.minuteHand, minuteAngleDeg, 1.0);
+    }
 
-    const drawWidth = image.width * imageScale;
-    const drawHeight = image.height * imageScale;
-
-    // Draw centered at rotation point
-    ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-
-    ctx.restore();
-  };
-
-  // Draw center cap
-  const drawCenterCap = (ctx: CanvasRenderingContext2D) => {
+    // Draw center cap
     const capRadius = 3 * SCALE;
     ctx.fillStyle = '#000000';
     ctx.beginPath();
@@ -161,45 +136,32 @@ export default function MickeyWatch({
     ctx.fill();
   };
 
-  // Main draw function
-  const drawWatch = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Draw a single hand (arm photo)
+  const drawHand = (
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    angleDeg: number,
+    scale: number
+  ) => {
+    ctx.save();
+    ctx.translate(scaledCenterX, scaledCenterY);
+    ctx.rotate((angleDeg * Math.PI) / 180);
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Scale the hand image to fit
+    const handScale = ((SVG_WIDTH / 2 - 30) * SCALE * 2 * scale) / image.width;
+    const drawWidth = image.width * handScale;
+    const drawHeight = image.height * handScale;
 
-    // Clear
-    ctx.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+    // Draw centered on rotation point
+    ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
 
-    // Draw face
-    drawWatchFace(ctx);
-
-    // Get current time
-    const now = new Date();
-    const minutes = now.getMinutes();
-    const seconds = now.getSeconds();
-
-    // Minute hand angle
-    const minuteAngleDeg = minutes * 6 + seconds * 0.1;
-    const minuteFrameIdx = getFrameIndex(minuteAngleDeg);
-
-    // Draw minute hand
-    const handImg = getFrame(minuteFrameIdx);
-    if (handImg) {
-      drawHand(ctx, handImg, minuteFrameIdx);
-    }
-
-    // Draw center cap
-    drawCenterCap(ctx);
+    ctx.restore();
   };
 
   // Animation loop
   useEffect(() => {
-    // Initial draw
     drawWatch();
 
-    // Update every second
     let lastSecond = -1;
     const animate = () => {
       const now = new Date();
@@ -212,14 +174,14 @@ export default function MickeyWatch({
 
     const id = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(id);
-  }, [imagesLoaded]);
+  }, []);
 
   return (
     <div className={`flex items-center justify-center ${containerClassName}`}>
       <canvas
         ref={canvasRef}
-        width={DISPLAY_SIZE}
-        height={DISPLAY_SIZE}
+        width={DISPLAY_WIDTH}
+        height={DISPLAY_HEIGHT}
         className="w-full h-full"
         style={{
           background: 'transparent',
