@@ -35,7 +35,7 @@ export default function Footer() {
       >
         {/* LEFT — Cousineau logo: hugging the left edge, 1.5x larger than
             the previous pass (140/16vw/300 -> 210/24vw/450). */}
-        <Link href="/" className="w-[clamp(210px,24vw,450px)] shrink-0 -translate-y-[10px]">
+        <Link href="/" className="w-[clamp(210px,24vw,450px)] shrink-0 -translate-y-[20px]">
           <Image
             src="/assets/home/cousineau-logo-white.svg"
             alt="Cousineau"
@@ -66,13 +66,14 @@ export default function Footer() {
             rule, then the social links row (instagram left / linkedin
             centered / behance right, spanning the same width as the
             email+phone row above via justify-between).
-            Nudged up 10px (matching the logo's nudge) so both sit optically
-            level with the visible bottom of the clock's circular face —
-            the watch PNG's transparent canvas has a hair of empty margin
-            below the drawn circle, so a strict bottom-edge match left the
-            logo/contact looking a few px lower than the clock visually. */}
+            Nudged up 20px total (matching the logo's nudge) so both sit
+            optically level with the visible bottom of the clock's circular
+            face — the watch PNG's transparent canvas has a hair of empty
+            margin below the drawn circle, so a strict bottom-edge match
+            left the logo/contact looking a few px lower than the clock
+            visually. */}
         <div
-          className="flex flex-col items-end gap-3 shrink-0 lowercase -translate-y-[10px]"
+          className="flex flex-col items-end gap-3 shrink-0 lowercase -translate-y-[20px]"
           style={{ fontFamily: "var(--font-sans)", fontSize: "calc(var(--text-caption) * 1.5)" }}
         >
           <div className="flex items-baseline gap-4 whitespace-nowrap">
