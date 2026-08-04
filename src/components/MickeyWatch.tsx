@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface MickeyWatchProps {
   containerClassName?: string;
@@ -9,106 +9,23 @@ interface MickeyWatchProps {
 export default function MickeyWatch({
   containerClassName = '',
 }: MickeyWatchProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<{
-    minuteHand: HTMLImageElement | null;
-    hourHand: HTMLImageElement | null;
-    body: HTMLImageElement | null;
-  }>({
-    minuteHand: null,
-    hourHand: null,
-    body: null,
-  });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const DISPLAY_WIDTH = 280;
-  const DISPLAY_HEIGHT = 280;
-
-  // SVG design specs from your WatchDesign_Axis.svg
+  const DISPLAY_SIZE = 280;
+  
+  // SVG design center from WatchDesign_Axis.svg
   const ROTATION_CENTER_X = 223.96;
   const ROTATION_CENTER_Y = 477.41;
   const SVG_WIDTH = 447.93;
   const SVG_HEIGHT = 936.56;
 
-  // Scale to fit 280px display
-  const SCALE = DISPLAY_WIDTH / SVG_WIDTH;
+  // Scale from SVG to our display size
+  const SCALE = DISPLAY_SIZE / SVG_WIDTH;
   const scaledCenterX = ROTATION_CENTER_X * SCALE;
   const scaledCenterY = ROTATION_CENTER_Y * SCALE;
 
-  // Load the images
-  useEffect(() => {
-    let loadedCount = 0;
-
-    const loadImage = (src: string, key: keyof typeof imagesRef.current) => {
-      const img = new Image();
-      img.src = src;
-      img.onload = () => {
-        imagesRef.current[key] = img;
-        loadedCount++;
-      };
-    };
-
-    loadImage('/images/mickey-watch/minute-hand.png', 'minuteHand');
-    loadImage('/images/mickey-watch/hour-hand.png', 'hourHand');
-    loadImage('/images/mickey-watch/body.png', 'body');
-  }, []);
-
-  // Draw the watch
-  const drawWatch = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-
-    // Fill with white background (for the watch face)
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-
-    // Draw watch face circle border
-    const radius = (SVG_WIDTH / 2 - 25) * SCALE;
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * SCALE;
-    ctx.beginPath();
-    ctx.arc(scaledCenterX, scaledCenterY, radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Draw hour markers
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.7 * SCALE;
-    for (let i = 0; i < 12; i++) {
-      const angle = (i * 30) * (Math.PI / 180);
-      const innerR = radius - 6 * SCALE;
-      const outerR = radius - 2 * SCALE;
-
-      const x1 = scaledCenterX + innerR * Math.cos(angle);
-      const y1 = scaledCenterY + innerR * Math.sin(angle);
-      const x2 = scaledCenterX + outerR * Math.cos(angle);
-      const y2 = scaledCenterY + outerR * Math.sin(angle);
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-
-    // Draw numbers (1-12)
-    ctx.fillStyle = '#000000';
-    ctx.font = `italic ${10 * SCALE}px Georgia, serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (let i = 1; i <= 12; i++) {
-      const angle = ((i * 30 - 90) * Math.PI) / 180;
-      const numR = radius - 18 * SCALE;
-      const x = scaledCenterX + numR * Math.cos(angle);
-      const y = scaledCenterY + numR * Math.sin(angle);
-      ctx.fillText(i.toString(), x, y);
-    }
-
-    // Get current time
+  // Render/update the watch
+  const renderWatch = () => {
     const now = new Date();
     const hours = now.getHours() % 12;
     const minutes = now.getMinutes();
@@ -118,76 +35,174 @@ export default function MickeyWatch({
     const hourAngleDeg = hours * 30 + minutes * 0.5;
     const minuteAngleDeg = minutes * 6 + seconds * 0.1;
 
-    // Draw hour hand (shorter)
-    if (imagesRef.current.hourHand && imagesRef.current.hourHand.complete) {
-      drawHand(ctx, imagesRef.current.hourHand, hourAngleDeg, 0.6);
+    // Update hour hand rotation
+    const hourHand = containerRef.current?.querySelector('[data-hand="hour"]') as HTMLDivElement;
+    if (hourHand) {
+      hourHand.style.transform = `rotate(${hourAngleDeg}deg)`;
     }
 
-    // Draw minute hand (longer)
-    if (imagesRef.current.minuteHand && imagesRef.current.minuteHand.complete) {
-      drawHand(ctx, imagesRef.current.minuteHand, minuteAngleDeg, 1.0);
+    // Update minute hand rotation
+    const minuteHand = containerRef.current?.querySelector('[data-hand="minute"]') as HTMLDivElement;
+    if (minuteHand) {
+      minuteHand.style.transform = `rotate(${minuteAngleDeg}deg)`;
     }
-
-    // Draw center cap
-    const capRadius = 3 * SCALE;
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(scaledCenterX, scaledCenterY, capRadius, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  // Draw a single hand (arm photo)
-  const drawHand = (
-    ctx: CanvasRenderingContext2D,
-    image: HTMLImageElement,
-    angleDeg: number,
-    scale: number
-  ) => {
-    ctx.save();
-    ctx.translate(scaledCenterX, scaledCenterY);
-    ctx.rotate((angleDeg * Math.PI) / 180);
-
-    // Scale the hand image to fit
-    const handScale = ((SVG_WIDTH / 2 - 30) * SCALE * 2 * scale) / image.width;
-    const drawWidth = image.width * handScale;
-    const drawHeight = image.height * handScale;
-
-    // Draw centered on rotation point
-    ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-
-    ctx.restore();
   };
 
   // Animation loop
   useEffect(() => {
-    drawWatch();
-
-    let lastSecond = -1;
-    const animate = () => {
-      const now = new Date();
-      if (now.getSeconds() !== lastSecond) {
-        lastSecond = now.getSeconds();
-        drawWatch();
-      }
-      requestAnimationFrame(animate);
-    };
-
-    const id = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(id);
+    renderWatch();
+    const interval = setInterval(renderWatch, 100);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className={`flex items-center justify-center ${containerClassName}`}>
-      <canvas
-        ref={canvasRef}
-        width={DISPLAY_WIDTH}
-        height={DISPLAY_HEIGHT}
-        className="w-full h-full"
+    <div
+      ref={containerRef}
+      className={`relative inline-flex items-center justify-center ${containerClassName}`}
+      style={{
+        width: `${DISPLAY_SIZE}px`,
+        height: `${DISPLAY_SIZE}px`,
+        backgroundColor: 'transparent',
+      }}
+    >
+      {/* Watch face drawn with SVG */}
+      <svg
+        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         style={{
-          background: 'transparent',
-          maxWidth: '280px',
-          maxHeight: '280px',
-          imageRendering: 'crisp-edges',
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+        }}
+      >
+        {/* Watch circle border */}
+        <circle
+          cx={ROTATION_CENTER_X}
+          cy={ROTATION_CENTER_Y}
+          r={SVG_WIDTH / 2 - 25}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="2"
+        />
+
+        <circle
+          cx={ROTATION_CENTER_X}
+          cy={ROTATION_CENTER_Y}
+          r={SVG_WIDTH / 2 - 25}
+          fill="none"
+          stroke="#000000"
+          strokeWidth="1"
+        />
+
+        {/* Hour markers */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const angle = (i * 30) * (Math.PI / 180);
+          const radius = SVG_WIDTH / 2 - 25;
+          const innerR = radius - 8;
+          const outerR = radius - 3;
+
+          const x1 = ROTATION_CENTER_X + innerR * Math.cos(angle);
+          const y1 = ROTATION_CENTER_Y + innerR * Math.sin(angle);
+          const x2 = ROTATION_CENTER_X + outerR * Math.cos(angle);
+          const y2 = ROTATION_CENTER_Y + outerR * Math.sin(angle);
+
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="#000000"
+              strokeWidth="1"
+            />
+          );
+        })}
+
+        {/* Numbers 1-12 */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const num = i + 1;
+          const angle = ((num * 30 - 90) * Math.PI) / 180;
+          const radius = SVG_WIDTH / 2 - 25;
+          const numR = radius - 22;
+          const x = ROTATION_CENTER_X + numR * Math.cos(angle);
+          const y = ROTATION_CENTER_Y + numR * Math.sin(angle);
+
+          return (
+            <text
+              key={`num-${i}`}
+              x={x}
+              y={y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize="12"
+              fontStyle="italic"
+              fontFamily="Georgia, serif"
+              fill="#000000"
+            >
+              {num}
+            </text>
+          );
+        })}
+      </svg>
+
+      {/* Hour hand - positioned and rotated */}
+      <div
+        data-hand="hour"
+        style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          transformOrigin: `${(scaledCenterX / DISPLAY_SIZE) * 100}% ${(scaledCenterY / DISPLAY_SIZE) * 100}%`,
+        }}
+      >
+        <img
+          src="/images/mickey-watch/hour-hand.png"
+          alt="Hour hand"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
+
+      {/* Minute hand - positioned and rotated */}
+      <div
+        data-hand="minute"
+        style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          transformOrigin: `${(scaledCenterX / DISPLAY_SIZE) * 100}% ${(scaledCenterY / DISPLAY_SIZE) * 100}%`,
+        }}
+      >
+        <img
+          src="/images/mickey-watch/minute-hand.png"
+          alt="Minute hand"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
+
+      {/* Center cap */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${(scaledCenterX / DISPLAY_SIZE) * 100}%`,
+          top: `${(scaledCenterY / DISPLAY_SIZE) * 100}%`,
+          width: '8px',
+          height: '8px',
+          backgroundColor: '#000000',
+          borderRadius: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10,
+          pointerEvents: 'none',
         }}
       />
     </div>
