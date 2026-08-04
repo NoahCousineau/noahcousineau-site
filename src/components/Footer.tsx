@@ -33,8 +33,9 @@ export default function Footer() {
           paddingBottom: "30px",
         }}
       >
-        {/* LEFT — Cousineau logo: smaller, hugging the left edge */}
-        <Link href="/" className="w-[clamp(140px,16vw,300px)] shrink-0">
+        {/* LEFT — Cousineau logo: hugging the left edge, 1.5x larger than
+            the previous pass (140/16vw/300 -> 210/24vw/450). */}
+        <Link href="/" className="w-[clamp(210px,24vw,450px)] shrink-0 -translate-y-[10px]">
           <Image
             src="/assets/home/cousineau-logo-white.svg"
             alt="Cousineau"
@@ -62,24 +63,31 @@ export default function Footer() {
         {/* RIGHT — contact info: lowercase, Akzidenz (font-sans, the site
             default — matches body text), 1.5x the base caption size. Email
             + phone sit side by side on one row (not stacked), then a thin
-            rule, then the social links row. */}
+            rule, then the social links row (instagram left / linkedin
+            centered / behance right, spanning the same width as the
+            email+phone row above via justify-between).
+            Nudged up 10px (matching the logo's nudge) so both sit optically
+            level with the visible bottom of the clock's circular face —
+            the watch PNG's transparent canvas has a hair of empty margin
+            below the drawn circle, so a strict bottom-edge match left the
+            logo/contact looking a few px lower than the clock visually. */}
         <div
-          className="flex flex-col items-end gap-3 shrink-0 lowercase"
+          className="flex flex-col items-end gap-3 shrink-0 lowercase -translate-y-[10px]"
           style={{ fontFamily: "var(--font-sans)", fontSize: "calc(var(--text-caption) * 1.5)" }}
         >
           <div className="flex items-baseline gap-4 whitespace-nowrap">
             <a href="mailto:noah@noahcousineau.com" className="hover:opacity-60 transition-opacity">
               noah@noahcousineau.com
             </a>
-            <a href="tel:+18625208040" className="hover:opacity-60 transition-opacity">
+            <a href="tel:+186****8040" className="hover:opacity-60 transition-opacity">
               (862) 520-8040
             </a>
           </div>
           <div className="w-full h-[2px] bg-[color:var(--color-paper)]" />
-          <div className="flex gap-5 tracking-widest">
-            <a href="https://www.instagram.com/cousineau_art_and_design/?hl=en" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">instagram</a>
-            <a href="https://www.linkedin.com/in/noah-cousineau/" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">linkedin</a>
-            <a href="https://www.behance.net/noahcousineau" target="_blank" rel="noreferrer" className="hover:opacity-60 transition-opacity">behance</a>
+          <div className="relative w-full tracking-widest" style={{ height: "1.2em" }}>
+            <a href="https://www.instagram.com/cousineau_art_and_design/?hl=en" target="_blank" rel="noreferrer" className="absolute left-0 hover:opacity-60 transition-opacity">instagram</a>
+            <a href="https://www.linkedin.com/in/noah-cousineau/" target="_blank" rel="noreferrer" className="absolute left-1/2 -translate-x-1/2 hover:opacity-60 transition-opacity">linkedin</a>
+            <a href="https://www.behance.net/noahcousineau" target="_blank" rel="noreferrer" className="absolute right-0 hover:opacity-60 transition-opacity">behance</a>
           </div>
         </div>
       </div>
