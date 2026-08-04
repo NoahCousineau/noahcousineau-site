@@ -455,19 +455,27 @@
             const axisX = canvasWidth * (values.axisX / 100);
             const axisY = canvasHeight * (values.axisY / 100);
 
-            // Update hour hand
+            // Update hour hand — transform-origin is derived from the axis
+            // position expressed as a fraction of the hand's own box, so
+            // rotation pivots on the true watch axis (not the box center).
+            // This keeps the pointing tip glued to the axis at every angle
+            // instead of the whole hand swinging/drifting off it.
             hourHandContainer.style.width = values.hourHandWidth + 'px';
             hourHandContainer.style.height = values.hourHandHeight + 'px';
             hourHandContainer.style.left = (axisX - values.hourHandWidth / 2 + values.hourHandX) + 'px';
             hourHandContainer.style.top = (axisY - values.hourHandHeight / 2 + values.hourHandY) + 'px';
-            hourHandContainer.style.transformOrigin = (values.hourHandWidth / 2) + 'px ' + (values.hourHandHeight / 2) + 'px';
+            hourHandContainer.style.transformOrigin =
+                ((0.5 - values.hourHandX / values.hourHandWidth) * 100) + '% ' +
+                ((0.5 - values.hourHandY / values.hourHandHeight) * 100) + '%';
 
-            // Update minute hand
+            // Update minute hand (same axis-relative origin logic)
             minuteHandContainer.style.width = values.minuteHandWidth + 'px';
             minuteHandContainer.style.height = values.minuteHandHeight + 'px';
             minuteHandContainer.style.left = (axisX - values.minuteHandWidth / 2 + values.minuteHandX) + 'px';
             minuteHandContainer.style.top = (axisY - values.minuteHandHeight / 2 + values.minuteHandY) + 'px';
-            minuteHandContainer.style.transformOrigin = (values.minuteHandWidth / 2) + 'px ' + (values.minuteHandHeight / 2) + 'px';
+            minuteHandContainer.style.transformOrigin =
+                ((0.5 - values.minuteHandX / values.minuteHandWidth) * 100) + '% ' +
+                ((0.5 - values.minuteHandY / values.minuteHandHeight) * 100) + '%';
 
             // Update axis marker
             axisMarker.style.left = axisX + 'px';
@@ -579,7 +587,7 @@
                 body: { width: 209, height: 265, x: 11, y: 50 },
                 watchFace: { width: 559, height: 584, x: 0, y: -1 },
                 hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: 0 },
-                minuteHand: { width: 179, height: 230, x: 11, y: -76, rotation: 267 },
+                minuteHand: { width: 179, height: 230, x: 75, y: 15, rotation: 267 },
                 rotationAxis: { x: 50, y: 47 },
             };
             controls.bodyWidth.value = savedConfig.body.width;
@@ -600,6 +608,8 @@
             controls.minuteHandY.value = savedConfig.minuteHand.y;
             controls.axisX.value = savedConfig.rotationAxis.x;
             controls.axisY.value = savedConfig.rotationAxis.y;
+            controls.hourHandRotation.value = savedConfig.hourHand.rotation;
+            controls.minuteHandRotation.value = savedConfig.minuteHand.rotation;
         })();
 
         // Initialize

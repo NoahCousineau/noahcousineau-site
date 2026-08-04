@@ -50,10 +50,18 @@ export const MICKEY_WATCH_CANVAS_SIZE = 600;
 
 // Posed in the editor at 3:00 (hourHand rotation=0, minuteHand rotation=267)
 // -> converted to calibration offsets per the formula above.
+//
+// NOTE on hand x/y: these must be the hand's UNROTATED offset from the
+// axis (its position at rotation=0deg), because the component now pivots
+// each hand around the true watch axis (not its own box center). If you
+// pose a hand in the editor at some non-zero rotation and read off x/y
+// while it's rotated, you must first "de-rotate" that offset back to 0deg
+// before pasting it here — see the editor, which now shows/exports the
+// correct unrotated x/y directly so this conversion isn't needed by hand.
 export const mickeyWatchConfig: MickeyWatchConfig = {
   body: { width: 209, height: 265, x: 11, y: 50 },
   watchFace: { width: 559, height: 584, x: 0, y: -1 },
   hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -90 },
-  minuteHand: { width: 179, height: 230, x: 11, y: -76, rotation: 267 },
+  minuteHand: { width: 179, height: 230, x: 75, y: 15, rotation: 267 },
   rotationAxis: { x: 50, y: 47 },
 };

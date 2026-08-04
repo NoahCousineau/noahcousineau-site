@@ -19,7 +19,7 @@ export default function Footer() {
             Stacks vertically below ~480px so the clock+contact row can't
             force horizontal scroll on small phones. */}
         <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8 min-w-0">
-          <div className="w-[clamp(120px,20vw,280px)] aspect-square shrink-0">
+          <div className="w-[clamp(180px,32vw,420px)] aspect-square shrink-0">
             <MickeyWatch />
           </div>
           <div className="flex flex-col items-center sm:items-start gap-2 min-w-0" style={{ fontSize: "var(--text-caption)" }}>

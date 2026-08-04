@@ -25,6 +25,11 @@ function layerBoxStyle(layer: { width: number; height: number; x: number; y: num
 // Hands are positioned relative to the rotation axis, same as the editor:
 //   axisX/Y = canvasSize * (rotationAxis% / 100)
 //   left = axisX - width/2 + x
+// IMPORTANT: x/y here are the hand's UNROTATED offset from the axis (i.e.
+// where the box sits at rotation=0deg). The transform-origin below is
+// derived from that same x/y so the hand always pivots around the true
+// watch axis, not its own box center — this keeps the hand's tip glued
+// to the axis at every rotation angle instead of orbiting/drifting.
 function handBoxStyle(
   layer: { width: number; height: number; x: number; y: number },
   axis: { x: number; y: number }
@@ -33,11 +38,18 @@ function handBoxStyle(
   const axisYPx = CANVAS * (axis.y / 100);
   const leftPx = axisXPx - layer.width / 2 + layer.x;
   const topPx = axisYPx - layer.height / 2 + layer.y;
+
+  // Axis position expressed as a fraction of the hand's own box —
+  // this is what transform-origin needs so rotation pivots on the axis.
+  const originXPercent = (0.5 - layer.x / layer.width) * 100;
+  const originYPercent = (0.5 - layer.y / layer.height) * 100;
+
   return {
     left: `${(leftPx / CANVAS) * 100}%`,
     top: `${(topPx / CANVAS) * 100}%`,
     width: `${(layer.width / CANVAS) * 100}%`,
     height: `${(layer.height / CANVAS) * 100}%`,
+    transformOrigin: `${originXPercent}% ${originYPercent}%`,
   };
 }
 
@@ -125,7 +137,6 @@ export default function MickeyWatch({
         style={{
           position: 'absolute',
           ...handBoxStyle(config.hourHand, config.rotationAxis),
-          transformOrigin: '50% 50%',
           pointerEvents: 'none',
         }}
       >
@@ -142,7 +153,6 @@ export default function MickeyWatch({
         style={{
           position: 'absolute',
           ...handBoxStyle(config.minuteHand, config.rotationAxis),
-          transformOrigin: '50% 50%',
           pointerEvents: 'none',
         }}
       >
