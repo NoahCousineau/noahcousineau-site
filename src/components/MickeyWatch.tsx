@@ -88,9 +88,6 @@ export default function MickeyWatch({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const axisLeftPercent = `${config.rotationAxis.x}%`;
-  const axisTopPercent = `${config.rotationAxis.y}%`;
-
   return (
     <div
       ref={containerRef}
@@ -101,22 +98,7 @@ export default function MickeyWatch({
         backgroundColor: 'transparent',
       }}
     >
-      {/* Body (arm/hand holding the watch out) */}
-      <div
-        style={{
-          position: 'absolute',
-          ...layerBoxStyle(config.body),
-          pointerEvents: 'none',
-        }}
-      >
-        <img
-          src="/images/mickey-watch/body.png"
-          alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-        />
-      </div>
-
-      {/* Watch face */}
+      {/* Watch face (bottom-most) */}
       <div
         style={{
           position: 'absolute',
@@ -131,7 +113,8 @@ export default function MickeyWatch({
         />
       </div>
 
-      {/* Hour hand */}
+      {/* Hour hand — sits BEHIND the body so the body figure occludes it,
+          per design: the body reads as "in front", hour hand peeking out. */}
       <div
         data-hand="hour"
         style={{
@@ -147,7 +130,22 @@ export default function MickeyWatch({
         />
       </div>
 
-      {/* Minute hand */}
+      {/* Body (arm/hand holding the watch out) — in front of the hour hand */}
+      <div
+        style={{
+          position: 'absolute',
+          ...layerBoxStyle(config.body),
+          pointerEvents: 'none',
+        }}
+      >
+        <img
+          src="/images/mickey-watch/body.png"
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+        />
+      </div>
+
+      {/* Minute hand (top-most) */}
       <div
         data-hand="minute"
         style={{
@@ -162,22 +160,6 @@ export default function MickeyWatch({
           style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
         />
       </div>
-
-      {/* Center cap */}
-      <div
-        style={{
-          position: 'absolute',
-          left: axisLeftPercent,
-          top: axisTopPercent,
-          width: '8px',
-          height: '8px',
-          backgroundColor: '#000000',
-          borderRadius: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10,
-          pointerEvents: 'none',
-        }}
-      />
     </div>
   );
 }

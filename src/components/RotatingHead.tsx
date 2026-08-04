@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lightModeStaggeredAdjustments } from '@/lib/rotatingHeadConfig';
 
 interface FrameAdjustment {
@@ -40,41 +40,31 @@ export default function RotatingHead({
   const [velocity, setVelocity] = useState(0);
 
   // Constants - web-optimized (0.4x scale)
-  const TOTAL_FRAMES = 31;
-  const GRID_COLS = 6;
-  const GRID_ROWS = 6;
+  const TOTAL_FRAMES = variant === 'smooth' ? 59 : 31;
+  const GRID_COLS = variant === 'smooth' ? 8 : 6;
   const FRAME_WIDTH = 960;
   const FRAME_HEIGHT = 1440;
   const DISPLAY_WIDTH = 900;
   const DISPLAY_HEIGHT = 1350;
 
-  // Get frame adjustments based on variant
-  const frameAdjustments: FrameAdjustmentsMap = variant === 'staggered' 
-    ? (lightModeStaggeredAdjustments as FrameAdjustmentsMap)
-    : {};
+  // Get frame adjustments based on variant. The smoothed variant's frames
+  // are freshly interpolated and haven't been individually calibrated yet
+  // (unlike the staggered variant, which has hand-tuned per-frame x/y/scale
+  // in rotatingHeadConfig.ts) — it renders with no per-frame adjustment
+  // until/unless Noah asks for that calibration pass. Memoized so this
+  // object has a stable identity across renders (only changes when variant
+  // changes), keeping the drawFrame useCallback below from being redefined
+  // — and its dependent effects re-run — on every render.
+  const frameAdjustments: FrameAdjustmentsMap = useMemo(
+    () => (variant === 'staggered' ? (lightModeStaggeredAdjustments as FrameAdjustmentsMap) : {}),
+    [variant]
+  );
 
-  // Load sprite sheet
-  useEffect(() => {
-    const spriteSheet = new Image();
-    // Use WebP for web (much smaller)
-    const spriteUrl = isDarkMode
-      ? '/images/rotating-head/sprite-sheet-dark-staggered.webp'
-      : '/images/rotating-head/sprite-sheet-light-staggered.webp';
-    
-    spriteSheet.src = spriteUrl;
-
-    spriteSheet.onload = () => {
-      spriteSheetRef.current = spriteSheet;
-      drawFrame(currentFrame);
-    };
-
-    return () => {
-      spriteSheetRef.current = null;
-    };
-  }, [isDarkMode, variant]);
-
-  // Draw frame on canvas
-  const drawFrame = (frameIndex: number) => {
+  // Draw frame on canvas. Declared before the sprite-load effect below
+  // (which calls it in an onload callback) to avoid a temporal-dead-zone
+  // reference — wrapped in useCallback so the two effects that depend on
+  // it can list it as a dependency without re-running every render.
+  const drawFrame = useCallback((frameIndex: number) => {
     const canvas = canvasRef.current;
     if (!canvas || !spriteSheetRef.current) return;
 
@@ -124,7 +114,33 @@ export default function RotatingHead({
     );
 
     ctx.restore();
-  };
+  }, [TOTAL_FRAMES, GRID_COLS, FRAME_WIDTH, FRAME_HEIGHT, frameAdjustments]);
+
+  // Load sprite sheet
+  useEffect(() => {
+    const spriteSheet = new Image();
+    // Use WebP for web (much smaller)
+    let spriteUrl: string;
+    if (variant === 'smooth') {
+      spriteUrl = '/images/rotating-head/sprite-sheet-light-smoothed-verified.webp';
+    } else {
+      spriteUrl = isDarkMode
+        ? '/images/rotating-head/sprite-sheet-dark-staggered.webp'
+        : '/images/rotating-head/sprite-sheet-light-staggered.webp';
+    }
+    
+    spriteSheet.src = spriteUrl;
+
+    spriteSheet.onload = () => {
+      spriteSheetRef.current = spriteSheet;
+      drawFrame(currentFrame);
+    };
+
+    return () => {
+      spriteSheetRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDarkMode, variant, drawFrame]);
 
   // Auto-rotation loop
   useEffect(() => {
@@ -135,7 +151,7 @@ export default function RotatingHead({
     }, autoRotateSpeed);
 
     return () => clearInterval(interval);
-  }, [isAutoRotating, autoRotateSpeed]);
+  }, [isAutoRotating, autoRotateSpeed, TOTAL_FRAMES]);
 
   // Momentum/inertia animation
   useEffect(() => {
@@ -164,7 +180,7 @@ export default function RotatingHead({
   // Draw whenever frame changes
   useEffect(() => {
     drawFrame(currentFrame);
-  }, [currentFrame, isDarkMode, variant]);
+  }, [currentFrame, isDarkMode, variant, drawFrame]);
 
   // Drag handler
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {

@@ -29,8 +29,8 @@ const CELLS: Cell[] = [
   { slug: "sprouts-farmers-market", line1: "sprouts", line2: "farmers market", disciplines: "print design · motion design · art direction" },
   { slug: "corita-art-center", line1: "corita", line2: "art center", disciplines: "print design · social media · art direction" },
   { slug: "socal-earth", line1: "socal", line2: "earth", disciplines: "visual identity · brand strategy · web design" },
-  { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
   { slug: "cultural-olympiad-poster", line1: "cultural", line2: "olympiad", disciplines: "poster · motion design · design contest" },
+  { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
   { slug: "other", line1: "other", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true },
 ];
 
@@ -135,8 +135,10 @@ export default function Projects() {
           <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
         </Place>
       ))}
-      {/* Vertical center divider spanning the full grid */}
-      <Place x={DIVIDER_X} y={0} w={6} h={GRID_LOCAL_HEIGHT} className="z-20">
+      {/* Vertical center divider spanning the full grid, extended to the
+          Stage's full height (GRID_LOCAL_HEIGHT + 20) so it reaches all
+          the way down to the footer bar with no gap. */}
+      <Place x={DIVIDER_X} y={0} w={6} h={GRID_LOCAL_HEIGHT + 20} className="z-20">
         <div className="w-full h-full" style={{ background: "var(--color-ink)" }} />
       </Place>
 

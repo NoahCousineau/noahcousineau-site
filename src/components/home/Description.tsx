@@ -45,7 +45,7 @@ export default function Description() {
 
   const rule = (y: number) => (
     <Place x={36} y={y} w={1841} className="z-0">
-      <div style={{ height: "calc(var(--u) * 4)", background: "var(--color-ink)" }} />
+      <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
     </Place>
   );
 
@@ -79,10 +79,13 @@ export default function Description() {
         </Place>
         {rule(882)}
 
-        {/* "His work can be seen below" y1387 (was y1187, moved down 300u) */}
+        {/* "His work can be seen below." y1387 (was y1187, moved down 300u).
+            "work" set in Quinn Text italic (serif) per spec, matching the
+            emphasis treatment used elsewhere ("graphic designer", "visual
+            problems"). Trailing period added per feedback. */}
         <Place x={45} y={1387} className="z-10">
           <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            His work can be seen below
+            His <span className="italic" style={serif}>work</span> can be seen below.
           </FitText>
         </Place>
 
