@@ -2,95 +2,152 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import MickeyWatch from "./MickeyWatch";
+import { Stage, Place, uFont } from "./Stage";
 
 /**
- * Global footer (on every page). Comp: black bar, per Noah's sketch
- * (Homepage - Rough_Homepage - Static View.png), tuned per feedback rounds:
- *   - Watch is TRUE-CENTERED on the bar's full width (absolutely positioned
- *     at 50%, independent of the logo/contact block widths — a plain flex
- *     row with justify-between does NOT center it correctly once the logo
- *     and contact blocks are different widths, since the flex gap eats
- *     into one side more than the other).
- *   - Cousineau logo sits to the LEFT, smaller than before, hugging the
- *     left edge.
- *   - Contact info on the right: lowercase Akzidenz (site's sans, the
- *     default body font — no italic/serif here), 1.5x the base caption
- *     size, email + phone side by side on one line, then a thin rule,
- *     then the social links row.
- *   - Logo and contact are both bottom-aligned with the watch's bottom
- *     edge (via a shared padding-bottom + items-end on the row, with the
- *     watch absolutely positioned to that same bottom edge).
+ * Global footer (on every page — rendered once in layout.tsx). Rebuilt per
+ * Noah's "Revised footer.svg" (~/Desktop/portfolio/design/01-homepage/
+ * exports/Revised footer.svg), which REPLACES the Mickey Watch clock
+ * feature here — the clock is being moved to a larger, separate feature on
+ * the About Me page instead (not built yet — future task).
+ *
+ * Every position below is read directly from the SVG's own coordinates
+ * (1920 x 554.15 viewBox) and expressed in the site's artboard-unit system
+ * (Stage/Place, 1 unit = 1/1920 of the container width) so it's pixel-exact
+ * to the sketch at every viewport width, matching how every other section
+ * of the site (Hero/Description/Projects) is already built.
+ *
+ * Layout:
+ *   - Large "Cousineau" wordmark near the top, same asset as the old small
+ *     footer logo, scaled to the sketch's exact bbox (x 72.68-1847.3,
+ *     y 41.44-338.6 of the 1920x554.15 box).
+ *   - Bottom-left: 3 project link columns (2 stacked links each), evenly
+ *     spaced with a larger gap than the sketch's uneven default (per
+ *     Noah's feedback: "more and even spacing horizontally between the
+ *     projects on the left side") — x = 75.47 / 335.47 / 595.47 (260u gap
+ *     between each column start, vs. the sketch's uneven ~206u/~215u).
+ *   - Bottom-right: 2 info columns (about+résumé, then email+phone), at
+ *     x = 1409.32 / 1630.09.
+ *   - EVERY rule is the SAME length — the email link's rule length
+ *     (204.22 units), per Noah's explicit request (the sketch itself had
+ *     three different rule lengths across columns, which he flagged as an
+ *     inconsistency to fix rather than reproduce).
+ *
+ * Project links map to real slugs in src/content/projects.json (see
+ * src/lib/projects.ts).
  */
+
+const STAGE_HEIGHT = 554.15;
+const RULE_WIDTH = 204.22; // = the sketch's email-column rule length
+
+type LinkItem = { label: string; href: string };
+
+const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
+  {
+    x: 75.47,
+    items: [
+      { label: "sprouts farmers market", href: "/work/sprouts-farmers-market" },
+      { label: "corita art center", href: "/work/corita-art-center" },
+    ],
+  },
+  {
+    x: 335.47,
+    items: [
+      { label: "socal earth", href: "/work/socal-earth" },
+      { label: "valley strong credit union", href: "/work/valley-strong-credit-union" },
+    ],
+  },
+  {
+    x: 595.47,
+    items: [
+      { label: "forced perspective", href: "/work/forced-perspective" },
+      { label: "other work", href: "/work" },
+    ],
+  },
+  {
+    x: 1409.32,
+    items: [
+      { label: "about me", href: "/about" },
+      { label: "résumé", href: "/assets/_documents/noah-cousineau-resume.pdf" },
+    ],
+  },
+  {
+    x: 1630.09,
+    items: [
+      { label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" },
+      { label: "(862) 520-8040", href: "tel:+18625208040" },
+    ],
+  },
+];
+
+// Row y-positions (top of the text glyphs, i.e. baseline minus an ascender
+// allowance) and rule y-positions, from the sketch's text baselines
+// (449 / 497.95) and rule y's (459.49 / 507.4-507.08, unified to one value
+// per row since Noah wants every rule visually consistent).
+const ROW1_TEXT_Y = 431.5; // baseline 449 minus ~17.5u ascender allowance
+const ROW1_RULE_Y = 459.49;
+const ROW2_TEXT_Y = 480.5; // baseline 497.95 minus ~17.5u
+const ROW2_RULE_Y = 507.4;
+
 export default function Footer() {
   return (
     <footer className="bg-[color:var(--color-ink)] text-[color:var(--color-paper)] w-full relative">
       <div
-        className="mx-auto max-w-[1920px] relative flex items-end justify-between px-[clamp(1.5rem,4vw,4rem)]"
-        style={{
-          minHeight: "clamp(220px, 28vw, 460px)",
-          paddingTop: "30px",
-          paddingBottom: "30px",
-        }}
+        className="mx-auto max-w-[1920px]"
+        style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
-        {/* LEFT — Cousineau logo: hugging the left edge, 1.5x larger than
-            the previous pass (140/16vw/300 -> 210/24vw/450). */}
-        <Link href="/" className="w-[clamp(210px,24vw,450px)] shrink-0 -translate-y-[20px]">
-          <Image
-            src="/assets/home/cousineau-logo-white.svg"
-            alt="Cousineau"
-            width={711}
-            height={119}
-            loading="eager"
-            className="w-full h-auto"
-          />
-        </Link>
+        <Stage heightUnits={STAGE_HEIGHT}>
+          {/* Large Cousineau wordmark — same asset as the old small footer
+              logo, scaled to the sketch's exact bbox. */}
+          <Place x={72.68} y={41.44} w={1774.62}>
+            <Link href="/" className="block">
+              <Image
+                src="/assets/home/cousineau-logo-white.svg"
+                alt="Cousineau"
+                width={711}
+                height={119}
+                loading="eager"
+                className="w-full h-auto"
+              />
+            </Link>
+          </Place>
 
-        {/* CENTER — Mickey watch, TRUE-centered on the bar (absolute, 50%
-            + translateX), sized to exactly fill the bar's minHeight minus
-            the 30px top/bottom margins — i.e. the SAME formula as the
-            footer row's own minHeight above, minus the 60px of vertical
-            padding, so the watch can never overflow the bar (a prior bug:
-            these two clamp() expressions had drifted out of sync and the
-            watch overflowed above the bar). */}
-        <div
-          className="aspect-square absolute left-1/2 -translate-x-1/2 bottom-[30px]"
-          style={{ height: "clamp(160px, calc(28vw - 60px), 400px)" }}
-        >
-          <MickeyWatch />
-        </div>
+          {/* Five link columns, each 2 stacked links + rule, positioned at
+              their exact sketch x-coordinates. */}
+          {COLUMNS.map((col) => (
+            <div key={col.x}>
+              <Place x={col.x} y={ROW1_TEXT_Y}>
+                <Link
+                  href={col.items[0].href}
+                  target={col.items[0].href.startsWith("http") ? "_blank" : undefined}
+                  rel={col.items[0].href.startsWith("http") ? "noreferrer" : undefined}
+                  className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
+                  style={{ fontFamily: "var(--font-sans)", fontSize: uFont(17.9) }}
+                >
+                  {col.items[0].label}
+                </Link>
+              </Place>
+              <Place x={col.x} y={ROW1_RULE_Y} w={RULE_WIDTH}>
+                <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
+              </Place>
 
-        {/* RIGHT — contact info: lowercase, Akzidenz (font-sans, the site
-            default — matches body text), 1.5x the base caption size. Email
-            + phone sit side by side on one row (not stacked), then a thin
-            rule, then the social links row (instagram left / linkedin
-            centered / behance right, spanning the same width as the
-            email+phone row above via justify-between).
-            Nudged up 20px total (matching the logo's nudge) so both sit
-            optically level with the visible bottom of the clock's circular
-            face — the watch PNG's transparent canvas has a hair of empty
-            margin below the drawn circle, so a strict bottom-edge match
-            left the logo/contact looking a few px lower than the clock
-            visually. */}
-        <div
-          className="flex flex-col items-end gap-3 shrink-0 lowercase -translate-y-[20px]"
-          style={{ fontFamily: "var(--font-sans)", fontSize: "calc(var(--text-caption) * 1.5)" }}
-        >
-          <div className="flex items-baseline gap-4 whitespace-nowrap">
-            <a href="mailto:noah@noahcousineau.com" className="hover:opacity-60 transition-opacity">
-              noah@noahcousineau.com
-            </a>
-            <a href="tel:+186****8040" className="hover:opacity-60 transition-opacity">
-              (862) 520-8040
-            </a>
-          </div>
-          <div className="w-full h-[2px] bg-[color:var(--color-paper)]" />
-          <div className="relative w-full tracking-widest" style={{ height: "1.2em" }}>
-            <a href="https://www.instagram.com/cousineau_art_and_design/?hl=en" target="_blank" rel="noreferrer" className="absolute left-0 hover:opacity-60 transition-opacity">instagram</a>
-            <a href="https://www.linkedin.com/in/noah-cousineau/" target="_blank" rel="noreferrer" className="absolute left-1/2 -translate-x-1/2 hover:opacity-60 transition-opacity">linkedin</a>
-            <a href="https://www.behance.net/noahcousineau" target="_blank" rel="noreferrer" className="absolute right-0 hover:opacity-60 transition-opacity">behance</a>
-          </div>
-        </div>
+              <Place x={col.x} y={ROW2_TEXT_Y}>
+                <Link
+                  href={col.items[1].href}
+                  target={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "_blank" : undefined}
+                  rel={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "noreferrer" : undefined}
+                  className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
+                  style={{ fontFamily: "var(--font-sans)", fontSize: uFont(17.9) }}
+                >
+                  {col.items[1].label}
+                </Link>
+              </Place>
+              <Place x={col.x} y={ROW2_RULE_Y} w={RULE_WIDTH}>
+                <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
+              </Place>
+            </div>
+          ))}
+        </Stage>
       </div>
     </footer>
   );
