@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Stage, Place } from "@/components/Stage";
+import { RULE_WEIGHT_CSS } from "./ProjectGroup";
 
 /**
  * linkify — auto-links bare domain mentions (e.g. "socalearth.org") and
@@ -355,7 +356,7 @@ export function ProjectStatement({
           />
         </Place>
         <Place x={36} y={statementWrapped ? RULE_Y_TWO_LINE : RULE_Y_ONE_LINE} w={1841} className="z-0">
-          <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
+          <div style={{ height: RULE_WEIGHT_CSS, background: "var(--color-ink)" }} />
         </Place>
       </Stage>
 

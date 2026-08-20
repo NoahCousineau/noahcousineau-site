@@ -87,17 +87,17 @@ const GAP_UNITS = 48; // measured off the artboard's poster-row seam
 // all, so there is no possibility of two different reference frames ever
 // diverging again. Every line on every project page is driven by one
 // single number in one single place.
-const RULE_WEIGHT_UNITS = 8;
-const RULE_WEIGHT_CSS = `calc(var(--u) * ${RULE_WEIGHT_UNITS})`;
-// Grid width — matches the homepage project grid exactly: that grid (see
-// components/home/Projects.tsx) has NO --gutter/max-w container, it just
-// sits inside the page's 1920-capped, --u-scaled <main> with ~40u of
-// margin baked into its own cell coordinates (x38 to x1880 of 1920).
-// Per Noah: "I want the project grid to be wider. It should match the
-// width of the project grid on the homepage" — so this uses the same
-// --u-unit margin instead of the site's (--gutter)/(--maxw) tokens, which
-// are narrower (max 1440px vs. the homepage grid's full 1920px reach).
-const GRID_MARGIN_UNITS = 40;
+export const RULE_WEIGHT_UNITS = 8;
+export const RULE_WEIGHT_CSS = `calc(var(--u) * ${RULE_WEIGHT_UNITS})`;
+// Grid width — --u-unit left/right margin on the project-page grid
+// section. Originally set to 40u to match the homepage project grid's
+// width exactly (see components/home/Projects.tsx). Per Noah (2026-08-20):
+// "decrease the width of the grid by 15%, keeping all of the grid contents
+// the same" — margin increased so the grid's content width (previously
+// 1920 - 2*40 = 1840u) shrinks by exactly 15% to 1564u, still centered in
+// the same 1920u page: new margin = (1920 - 1564) / 2 = 178u. This grid no
+// longer matches the homepage grid's width 1:1.
+const GRID_MARGIN_UNITS = 178;
 // Fixed vertical padding above/below every group's section — replaces the
 // old viewport-relative py-[8vh], which produced gap sizes that didn't
 // match the grid-editor tool's preview. See SECTION SPACING note above.
