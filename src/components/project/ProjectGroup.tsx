@@ -101,12 +101,19 @@ const GRID_MARGIN_UNITS = 178;
 // Fixed vertical padding above/below every group's section — replaces the
 // old viewport-relative py-[8vh], which produced gap sizes that didn't
 // match the grid-editor tool's preview. See SECTION SPACING note above.
-// Set to 75 (2026-08-16l, per Noah's explicit ask "add in 150u space
-// between each project section"): each section pads both its top AND
-// bottom by this amount, so the visible gap between two adjacent
-// sections is 2x this value (one section's bottom padding + the next
-// section's top padding) = 150u total, matching the request exactly.
-const SECTION_PADDING_UNITS = 75;
+// Was 75 (= 150u total between sections). Raised to 150 on 2026-08-20 per
+// Noah: "add more vertical space between sections of copy and images...
+// make this more of an experience that someone scrolls through" — so the
+// gap between two adjacent sections is now 300u. Flagged by Noah as
+// possibly-revertible ("I might want to revert this later"), which is why
+// it stays a single named constant rather than being inlined.
+const SECTION_PADDING_UNITS = 150;
+// Small space carried ABOVE the descriptor inside the sticky header, per
+// Noah: "I want a small space above the title, the title itself, and the
+// bar immediately below it to be sticky." This is intentionally much
+// smaller than SECTION_PADDING_UNITS — it's the breathing room that stays
+// glued to the title once pinned, not the between-sections gap.
+const STICKY_TOP_SPACE_UNITS = 34;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
 // All images rendered at full source resolution for maximum PPI.
@@ -300,6 +307,7 @@ export function ProjectGroup({
   rows,
   topGapUnits,
   bgColor,
+  stackIndex = 0,
 }: {
   slug: string;
   /** Italic serif label at the top of the grouping, e.g. "Times Square Advertisement". Rendered exactly as typed — write it in Title Case. */
@@ -310,27 +318,84 @@ export function ProjectGroup({
   topGapUnits?: number;
   /** Optional background color for this group (hex color code). */
   bgColor?: string;
+  /** This group's position among its page's groups. Drives the stacking
+   * z-index so each section paints OVER the one before it — see the
+   * STACKING SCROLL note below. */
+  stackIndex?: number;
 }) {
+  /* STACKING SCROLL (2026-08-20, per Noah): "when the user scrolls down to
+   * the section title, I want a small space above the title, the title
+   * itself, and the bar immediately below it to be sticky... the content of
+   * the section will vanish behind the title and bar... After that, a new
+   * section will scroll up and over the old section and the process will
+   * repeat. This effect will make it feel less like we're scrolling down
+   * one long page, but rather that we are staying stationary and the
+   * sections are the things that are scrolling."
+   *
+   * Built from two cooperating pieces, both pure CSS (no scroll listener,
+   * so it costs nothing per frame and can't drift out of sync with Lenis):
+   *
+   * 1. The header (top space + descriptor + its rule) is `position: sticky;
+   *    top: 0` INSIDE the section, painted on an opaque surface. Because
+   *    it's opaque, the section's own rows slide underneath and disappear
+   *    behind it. Sticky is naturally bounded by its parent, so the header
+   *    releases exactly at the end of its own section — "this will continue
+   *    until we reach the end of the section" — with no measurement needed.
+   *
+   * 2. Each section is opaque and carries an increasing z-index, so the
+   *    NEXT section paints over the previous one as it scrolls up, rather
+   *    than the two blending or the old one showing through. That's the
+   *    "scroll up and over the old section" half.
+   *
+   * Deliberately NOT done by making the whole <section> sticky: these
+   * sections are far taller than the viewport, and a sticky element taller
+   * than its scrollport pins its top edge and strands everything below the
+   * fold — the content would become unreachable. Sticking only the header
+   * is what makes the effect work at arbitrary section height.
+   *
+   * Scope is content groups only, per Noah — the hero and the
+   * statement/hand block above still scroll normally.
+   */
+  // Opaque surface for both the section and its sticky header. Must not be
+  // transparent: the whole effect depends on outgoing rows being hidden
+  // behind the header, and on a section being able to cover its
+  // predecessor.
+  const surface = bgColor || "var(--color-paper)";
   return (
     <>
       {topGapUnits != null && <Stage heightUnits={topGapUnits} />}
       <section
+        className="relative"
         style={{
+          zIndex: stackIndex + 1,
+          background: surface,
           paddingLeft: `calc(var(--u) * ${GRID_MARGIN_UNITS})`,
           paddingRight: `calc(var(--u) * ${GRID_MARGIN_UNITS})`,
-          paddingTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
           paddingBottom: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
         }}
       >
         <div className="w-full">
-          <h2
-            className="italic mb-8 leading-none"
-            style={{ fontSize: "var(--text-descriptor)", fontFamily: "var(--font-serif)" }}
+          {/* Sticky header — the "stationary frame" the section scrolls
+              past. Its own top padding is the "small space above the
+              title"; the section's between-groups gap lives on the
+              wrapper below so it scrolls away instead of riding along. */}
+          <div
+            className="sticky top-0 z-20"
+            style={{
+              background: surface,
+              paddingTop: `calc(var(--u) * ${STICKY_TOP_SPACE_UNITS})`,
+              marginTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
+            }}
           >
-            {descriptor}
-          </h2>
+            <h2
+              className="italic mb-8 leading-none"
+              style={{ fontSize: "var(--text-descriptor)", fontFamily: "var(--font-serif)" }}
+            >
+              {descriptor}
+            </h2>
 
-          <Rule />
+            <Rule />
+          </div>
           {rows.map((row, i) => {
             // Support asymmetric column widths: if any cell in the row
             // specifies a `colWidth` (relative width weight, e.g. 60/40

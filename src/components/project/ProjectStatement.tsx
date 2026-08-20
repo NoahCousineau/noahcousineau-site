@@ -1,7 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "@/components/Stage";
 import { RULE_WEIGHT_CSS } from "./ProjectGroup";
 
@@ -321,6 +323,49 @@ export function ProjectStatement({
 }) {
   const paragraphs = Array.isArray(paragraph) ? paragraph : [paragraph];
   const [statementWrapped, setStatementWrapped] = useState(false);
+  const handRef = useRef<HTMLDivElement>(null);
+  const paragraphRef = useRef<HTMLDivElement>(null);
+
+  /* END-OF-PARAGRAPH SWING (2026-08-20, per Noah: "when we reach the end of
+   * the paragraph, it swings downwards to suggest to look below. There's a
+   * bit of swing and easy ease when this occurs.")
+   *
+   * The hand asset is pre-rotated so the finger points RIGHT at rest (see
+   * the note on its <Image> below), which means +90deg points it straight
+   * DOWN — at the content waiting underneath.
+   *
+   * Deliberately a PLAYED tween rather than a scrubbed one: "a bit of
+   * swing" means the hand overshoots and settles back, and a scrub can't
+   * produce overshoot — scrubbing locks rotation to scroll position, so
+   * the hand could only ever ease monotonically toward its end value and
+   * would run backwards the instant the user nudged upward. back.out
+   * overshoots past 90deg and eases back, reading as real weight swinging
+   * down. It reverses if the reader scrolls back up into the paragraph.
+   *
+   * The pivot sits at the wrist end (left side of the rotated asset), not
+   * the center, so the hand swings from the arm like a hinge instead of
+   * spinning around its own middle. */
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!handRef.current || !paragraphRef.current) return;
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx = gsap.context(() => {
+      gsap.to(handRef.current, {
+        rotate: 90,
+        duration: 1.15,
+        ease: "back.out(1.9)",
+        scrollTrigger: {
+          trigger: paragraphRef.current,
+          // Fires as the last lines of copy clear the lower third of the
+          // viewport — i.e. as the reader finishes the paragraph, which is
+          // the moment the gesture is meant to punctuate.
+          start: "bottom 78%",
+          toggleActions: "play none none reverse",
+        },
+      });
+    });
+    return () => ctx.revert();
+  }, []);
 
   // Hand image (pre-rotated 90° so the finger points right — see
   // public/assets/shared/pointing-hand-static-rotated.webp, cropped tight
@@ -341,7 +386,9 @@ export function ProjectStatement({
   const RULE_Y_TWO_LINE = 254;
 
   return (
-    <div className="relative w-full" style={{ marginTop: "calc(var(--u) * 150)" }}>
+    // Vertical rhythm opened up 2026-08-20 (150 -> 230) per Noah's
+    // "add more vertical space between sections of copy and images".
+    <div className="relative w-full" style={{ marginTop: "calc(var(--u) * 230)" }}>
       {/* Statement line + rule — fixed, known height, still Stage/Place. */}
       <Stage heightUnits={statementWrapped ? STAGE_HEIGHT_TWO_LINE : STAGE_HEIGHT_ONE_LINE} className="overflow-visible">
         <Place x={36} y={0} className="z-10">
@@ -368,7 +415,7 @@ export function ProjectStatement({
           that wrapper, so it pins 100u from the viewport top while
           scrolling through the text and releases just after the last
           line, rather than slightly before it. */}
-      <div className="relative" style={{ marginTop: "calc(var(--u) * 75)" }}>
+      <div className="relative" style={{ marginTop: "calc(var(--u) * 115)" }}>
         <div
           className="absolute"
           style={{
@@ -379,17 +426,24 @@ export function ProjectStatement({
           }}
         >
           <div className="sticky" style={{ top: "calc(var(--u) * 100)" }}>
-            <Image
-              src="/assets/shared/pointing-hand-static-rotated.webp"
-              alt=""
-              width={2696}
-              height={1490}
-              sizes="20vw"
-              className="w-full h-auto"
-            />
+            {/* Rotation wrapper for the end-of-paragraph swing (see the
+                effect above). Kept separate from the sticky element so the
+                two transforms never fight: sticky owns the vertical
+                travel, this owns the rotation. */}
+            <div ref={handRef} style={{ transformOrigin: "22% 50%" }}>
+              <Image
+                src="/assets/shared/pointing-hand-static-rotated.webp"
+                alt=""
+                width={2696}
+                height={1490}
+                sizes="20vw"
+                className="w-full h-auto"
+              />
+            </div>
           </div>
         </div>
         <div
+          ref={paragraphRef}
           style={{
             marginLeft: `calc(var(--u) * ${PARAGRAPH_X})`,
             maxWidth: `calc(var(--u) * ${PARAGRAPH_MAX_WIDTH})`,

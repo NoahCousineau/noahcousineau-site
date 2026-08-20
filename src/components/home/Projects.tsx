@@ -23,6 +23,10 @@ type Cell = {
   line2: string;
   disciplines: string;
   isIndex?: boolean;
+  /** Explicit destination override. Needed for the "more work" tile, whose
+   * `slug` ("other") is a display-only id that doesn't match its real
+   * project route — see the href note on CELLS below. */
+  href?: string;
 };
 
 const CELLS: Cell[] = [
@@ -31,7 +35,15 @@ const CELLS: Cell[] = [
   { slug: "socal-earth", line1: "socal", line2: "earth", disciplines: "visual identity · brand strategy · web design" },
   { slug: "cultural-olympiad-poster", line1: "cultural", line2: "olympiad", disciplines: "poster · motion design · design contest" },
   { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
-  { slug: "other", line1: "more", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true },
+  // BUGFIX (2026-08-20, per Noah: "make sure the 'more work' link on the
+  // home page goes to the correct more work page"): this tile used to rely
+  // on `isIndex` alone, which routed it to /work (the generic project
+  // INDEX listing) rather than to the real "More Work" project page at
+  // /work/more-work — a genuine page in projects.json with its own grid
+  // content. `isIndex` is kept only for its non-routing behavior (it
+  // suppresses the slug-based hover video lookup); the destination is now
+  // stated explicitly here.
+  { slug: "other", line1: "more", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true, href: "/work/more-work" },
 ];
 
 // artboard coords — make columns 918u wide, symmetrical around divider
@@ -62,7 +74,7 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
   } else if (!cell.isIndex) {
     vid = HOVER_VIDEO[cell.slug] || null;
   }
-  const href = cell.isIndex ? "/work" : `/work/${cell.slug}`;
+  const href = cell.href ?? (cell.isIndex ? "/work" : `/work/${cell.slug}`);
   
   // Sprouts gets extra zoom (2x = 220%)
   const isSpouts = cell.slug === "sprouts-farmers-market";

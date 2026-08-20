@@ -86,12 +86,17 @@
      --text-descriptor reverted -25% (2026-08-16l, per Noah's explicit ask
      "change the section title type back down by 25% in size") — undoes
      the earlier 2026-08-16j bump. Original pre-bump values restored:
-     1.5rem/4.6875vw/3.6rem. */
+     1.5rem/4.6875vw/3.6rem.
+     --text-descriptor reduced a further -20% (2026-08-20, per Noah:
+     "reduce the font size by 20% on these"). Every term of the clamp is
+     scaled by 0.8 so the reduction holds at every viewport width, not
+     just where one term happens to win:
+       1.5rem -> 1.2rem | 4.6875vw -> 3.75vw | 3.6rem -> 2.88rem */
   --text-project-title: clamp(2.5rem, 6.93vw, 8.5rem);
   --text-credit-role: clamp(0.75rem, 1.25vw, 1.05rem);
   --text-credit-name: clamp(0.7rem, 0.99vw, 0.95rem);
   --text-lead: clamp(1.25rem, 3.125vw, 2.4rem);
-  --text-descriptor: clamp(1.5rem, 4.6875vw, 3.6rem);
+  --text-descriptor: clamp(1.2rem, 3.75vw, 2.88rem);
 }
 
 :root {

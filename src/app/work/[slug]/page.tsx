@@ -124,6 +124,9 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
           paragraph={paragraph}
         />
 
+        {/* `stackIndex` drives the stacking-scroll z-order: each group must
+            paint over the one before it so a section scrolls up and covers
+            its predecessor. See the STACKING SCROLL note in ProjectGroup. */}
         {groups.map((group, i) => (
           <ProjectGroup
             key={group.descriptor}
@@ -132,6 +135,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             rows={group.rows}
             topGapUnits={i === 0 ? 300 : undefined}
             bgColor={group.bgColor}
+            stackIndex={i}
           />
         ))}
       </main>
