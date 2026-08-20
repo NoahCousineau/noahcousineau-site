@@ -89,11 +89,39 @@ const ROW1_RULE_Y = 459.49;
 const ROW2_TEXT_Y = 480.5; // baseline 497.95 minus ~17.5u
 const ROW2_RULE_Y = 507.4;
 
+/*
+ * FULL-PAGE FOOTER REVEAL (2026-08-20, per Noah: "I want an interaction
+ * where the footer encompasses the whole page when you scroll down to it...
+ * Keep the formatting of the footer the same.")
+ *
+ * Built as a curtain rather than an animation: the footer is FIXED to the
+ * viewport at full height, sitting behind the page content, which carries
+ * an opaque background and a higher z-index (see .site-content in
+ * globals.css). Scrolling to the end slides the content up and off,
+ * uncovering a footer that already fills the screen — so it "encompasses
+ * the whole page" the moment it's reached, with no scaling, no pinning,
+ * and nothing to keep in sync with Lenis. The spacer below reserves the
+ * scroll distance that does the uncovering.
+ *
+ * The footer's own artboard block is untouched — same Stage, same
+ * coordinates, same five link columns — just vertically centered inside
+ * the taller black field, since its intrinsic height is width-driven
+ * (554.15u) and can't fill a viewport on its own. That keeps the
+ * formatting identical, as asked.
+ *
+ * Reduced-motion and very short viewports both degrade gracefully: this is
+ * a static layout, so there's no motion to suppress — worst case the
+ * footer simply shows as a tall black panel.
+ */
 export default function Footer() {
   return (
-    <footer className="bg-[color:var(--color-ink)] text-[color:var(--color-paper)] w-full relative">
+    <>
+      {/* Reserves the scroll distance through which the content uncovers
+          the fixed footer beneath it. */}
+      <div aria-hidden className="w-full" style={{ height: "100svh" }} />
+      <footer className="fixed bottom-0 left-0 w-full bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex items-center z-0" style={{ height: "100svh" }}>
       <div
-        className="mx-auto max-w-[1920px]"
+        className="mx-auto max-w-[1920px] w-full"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
         <Stage heightUnits={STAGE_HEIGHT}>
@@ -149,6 +177,7 @@ export default function Footer() {
           ))}
         </Stage>
       </div>
-    </footer>
+      </footer>
+    </>
   );
 }

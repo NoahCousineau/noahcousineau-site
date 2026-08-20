@@ -125,6 +125,23 @@ body {
   margin: 0;
 }
 
+/* Page content layer for the full-page footer reveal (see Footer.tsx).
+   The footer is fixed at full viewport height BEHIND everything; this
+   layer is the opaque curtain that covers it until the reader reaches the
+   end of the page and slides it away.
+
+   `background` is required, not cosmetic: without an opaque fill the fixed
+   footer would show through the page the entire time. `isolation` gives
+   this layer its own stacking context so a section's internal z-index
+   (project groups stack with increasing z-index) can never out-rank the
+   curtain and punch a hole through to the footer. */
+.site-content {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+  background: var(--color-paper);
+}
+
 /* Accessibility: kill all motion when the OS asks for it */
 @media (prefers-reduced-motion: reduce) {
   *,

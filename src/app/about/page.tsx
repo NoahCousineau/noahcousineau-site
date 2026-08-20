@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import MickeyWatch from "@/components/MickeyWatch";
+import { ArcText } from "@/components/ArcText";
+import RagdollHead from "@/components/about/RagdollHead";
+import ParallaxPhotos from "@/components/about/ParallaxPhotos";
 
 /*
  * About Me page — built from Noah's design file
@@ -64,138 +66,6 @@ import MickeyWatch from "@/components/MickeyWatch";
  *     point inward toward each other), and is why a single-vector
  *     approach (round 2) couldn't reproduce that reference at all.
  */
-
-// Degrees the head wrapper is rotated (see the header section below) —
-// EyeTracker needs this to counter-rotate the screen-space cursor vector
-// before applying it as a translate on a child of that rotated element
-// (CSS transforms compose: a child's own translate happens in the
-// parent's already-rotated local space, so without this correction the
-// pupils would visibly drift in the wrong direction, offset by the
-// head's tilt, instead of tracking straight toward the cursor).
-const HEAD_ROTATION_DEG = 42;
-
-// Eye socket centers as a fraction (0-1) of the head image's own box,
-// measured directly from head.png's alpha-channel hole positions (see
-// comment above). Independent per-eye so each eye tracks the cursor from
-// its own true position, not a shared head-center approximation.
-const LEFT_EYE_CENTER = { x: 0.2992, y: 0.4165 };
-const RIGHT_EYE_CENTER = { x: 0.6153, y: 0.4117 };
-
-// How far (in px, at the eye's own displayed size) a pupil/eye may drift
-// from dead-center. Kept small and radius-clamped so the socket's edges
-// never expose the transparent hole/red background behind — Noah:
-// "it's important the eyes don't move too much... it will look
-// unnatural and reveal the red background behind."
-const MAX_EYE_OFFSET_PX = 3.2;
-
-/** One tracked eye: computes its own instantaneous vector to the cursor
- * and translates by up to MAX_EYE_OFFSET_PX toward it — no easing/lerp,
- * per Noah's "instantaneous" requirement.
- *
- * BUGFIX (2026-08-17, round 4): originally this computed the eye's
- * on-screen anchor by reading the HEAD wrapper's getBoundingClientRect()
- * and multiplying by socketCenter fractions. That's wrong once the head
- * is rotated: getBoundingClientRect() on a rotated element returns the
- * AXIS-ALIGNED BOUNDING BOX of the rotated shape, not the original
- * unrotated box — so rect.left/rect.width no longer correspond to the
- * head's true corners, and the computed "eye center" silently drifted to
- * the wrong screen position. This is very likely why the cross-eyed
- * convergence didn't match Noah's reference. Fixed by giving each eye a
- * ref to ITSELF: since this div is positioned with left/top percentages
- * relative to the head's own (unrotated) content box, the browser
- * renders it at the correct on-screen spot regardless of the ancestor's
- * rotation — so eyeRef.current.getBoundingClientRect()'s center IS the
- * true rotated socket position, with no manual trig needed for the
- * anchor (only the OUTPUT offset vector still needs counter-rotating,
- * since that's a translate applied inside the rotated local space). */
-function TrackedEye({
-  src,
-  leftPct,
-  topPct,
-  widthPct,
-}: {
-  src: string;
-  leftPct: number;
-  topPct: number;
-  widthPct: number;
-}) {
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const eyeRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const rotRad = (-HEAD_ROTATION_DEG * Math.PI) / 180;
-    const cos = Math.cos(rotRad);
-    const sin = Math.sin(rotRad);
-
-    function handleMove(e: MouseEvent) {
-      const el = eyeRef.current;
-      if (!el) return;
-      // Reset any existing offset transform before measuring, so the
-      // rect reflects this eye's neutral (centered) position rather than
-      // compounding on top of the previous frame's translate.
-      const prevTransform = el.style.transform;
-      el.style.transform = "translate(-50%, -50%)";
-      const rect = el.getBoundingClientRect();
-      el.style.transform = prevTransform;
-
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      const screenX = (dx / dist) * MAX_EYE_OFFSET_PX;
-      const screenY = (dy / dist) * MAX_EYE_OFFSET_PX;
-      // Counter-rotate the screen-space vector into the rotated head's
-      // local coordinate space (see HEAD_ROTATION_DEG comment above).
-      setOffset({
-        x: screenX * cos - screenY * sin,
-        y: screenX * sin + screenY * cos,
-      });
-    }
-    window.addEventListener("mousemove", handleMove);
-    return () => window.removeEventListener("mousemove", handleMove);
-  }, []);
-
-  return (
-    <>
-      {/* Off-white backing disc — sits BEHIND the eye (rendered first) at
-          a size between the socket and the eye, so if the (now smaller,
-          per Noah's "eyes feel slightly too big" feedback) eye doesn't
-          perfectly cover the socket at extreme offsets, this shows a
-          skin-toned fill instead of the transparent hole exposing the
-          red header behind it. Static (untranslated) so it always fully
-          backs the socket regardless of the eye's current offset. */}
-      <div
-        className="absolute"
-        style={{
-          left: `${leftPct}%`,
-          top: `${topPct}%`,
-          width: `${widthPct * 1.35}%`,
-          aspectRatio: "1/1",
-          transform: "translate(-50%, -50%)",
-          borderRadius: "50%",
-          background: "#f3ddc9",
-        }}
-      />
-      <div
-        ref={eyeRef}
-        className="absolute"
-        style={{
-          left: `${leftPct}%`,
-          top: `${topPct}%`,
-          width: `${widthPct}%`,
-          aspectRatio: "1/1",
-          transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`,
-          borderRadius: "50%",
-          overflow: "hidden",
-        }}
-      >
-        <Image src={src} alt="" fill className="object-cover" />
-      </div>
-    </>
-  );
-}
-
 
 /** Draggable 3D card — same drag-to-spin interaction model as the
  * homepage's RotatingHead (mouse/touch drag maps horizontal movement to
@@ -410,177 +280,11 @@ function DraggableResumeCard({
   );
 }
 
-/** Arced text via SVG textPath. `flip` reverses the arc to open upward
- * (concave-down "smile") vs. downward; `startOffset` nudges start point.
- *
- * DECOUPLED CURVATURE VS POSITION (2026-08-18, round 9) — Noah on the
- * clock section: "arched too much" AND "not close to the edge of the
- * white circle" at the same time. Two separate bugs fixed here:
- * 1. `cy` (vertical position) was hardcoded to equal `radius`
- *    (curvature) — turning one dial always moved the other. Added an
- *    optional `baselineY` prop so they're independent.
- * 2. The path's start/end X were always `cx -/+ radius`, i.e. a FULL
- *    semicircle chord (= the circle's own diameter) no matter how big
- *    `radius` got — so the arc's bulge height was always exactly
- *    `radius` regardless of scale, and cranking radius up just pushed
- *    the whole semicircle (and the text riding at its apex) miles off
- *    screen instead of flattening anything. Added an optional
- *    `spanDeg` prop (degrees of the circle actually traced, default
- *    180 = old full-semicircle behavior) so a LARGE radius can trace a
- *    SMALL angular slice under the text — that's what actually produces
- *    a gentle, nearly-flat arch: same text width, much bigger circle,
- *    much less curvature per pixel of text. */
-function ArcText({
-  text,
-  radius,
-  width,
-  height,
-  fontSize,
-  flip = false,
-  color = "#fff",
-  id,
-  baselineY,
-  spanDeg = 180,
-  centerY: centerYProp,
-}: {
-  text: string;
-  radius: number;
-  width: number;
-  height: number;
-  fontSize: number;
-  flip?: boolean;
-  color?: string;
-  id: string;
-  baselineY?: number;
-  spanDeg?: number;
-  centerY?: number;
-}) {
-  const cx = width / 2;
-  // Downward-opening arc (smile shape, used for résumé headline): path
-  // goes from left to right along the TOP of a circle whose center sits
-  // below the visible area, so the visible slice curves upward at the
-  // ends and dips at center — matches the "rainbow" arc in the design.
-  const cy = baselineY ?? (flip ? radius : height - radius);
-  // Circle center sits `radius` above (flip) or below (!flip) the
-  // baseline; start/end points are at +/-(spanDeg/2) from the very
-  // top/bottom of that circle, NOT at the full +/-90deg (diameter).
-  //
-  // TRUE-CONCENTRIC FIX (2026-08-18, round 10) — Noah: "text still too
-  // far from the circle" even after matching radius exactly. Root
-  // cause: `centerY` here was DERIVED from cy+/-radius, an independent
-  // number from the actual visible white circle's own center — so
-  // "same radius" did NOT guarantee "same circle", just same curvature
-  // at a possibly different, non-concentric center. Added an optional
-  // `centerY` override so the arc can be pinned to literally the same
-  // center point as the real circle, making them truly concentric
-  // (same circle, different radius) instead of two same-curvature but
-  // offset arcs that only coincidentally look close.
-  const centerY = centerYProp ?? (flip ? cy + radius : cy - radius);
-  const halfSpanRad = (spanDeg / 2) * (Math.PI / 180);
-  const startX = flip ? cx - radius * Math.sin(halfSpanRad) : cx - radius * Math.sin(halfSpanRad);
-  const endX = cx + radius * Math.sin(halfSpanRad);
-  const arcPointY = flip
-    ? centerY - radius * Math.cos(halfSpanRad)
-    : centerY + radius * Math.cos(halfSpanRad);
-  const sweep = flip ? 1 : 0;
-  const d = `M ${startX} ${arcPointY} A ${radius} ${radius} 0 0 ${sweep} ${endX} ${arcPointY}`;
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
-      <path id={id} d={d} fill="none" />
-      <text
-        fill={color}
-        fontFamily="var(--font-sans)"
-        fontSize={fontSize}
-        letterSpacing="0.02em"
-        style={{ textTransform: "uppercase" }}
-      >
-        <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
-          {text}
-        </textPath>
-      </text>
-    </svg>
-  );
-}
-
-/** Text that traces the BOTTOM of a circle with letters kept upright
- * (readable normally, not upside-down) — matches Noah's clock-section
- * reference, where "CONTACT NOAH" sits along the lower curve right-side
- * up. Plain ArcText can't do this: SVG textPath always keeps a glyph's
- * "up" pointing toward the path's left-hand side as it travels forward,
- * so tracing the BOTTOM of a circle left-to-right (the natural reading
- * order) puts letters upside-down. The fix is to trace the arc
- * RIGHT-TO-LEFT along the same bottom curve instead — that flips which
- * side is "up" without flipping the glyphs themselves — and then reverse
- * the character order in the string so the visible reading order comes
- * out correct again. */
-function BottomArcText({
-  text,
-  radius,
-  width,
-  height,
-  fontSize,
-  color = "#fff",
-  id,
-  baselineY,
-  spanDeg = 180,
-  centerY: centerYProp,
-}: {
-  text: string;
-  radius: number;
-  width: number;
-  height: number;
-  fontSize: number;
-  color?: string;
-  id: string;
-  baselineY?: number;
-  spanDeg?: number;
-  centerY?: number;
-}) {
-  const cx = width / 2;
-  const cy = baselineY ?? (height - radius);
-  // Same span-decoupling fix as ArcText above: circle center sits
-  // `radius` ABOVE the baseline for a bottom-opening bowl, and the
-  // visible arc only traces +/-(spanDeg/2) around the very BOTTOM of
-  // that circle rather than the full +/-90deg diameter — so a big
-  // radius flattens the arch instead of just relocating it. Optional
-  // `centerY` override (round 10) pins this to the SAME center point as
-  // the real white circle for true concentricity — see ArcText's fuller
-  // comment on why same-radius alone didn't guarantee that.
-  const centerY = centerYProp ?? (cy - radius);
-  const halfSpanRad = (spanDeg / 2) * (Math.PI / 180);
-  const startX = cx + radius * Math.sin(halfSpanRad); // start on the RIGHT
-  const endX = cx - radius * Math.sin(halfSpanRad); // end on the LEFT
-  const arcPointY = centerY + radius * Math.cos(halfSpanRad);
-  // sweep=0 tracing left-to-right along the bottom of the circle keeps
-  // each glyph's "up" pointing outward/downward-away-from-center, i.e.
-  // upright as seen by the viewer. (2026-08-18 round 9 fix — the
-  // previous right-to-left/sweep=1 combo was rendering upside-down;
-  // verified by direct on-screen inspection, not just geometry theory.)
-  const d = `M ${cx - radius * Math.sin(halfSpanRad)} ${arcPointY} A ${radius} ${radius} 0 0 0 ${cx + radius * Math.sin(halfSpanRad)} ${arcPointY}`;
-  const reversedText = text;
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
-      <path id={id} d={d} fill="none" />
-      <text
-        fill={color}
-        fontFamily="var(--font-sans)"
-        fontSize={fontSize}
-        letterSpacing="0.06em"
-        style={{ textTransform: "uppercase" }}
-      >
-        <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
-          {reversedText}
-        </textPath>
-      </text>
-    </svg>
-  );
-}
-
-
 export default function About() {
-  const headWrapRef = useRef<HTMLDivElement>(null);
+  // The red header doubles as the ragdoll head's physics arena — it's the
+  // "red space" the head is thrown around inside, so RagdollHead measures
+  // its walls from this ref.
+  const headerRef = useRef<HTMLElement>(null);
 
   return (
     <main
@@ -589,6 +293,7 @@ export default function About() {
     >
       {/* ================= HEADER ================= */}
       <section
+        ref={headerRef}
         className="relative w-full overflow-hidden"
         style={{ background: "var(--color-red)", height: "calc(var(--u) * 1080)" }}
       >
@@ -621,65 +326,33 @@ export default function About() {
           </div>
         </div>
 
-        {/* Head — right edge already flush (see content-bbox math above,
-            unchanged this round). Vertical position recomputed 2026-08-18
-            round 6 per Noah: "make it so the bottom of the red container
-            meets the bottom-most point of the head" — same true-content
-            alpha-bbox approach as the right-edge fix (not the rotated
-            CSS bounding box, which includes blank transparent corners).
-            The head's lowest opaque pixel, once rotated 42deg, sits
-            282.41u below the image's own center; solving for the center
-            position that puts that point exactly on the header's bottom
-            edge (y=1080u) gives bottom:-40.31u (negative = the box's
-            layout edge sits slightly below the header's bottom, which is
-            expected/correct — the head's own transparent margin extends
-            past its lowest opaque pixel, header overflow:hidden clips
-            the rest). */}
-        <div
-          ref={headWrapRef}
-          className="absolute"
-          style={{
-            right: "calc(var(--u) * 42.98)",
-            bottom: "calc(var(--u) * -40.31)",
-            width: "calc(var(--u) * 424.94)",
-            transform: "rotate(42deg)",
-            transformOrigin: "center center",
-          }}
-        >
-          <div className="relative w-full" style={{ aspectRatio: "1297/1970" }}>
-            {/* Eyes render BEHIND the head image — head.png's transparent
-                socket holes mask each eye down to the correct narrow
-                almond shape (eyelid skin is part of head.png, painted on
-                top). Eyes must be listed first in the DOM/z-order for
-                this masking to work; if the head were behind, the eyes'
-                circular shape would show as a round patch over the face
-                instead of the correct eye-shaped sliver. */}
-            <TrackedEye
-              src="/assets/about/eye-left.png"
-              leftPct={LEFT_EYE_CENTER.x * 100}
-              topPct={LEFT_EYE_CENTER.y * 100}
-              widthPct={11.2}
-            />
-            <TrackedEye
-              src="/assets/about/eye-right.png"
-              leftPct={RIGHT_EYE_CENTER.x * 100}
-              topPct={RIGHT_EYE_CENTER.y * 100}
-              widthPct={11.6}
-            />
-            <Image src="/assets/about/head.png" alt="Noah Cousineau" fill className="object-contain relative z-10" priority />
-          </div>
-        </div>
+        {/* Head — grabbable and throwable, confined to this red header.
+            Its designed resting position (right edge flush with the header,
+            neck meeting the header's bottom, 42deg tilt) and the
+            eye-tracking both moved intact into RagdollHead; see that file
+            for the position math and the physics. */}
+        <RagdollHead containerRef={headerRef} />
       </section>
 
       {/* ================= ABOUT ME (statement + paragraph) ================= */}
+      {/* `relative` + `isolate` establish this section as the positioning
+          and stacking context for the parallax photo bed behind the copy.
+          Vertical padding opened up (140 -> 300) per Noah's ask for more
+          scroll-through space; it also gives the parallax room to read —
+          a short section would scroll past before the depth difference
+          between near and far photos became legible. */}
       <section
-        className="w-full flex flex-col items-center text-center"
-        style={{ padding: "calc(var(--u) * 140) calc(var(--u) * 120)" }}
+        className="relative isolate w-full flex flex-col items-center text-center"
+        style={{ padding: "calc(var(--u) * 300) calc(var(--u) * 120)" }}
       >
+        {/* Life-story photos, drifting at depth behind the text. Uses
+            placeholder artwork for now — see ParallaxPhotos. */}
+        <ParallaxPhotos />
+
         {/* "Big statement" starburst — placeholder shape via clip-path
             star polygon, yellow fill matching the design's #ffca05. */}
         <div
-          className="relative flex items-center justify-center"
+          className="relative z-10 flex items-center justify-center"
           style={{
             width: "calc(var(--u) * 420)",
             aspectRatio: "1/1",
@@ -702,7 +375,7 @@ export default function About() {
             into two columns per the design, on desktop; single column
             on narrow viewports. */}
         <div
-          className="mt-16 grid gap-x-12 gap-y-4 text-left"
+          className="relative z-10 mt-16 grid gap-x-12 gap-y-4 text-left"
           style={{
             gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             maxWidth: "calc(var(--u) * 1600)",
@@ -764,74 +437,14 @@ export default function About() {
         />
       </section>
 
-      {/* ================= CLOCK / CONTACT-PROMPT ================= */}
-      {/* Sizing/orientation rebuilt to match Noah's reference screenshot
-          (2026-08-18, round 5): circle radius only slightly bigger than
-          the minute hand's length (measured directly off the watch
-          asset's alpha-channel content bbox: hand tip sits ~170.6 of 600
-          canvas units from the rotation axis; MickeyWatch is rendered at
-          ~1.53x the visible white circle's diameter — clipped by the
-          circle's own overflow-hidden — so that scaled-up hand length
-          works out to ~1.15x the circle radius, matching the reference's
-          "hand nearly reaches the edge" proportion). Text split into TWO
-          separate arcs (top dome "IT'S TIME TO", bottom bowl "CONTACT
-          NOAH") instead of one single semicircle phrase, matching the
-          reference's two-line wrap — both arcs keep letters upright
-          (readable, not upside-down), per the reference. */}
-      <section
-        className="relative w-full flex flex-col items-center justify-center overflow-hidden"
-        style={{ background: "var(--color-ink)", padding: "calc(var(--u) * 440) 0 calc(var(--u) * 140)" }}
-      >
-        <div className="relative flex items-center justify-center" style={{ width: "calc(var(--u) * 640)", aspectRatio: "1/1" }}>
-          {/* White circle backdrop, clips the oversized watch to a clean edge */}
-          <div className="absolute inset-0 rounded-full bg-white overflow-hidden">
-            <div
-              className="absolute"
-              style={{
-                width: "153%",
-                height: "153%",
-                left: "-26.5%",
-                top: "-26.5%",
-              }}
-            >
-              <MickeyWatch />
-            </div>
-          </div>
-          {/* Top arc: "IT'S TIME TO" — dome shape, opens upward, letters
-              upright, spans the upper ~130deg of the circle. */}
-          <div className="absolute" style={{ width: "140%", height: "140%", left: "-20%", top: "-20%" }}>
-            <ArcText
-              id="clock-arc-top"
-              text="It's Time To"
-              width={100}
-              height={100}
-              radius={35.7}
-              spanDeg={110}
-              baselineY={10.53}
-              fontSize={9.3}
-              flip={true}
-              color="#fff"
-            />
-          </div>
-          {/* Bottom arc: "CONTACT NOAH" — bowl shape at the bottom,
-              letters upright (not inverted) — built via BottomArcText
-              below, which reverses path direction to keep glyphs
-              right-side-up while still tracing the bottom curve. */}
-          <div className="absolute" style={{ width: "140%", height: "140%", left: "-20%", top: "-20%" }}>
-            <BottomArcText
-              id="clock-arc-bottom"
-              text="Contact Noah"
-              width={100}
-              height={100}
-              radius={50}
-              spanDeg={110}
-              baselineY={97}
-              fontSize={9.3}
-              color="#fff"
-            />
-          </div>
-        </div>
-      </section>
+      {/* CLOCK / CONTACT-PROMPT removed 2026-08-20 per Noah: "I want to
+          remove the clock and the 'It's Time To Contact Noah' from the
+          about me page. Instead, I want this to appear on a new page. When
+          the user clicks off the website, I want a black screen to appear
+          and the clock and text to appear on that screen." That lockup now
+          lives in components/AwayOverlay.tsx, mounted site-wide from
+          layout.tsx — moved intact (same circle, same oversized watch, same
+          two upright arcs), only its trigger changed. */}
 
       {/* ================= SPACER SECTION (black background) ================= */}
       <section

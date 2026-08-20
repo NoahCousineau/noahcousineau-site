@@ -133,7 +133,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             slug={project.slug}
             descriptor={group.descriptor}
             rows={group.rows}
-            topGapUnits={i === 0 ? 300 : undefined}
+            topGapUnits={i === 0 ? 420 : undefined}
             bgColor={group.bgColor}
             stackIndex={i}
           />

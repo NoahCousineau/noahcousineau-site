@@ -39,6 +39,42 @@ export default function Description() {
           },
         }
       );
+
+      /* LINE REVEAL (2026-08-20, per Noah: "I want the 'Noah Cousineau is a
+       * graphic...' text to rise up from the black line as we scroll up. It
+       * should be in order, so the first line appears first, then the
+       * second, then the third.")
+       *
+       * Each of the three statement lines sits directly ABOVE its own rule
+       * (line 1 y381 / rule y522, line 2 y565 / rule y706, line 3 y741 /
+       * rule y882). Each line is wrapped in an overflow-hidden mask whose
+       * bottom edge is that rule, so translating the type down by its own
+       * height parks it entirely behind the rule; animating back to 0
+       * makes it rise out of the line, which is the gesture described.
+       *
+       * yPercent (not a pixel y) because these lines are set in artboard
+       * units and rescale with the viewport — a fixed pixel offset would
+       * under- or over-hide the type at other widths, letting descenders
+       * peek out below the rule on wide screens.
+       *
+       * stagger sequences them 1 -> 2 -> 3. `once: true` because this is an
+       * entrance: replaying it every time the reader scrolls back up the
+       * homepage would turn a flourish into a tic. */
+      gsap.fromTo(
+        ".js-desc-line",
+        { yPercent: 115 },
+        {
+          yPercent: 0,
+          duration: 1.05,
+          ease: "power3.out",
+          stagger: 0.16,
+          scrollTrigger: {
+            trigger: root.current,
+            start: "top 72%",
+            once: true,
+          },
+        }
+      );
     }, root);
     return () => ctx.revert();
   }, []);
@@ -53,29 +89,52 @@ export default function Description() {
   const serif = { fontFamily: "var(--font-serif)" };
 
   return (
-    <Stage heightUnits={2266} className="overflow-hidden">
+    // Stage height 2266 -> 2460 (2026-08-20): part of Noah's site-wide "add
+    // more vertical space between sections of copy and images". Adding it to
+    // the Stage rather than to the individual <Place> coordinates keeps every
+    // element's artboard position — and therefore the composition — exactly
+    // as designed, and just lengthens the run-out before the projects grid.
+    <Stage heightUnits={2460} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
+        {/* Lines 1–3. Each is wrapped in an overflow-hidden mask so it can
+            rise out from behind its own rule on scroll — see the LINE
+            REVEAL note in the effect above. The mask must clip, so it
+            can't be merged into <Place> (which positions but doesn't
+            clip), and the animated element is the inner div, leaving the
+            mask itself untransformed as a fixed window. */}
         {/* Line 1 y381 (was y81, moved down 300u) */}
         <Place x={36} y={381} className="z-10">
-          <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            Noah Cousineau is a <span className="italic" style={serif}>graphic designer</span>
-          </FitText>
+          <div className="overflow-hidden">
+            <div className="js-desc-line">
+              <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
+                Noah Cousineau is a <span className="italic" style={serif}>graphic designer</span>
+              </FitText>
+            </div>
+          </div>
         </Place>
         {rule(522)}
 
         {/* Line 2 y565 (was y265, moved down 300u) */}
         <Place x={36} y={565} className="z-10">
-          <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            who uses wit, play, and humor to solve
-          </FitText>
+          <div className="overflow-hidden">
+            <div className="js-desc-line">
+              <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
+                who uses wit, play, and humor to solve
+              </FitText>
+            </div>
+          </div>
         </Place>
         {rule(706)}
 
         {/* Line 3 y741 (was y441, moved down 300u) */}
         <Place x={36} y={741} className="z-10">
-          <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            your <span className="italic" style={serif}>visual problems</span><span className="italic" style={serif}>.</span>
-          </FitText>
+          <div className="overflow-hidden">
+            <div className="js-desc-line">
+              <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
+                your <span className="italic" style={serif}>visual problems</span><span className="italic" style={serif}>.</span>
+              </FitText>
+            </div>
+          </div>
         </Place>
         {rule(882)}
 
