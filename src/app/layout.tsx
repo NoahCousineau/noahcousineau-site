@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
-import Footer from "@/components/Footer";
+import ConditionalFooter from "@/components/ConditionalFooter";
+import PageLoader from "@/components/PageLoader";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -28,9 +29,10 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://use.typekit.net/dch7hsa.css" />
       </head>
       <body>
+        <PageLoader />
         <SmoothScroll>
           {children}
-          <Footer />
+          <ConditionalFooter />
         </SmoothScroll>
       </body>
     </html>

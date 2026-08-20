@@ -17,7 +17,7 @@ export default function Nav() {
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 mix-blend-difference text-white">
-      <nav className="flex items-center justify-between px-[--gutter] py-5">
+      <nav className="flex items-center justify-between px-(--gutter) py-5">
         <Link
           href="/"
           className="uppercase tracking-widest"
@@ -60,7 +60,7 @@ export default function Nav() {
       </nav>
 
       {open && (
-        <ul className="sm:hidden flex flex-col gap-4 px-[--gutter] pb-6 uppercase tracking-widest list-none bg-black/90 text-white"
+        <ul className="sm:hidden flex flex-col gap-4 px-(--gutter) pb-6 uppercase tracking-widest list-none bg-black/90 text-white"
             style={{ fontSize: "var(--text-caption)" }}>
           {NAV.map((item) => (
             <li key={item.href}>
@@ -74,7 +74,7 @@ export default function Nav() {
 
       {/* On a project page, surface the prev/next affordance hint */}
       {onWork && (
-        <div className="hidden md:block fixed bottom-6 right-[--gutter] uppercase tracking-widest opacity-60"
+        <div className="hidden md:block fixed bottom-6 right-(--gutter) uppercase tracking-widest opacity-60"
              style={{ fontSize: "var(--text-caption)" }}>
           ← → projects
         </div>

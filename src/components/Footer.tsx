@@ -22,10 +22,10 @@ import { Stage, Place, uFont } from "./Stage";
  *     footer logo, scaled to the sketch's exact bbox (x 72.68-1847.3,
  *     y 41.44-338.6 of the 1920x554.15 box).
  *   - Bottom-left: 3 project link columns (2 stacked links each), evenly
- *     spaced with a larger gap than the sketch's uneven default (per
- *     Noah's feedback: "more and even spacing horizontally between the
- *     projects on the left side") — x = 75.47 / 335.47 / 595.47 (260u gap
- *     between each column start, vs. the sketch's uneven ~206u/~215u).
+ *     spaced with the same gap as the right-side info columns (per
+ *     Noah's feedback: "same as what's seen on the right side columns")
+ *     — x = 75.47 / 296.24 / 516.99 (220.77u gap between each, matching
+ *     the right columns' 1409.32→1630.09 gap).
  *   - Bottom-right: 2 info columns (about+résumé, then email+phone), at
  *     x = 1409.32 / 1630.09.
  *   - EVERY rule is the SAME length — the email link's rule length
@@ -51,17 +51,17 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
     ],
   },
   {
-    x: 335.47,
+    x: 296.24,
     items: [
       { label: "socal earth", href: "/work/socal-earth" },
-      { label: "valley strong credit union", href: "/work/valley-strong-credit-union" },
+      { label: "cultural olympiad", href: "/work/cultural-olympiad-poster" },
     ],
   },
   {
-    x: 595.47,
+    x: 516.99,
     items: [
-      { label: "forced perspective", href: "/work/forced-perspective" },
-      { label: "other work", href: "/work" },
+      { label: "valley strong credit union", href: "/work/valley-strong-credit-union" },
+      { label: "more work", href: "/work/more-work" },
     ],
   },
   {

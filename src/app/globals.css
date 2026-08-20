@@ -50,8 +50,48 @@
   --dur-slow: 1.2s;
 
   /* Layout */
-  --gutter: clamp(1rem, 4vw, 4rem);
+  --gutter: clamp(1.5rem, 6vw, 12rem);
   --maxw: 90rem;
+
+  /* Line weight for editorial rules/dividers (project-grid black lines,
+     homepage-style horizontal rules) — one value shared everywhere so
+     every ruled grid across the site reads with the same hand.
+     CHANGED 2026-08-16l (per Noah's explicit ask: "Ensure that EVERY grid
+     line that is used on the projects are all the same exact thickness.
+     Let's assign a thickness of 8u for now."): was a viewport-width-based
+     clamp() — switched to a fixed `--u` artboard unit so it scales
+     identically to every other project-grid dimension (aspect ratios,
+     margins, section padding) instead of drifting relative to them at
+     different window widths. NOTE: `--u` is defined per-container inside
+     each page's own containerType:inline-size wrapper (see page.tsx /
+     Stage.tsx), not globally — this token is consumed via
+     `calc(var(--u) * 8)` at each use site rather than as a bare var()
+     here, since --rule-weight itself lives in :root/global scope where
+     --u isn't in context. */
+  --rule-weight-units: 8;
+
+  /* PROJECT PAGE TOKENS — derived from the Sprouts artboard (1920-wide
+     master), converted to vw so every project page (Sprouts is the
+     reference build) shares one type scale without needing the
+     homepage's container-query Stage system for these blocks.
+       133u/1920 -> project title ("sprouts / farmers market")
+        24u/1920 -> credit role label ("creative director")
+        19u/1920 -> credit name (italic serif)
+        60u/1920 -> lead paragraph (the big intro copy under the hand)
+        90u/1920 -> italic section descriptor ("Times Square Advertisement")
+     The site-wide --text-title/--text-display tokens are reused for the
+     statement block (105u) since it must be IDENTICAL to the homepage's
+     Description line size — see ProjectStatement.tsx, which borrows the
+     homepage's own Stage/FitText, not a vw approximation.
+     --text-descriptor reverted -25% (2026-08-16l, per Noah's explicit ask
+     "change the section title type back down by 25% in size") — undoes
+     the earlier 2026-08-16j bump. Original pre-bump values restored:
+     1.5rem/4.6875vw/3.6rem. */
+  --text-project-title: clamp(2.5rem, 6.93vw, 8.5rem);
+  --text-credit-role: clamp(0.75rem, 1.25vw, 1.05rem);
+  --text-credit-name: clamp(0.7rem, 0.99vw, 0.95rem);
+  --text-lead: clamp(1.25rem, 3.125vw, 2.4rem);
+  --text-descriptor: clamp(1.5rem, 4.6875vw, 3.6rem);
 }
 
 :root {

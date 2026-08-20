@@ -19,7 +19,7 @@ import { assetPath, type Project } from "@/lib/projects";
 
 export function ProjectHero({ project }: { project: Project }) {
   return (
-    <header className="px-[--gutter] pt-[18vh] pb-[10vh] max-w-[--maxw] mx-auto">
+    <header className="px-(--gutter) pt-[18vh] pb-[10vh] max-w-(--maxw) mx-auto">
       <h1
         className="uppercase leading-[0.85] tracking-tight"
         style={{ fontSize: "var(--text-display)" }}
@@ -53,7 +53,7 @@ export function ProjectSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="px-[--gutter] py-[8vh] max-w-[--maxw] mx-auto">
+    <section className="px-(--gutter) py-[8vh] max-w-(--maxw) mx-auto">
       {heading && (
         <h2
           className="uppercase tracking-tight mb-3"
@@ -90,7 +90,7 @@ export function MediaGrid({
         : "";
 
   return (
-    <div className={`grid grid-cols-1 ${colClass} gap-[--gutter]`}>
+    <div className={`grid grid-cols-1 ${colClass} gap-(--gutter)`}>
       {images.map((img) => (
         <figure key={img.file} className="m-0 overflow-hidden">
           <Image

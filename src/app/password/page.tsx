@@ -63,7 +63,7 @@ function PasswordForm() {
 
 export default function PasswordPage() {
   return (
-    <main className="min-h-[100svh] flex flex-col items-center justify-center px-[--gutter] text-center">
+    <main className="min-h-[100svh] flex flex-col items-center justify-center px-(--gutter) text-center">
       <p
         className="uppercase tracking-widest text-[color:var(--color-muted)] mb-6"
         style={{ fontSize: "var(--text-caption)" }}

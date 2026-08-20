@@ -13,6 +13,40 @@ export type ProjectSection = {
   caption: string;
 };
 
+export type ProjectCredit = { role: string; names: string[] };
+
+export type ProjectMediaCell =
+  | { type: "image"; file: string; alt?: string; w?: number; h?: number; scale?: number; colWidth?: number; fit?: boolean; cropAspect?: string }
+  | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean }
+  | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number };
+
+export type ProjectMediaRow = {
+  cells: ProjectMediaCell[];
+  aspect?: string;
+  gapped?: boolean;
+};
+
+export type ProjectGroupData = {
+  descriptor: string;
+  rows: ProjectMediaRow[];
+  bgColor?: string;
+};
+
+/**
+ * New template fields (Sprouts is the reference build — see
+ * illustrator-artboard-build skill / the "Project Page - Sprouts" artboard).
+ * Optional so the other 12 projects can keep using the old generic
+ * ProjectScaffold placeholder layout until their own artboards land;
+ * work/[slug]/page.tsx renders the new template whenever `pageData` is set.
+ */
+export type ProjectPageData = {
+  heroImage: string;
+  credits: ProjectCredit[];
+  statement: { lead: string; emphasis: string; tail: string };
+  paragraph: string | string[];
+  groups: ProjectGroupData[];
+};
+
 export type Project = {
   slug: string;
   title: string;
@@ -23,6 +57,7 @@ export type Project = {
   videos: string[];
   cover: string | null;
   images: ProjectImage[];
+  pageData?: ProjectPageData;
 };
 
 /**

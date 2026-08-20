@@ -1,0 +1,78 @@
+/*
+  Stage — faithful reproduction helper (SHARED, site-wide).
+
+  Originally built for the homepage's 1920-wide artboard: every element's
+  position and font size is derived from that canvas and expressed as a
+  fraction of 1920 (one "unit" = 1/1920 of the stage width). Children are
+  positioned with left/top in artboard units; the stage width tracks the
+  viewport (capped), so horizontal placement, alignment and type scale all
+  follow the artboard at every screen size.
+
+  Promoted out of components/home/ so project pages can reuse it too —
+  e.g. the project-page "statement" block deliberately reuses the exact
+  same unit math as the homepage Description block, per Noah's requirement
+  that it match "the same text size, fonts, horizontal rule, and spacing
+  as the home screen." components/home/Stage.tsx now just re-exports this.
+*/
+import React from "react";
+
+export function Stage({
+  heightUnits,
+  children,
+  className = "",
+  id,
+}: {
+  heightUnits: number;
+  children?: React.ReactNode;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <div
+      id={id}
+      className={`relative w-full ${className}`}
+      style={{ height: `calc(var(--u) * ${heightUnits})` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Position a child at artboard (x,y) with optional (w,h) size, all in units. */
+export function Place({
+  x,
+  y,
+  w,
+  h,
+  className = "",
+  style,
+  children,
+}: {
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`absolute ${className}`}
+      style={{
+        left: `calc(var(--u) * ${x})`,
+        top: `calc(var(--u) * ${y})`,
+        ...(w != null ? { width: `calc(var(--u) * ${w})` } : {}),
+        ...(h != null ? { height: `calc(var(--u) * ${h})` } : {}),
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Font size in artboard units (pt/1920 of width). */
+export function uFont(units: number): string {
+  return `calc(var(--u) * ${units})`;
+}

@@ -59,9 +59,9 @@ export const MICKEY_WATCH_CANVAS_SIZE = 600;
 // before pasting it here — see the editor, which now shows/exports the
 // correct unrotated x/y directly so this conversion isn't needed by hand.
 export const mickeyWatchConfig: MickeyWatchConfig = {
-  body: { width: 209, height: 265, x: 11, y: 50 },
+  body: { width: 209, height: 265, x: 10, y: 50 },
   watchFace: { width: 559, height: 584, x: 0, y: -1 },
   hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -90 },
-  minuteHand: { width: 179, height: 230, x: 75, y: 15, rotation: 267 },
+  minuteHand: { width: 182, height: 234.1, x: 76.2, y: 15.26, rotation: 267 },
   rotationAxis: { x: 50, y: 47 },
 };

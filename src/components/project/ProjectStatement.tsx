@@ -1,0 +1,414 @@
+"use client";
+
+import { useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { Stage, Place } from "@/components/Stage";
+
+/**
+ * linkify — auto-links bare domain mentions (e.g. "socalearth.org") and
+ * full URLs inside plain paragraph copy into real, clickable <a> tags,
+ * opened in a new tab. Lets Noah write copy like "...visit socalearth.org"
+ * in the grid editor's plain-text paragraph field without needing markup.
+ */
+const URL_PATTERN = /(https?:\/\/[^\s]+|\b[a-zA-Z0-9-]+\.(?:com|org|net|io|co)\b(?:\/[^\s]*)?)/g;
+function linkify(text: string): React.ReactNode[] {
+  const parts = text.split(URL_PATTERN);
+  const testPattern = /^(https?:\/\/[^\s]+|\b[a-zA-Z0-9-]+\.(?:com|org|net|io|co)\b(?:\/[^\s]*)?)$/;
+  return parts.map((part, i) => {
+    if (testPattern.test(part)) {
+      const href = part.startsWith("http") ? part : `https://${part}`;
+      return (
+        <a
+          key={i}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:opacity-60 transition-opacity"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
+/**
+ * Parenthesis-to-italics markup: writing `(word)` or `(a whole phrase)`
+ * anywhere in the Page Text fields (statement lead/tail, or the
+ * about/project paragraph) renders that word/phrase in italics on the
+ * live site, with the parentheses themselves stripped. This gives Noah
+ * a way to italicize MULTIPLE words/phrases within a single block of
+ * copy — previously the only italicized segment available was the one
+ * dedicated "emphasized phrase" field on the statement, which only
+ * supports a single italic run per statement. Per Noah: "There might be
+ * times where I want multiple words italicized in the statement text."
+ *
+ * Deliberately dumb/literal — no nested-parens support, no escaping.
+ * Matches the simplest possible mental model for a non-technical editor:
+ * "put parens around what you want italic."
+ */
+const ITALIC_MARKUP_PATTERN = /\(([^()]+)\)/g;
+
+/** Strips the (...) markup down to its bare words, for plain-text uses
+ * where JSX rendering isn't needed (e.g. width-measurement probes) — the
+ * words show up in the measured width, just without italic styling
+ * applied to the measurement itself (matches how the pre-existing
+ * "emphasis" measurement already ignored italic font-metric differences). */
+function stripItalicMarkup(text: string): string {
+  return text.replace(ITALIC_MARKUP_PATTERN, "$1");
+}
+
+/**
+ * renderWithItalics — splits text on `(...)` markup and wraps each
+ * captured group in an <em>, leaving the surrounding text untouched.
+ * Returns the original string unchanged (fast path, no wrapper nodes)
+ * when no parenthesis markup is present, so existing content with no
+ * parens renders exactly as it did before this feature existed.
+ */
+function renderWithItalics(text: string, keyPrefix: string): React.ReactNode {
+  if (!text.includes("(")) return text;
+  const segments = text.split(ITALIC_MARKUP_PATTERN);
+  if (segments.length === 1) return text;
+  return segments.map((segment, i) =>
+    i % 2 === 1 ? (
+      <em key={`${keyPrefix}-${i}`} style={{ fontStyle: "italic" }}>
+        {segment}
+      </em>
+    ) : (
+      segment
+    )
+  );
+}
+
+/**
+ * renderParagraph — combines the two paragraph-level text features:
+ * parenthesis-italics markup AND URL auto-linking. Splits on italic
+ * markup first, then runs linkify on each non-italic segment so a URL
+ * can still appear outside (or, less usefully, inside) parens without
+ * the two features conflicting.
+ */
+function renderParagraph(text: string): React.ReactNode[] {
+  const segments = text.split(ITALIC_MARKUP_PATTERN);
+  return segments.map((segment, i) =>
+    i % 2 === 1 ? (
+      <em key={i} style={{ fontStyle: "italic" }}>
+        {segment}
+      </em>
+    ) : (
+      <span key={i}>{linkify(segment)}</span>
+    )
+  );
+}
+
+/**
+ * StatementFitText — like the shared FitText, but for the "How do you
+ * make X look Y?" statement line specifically: it measures the FULL
+ * one-line text at the target size and, if it would overflow the max
+ * width even after being allowed to shrink to a MIN readable size, wraps
+ * onto two lines (tail text drops to its own line) instead of shrinking
+ * indefinitely into illegibility. Below the wrap threshold it behaves
+ * exactly like FitText (single line, shrink-to-fit).
+ *
+ * Per Noah: "If the text gets too large, please have 'look resourceful?'
+ * drop down a line" — rather than just keep shrinking the whole line.
+ *
+ * Also normalizes spacing between lead/emphasis/tail: the source data
+ * doesn't reliably include trailing/leading spaces around the emphasized
+ * phrase (e.g. "How do you make" + "a brand" + "look resourceful?" with
+ * no spaces baked in), so this pads each segment with a single space
+ * where needed instead of relying on the JSON to supply exact whitespace.
+ */
+function normalizeSegment(s: string, side: "lead" | "tail"): string {
+  const trimmed = s.replace(/\s+/g, " ");
+  if (!trimmed) return trimmed;
+  if (side === "lead") return trimmed.endsWith(" ") ? trimmed : trimmed + " ";
+  return trimmed.startsWith(" ") ? trimmed : " " + trimmed;
+}
+
+function StatementFitText({
+  lead,
+  emphasis,
+  tail,
+  maxWidthUnits,
+  fontSizeUnits,
+  className = "",
+  onWrapChange,
+}: {
+  lead: string;
+  emphasis: string;
+  tail: string;
+  maxWidthUnits: number;
+  fontSizeUnits: number;
+  className?: string;
+  onWrapChange?: (wrapped: boolean) => void;
+}) {
+  const leadText = normalizeSegment(lead, "lead");
+  const tailText = normalizeSegment(tail, "tail");
+
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const measureOneLineRef = useRef<HTMLSpanElement>(null);
+  const [fontScale, setFontScale] = useState(1);
+  const [wrapped, setWrapped] = useState(false);
+
+  // Minimum scale before we give up on shrinking and wrap to two lines
+  // instead — keeps the type from getting illegibly small on long copy.
+  const MIN_SCALE = 0.55;
+
+  useLayoutEffect(() => {
+    const probe = probeRef.current;
+    const measureOneLine = measureOneLineRef.current;
+    if (!probe || !measureOneLine) return;
+
+    const fit = () => {
+      const uPx = probe.getBoundingClientRect().width / 1000;
+      measureOneLine.style.fontSize = `${fontSizeUnits * uPx}px`;
+      const maxPx = uPx * maxWidthUnits;
+      const w = measureOneLine.scrollWidth;
+      if (maxPx <= 0) {
+        setFontScale(1);
+        setWrapped(false);
+        onWrapChange?.(false);
+        return;
+      }
+      const scale = maxPx / w;
+      if (scale < MIN_SCALE) {
+        // Would need to shrink below the readable floor — wrap the tail
+        // onto its own line instead, at the min scale.
+        setWrapped(true);
+        setFontScale(MIN_SCALE);
+        onWrapChange?.(true);
+      } else {
+        setWrapped(false);
+        setFontScale(Math.min(1, scale));
+        onWrapChange?.(false);
+      }
+    };
+
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.documentElement);
+    window.addEventListener("resize", fit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [leadText, emphasis, tailText, maxWidthUnits, fontSizeUnits]);
+
+  const serif = { fontFamily: "var(--font-serif)" };
+  // Measure the PLAIN text (parens stripped) — the parens themselves
+  // never render, so including them in the width probe would make the
+  // fit-to-width calculation think the line is wider than it actually
+  // displays, shrinking the type more than necessary.
+  const oneLineText = `${stripItalicMarkup(leadText)}${emphasis}${stripItalicMarkup(tailText)}`;
+
+  return (
+    <span style={{ display: "block", position: "relative" }}>
+      {/* invisible probe: exactly 1000 artboard units wide, used to read --u in real px */}
+      <span
+        ref={probeRef}
+        aria-hidden
+        style={{ position: "absolute", visibility: "hidden", width: "calc(var(--u) * 1000)", height: 0, pointerEvents: "none" }}
+      />
+      {/* invisible unscaled measurer for the full one-line text */}
+      <span
+        ref={measureOneLineRef}
+        aria-hidden
+        style={{ position: "absolute", visibility: "hidden", whiteSpace: "nowrap", top: 0, left: 0, pointerEvents: "none" }}
+      >
+        {oneLineText}
+      </span>
+      {/* the VISIBLE text */}
+      <span
+        className={className}
+        style={{
+          display: "block",
+          whiteSpace: wrapped ? "normal" : "nowrap",
+          fontSize: `calc(var(--u) * ${fontSizeUnits * fontScale})`,
+        }}
+      >
+        {wrapped ? (
+          <>
+            <span style={{ display: "block" }}>
+              {renderWithItalics(leadText, "lead")}
+              <span className="italic" style={serif}>
+                {emphasis}
+              </span>
+            </span>
+            <span style={{ display: "block" }}>{renderWithItalics(tailText.trimStart(), "tail")}</span>
+          </>
+        ) : (
+          <>
+            {renderWithItalics(leadText, "lead")}
+            <span className="italic" style={serif}>
+              {emphasis}
+            </span>
+            {renderWithItalics(tailText, "tail")}
+          </>
+        )}
+      </span>
+    </span>
+  );
+}
+
+/*
+ * ProjectStatement — the "What does X look like?" block that opens every
+ * project's write-up, directly under the hero image.
+ *
+ * Per Noah: "The formatting for this should have the same text size,
+ * fonts, horizontal rule, and spacing as on the home screen." So the
+ * statement line + rule reuse the EXACT same building blocks as the
+ * homepage's Description component (Stage/Place unit system, FitText,
+ * 105u font size, 6u rule) — guarantees a literal match, not a lookalike.
+ *
+ * Below the rule, the hand + paragraph are laid out in NORMAL FLOW (not
+ * fixed-height Stage/Place) so the block's height is intrinsic to however
+ * many lines the paragraph wraps to — a fixed-height absolute layout
+ * would either clip long copy or leave dead space for short copy, and
+ * this is a reusable template other projects' (longer/shorter) copy will
+ * flow through. The hand is absolutely positioned *within* that flow
+ * block so it doesn't affect the paragraph's own height.
+ *
+ * Spacing per feedback round 2:
+ *  - 150u gap between the hero image and this block (was 0 — missed in
+ *    the prior pass).
+ *  - 75u gap between the rule and the hand/paragraph row.
+ *  - Hand is static (no rotation animation, unlike the homepage's), sized
+ *    down close to the artboard sketch's hand-icon proportions.
+ *  - Hand rotated 90° so the finger points sideways, aligned to the same
+ *    left margin as the statement text/rule (x36) rather than being
+ *    derived from the paragraph's position — per Noah's explicit request
+ *    to "align it to the left margin."
+ *  - Paragraph type size increased 1.5x per feedback round 3.
+ *  - Text column extended 100u further left (round 4) — PARAGRAPH_X moved
+ *    from 538 to 438, widening the column to hold longer copy without the
+ *    hand's overlap zone changing (hand still sits at the left margin).
+ *  - `paragraph` accepts a string OR string[] so a project can run
+ *    multiple paragraphs (each its own <p>, stacked with normal spacing).
+ *  - Hand becomes sticky once scrolled 100u from the viewport top (round
+ *    5): the hand's horizontal position never changes; vertically it
+ *    pins at 100u from the top while the reader scrolls through the
+ *    paragraph copy, then releases and scrolls away normally once the
+ *    text block ends (standard CSS sticky-sidebar pattern — the sticky
+ *    child's "stuck" range is bounded by its own wrapper's height, which
+ *    is stretched via absolute inset-y-0 to exactly match the paragraph
+ *    column's height, so it detaches right as the last line passes).
+ *  - Hand widened to 360u (round 6, was 280u), still left-aligned at the
+ *  - Release point extended 90u further (round 8, was 60u).
+ *  - Starting position raised 20u (round 7) — hand engages sticky 20u
+ *    earlier. Release point independent (governed by bottom offset).
+ *  - Leading reduced 15% on about text (round 13, was 30%): from
+ *    leading-relaxed (1.625) to ~1.38125, a gentler tightening that
+ *    keeps better breathing room. Hand sticky start/end unchanged.
+ *  - 300u gap after this block before the first project group — see
+ *    topGapUnits on ProjectGroup.
+ */
+export function ProjectStatement({
+  lead,
+  emphasis,
+  tail,
+  paragraph,
+}: {
+  /** Text before the emphasized word/phrase, e.g. "What does " */
+  lead: string;
+  /** The italic-serif emphasized word/phrase, e.g. "fresh" */
+  emphasis: string;
+  /** Text after, e.g. " look like?" */
+  tail: string;
+  /** Body copy below the hand — one string, or an array for multiple paragraphs. */
+  paragraph: string | string[];
+}) {
+  const paragraphs = Array.isArray(paragraph) ? paragraph : [paragraph];
+  const [statementWrapped, setStatementWrapped] = useState(false);
+
+  // Hand image (pre-rotated 90° so the finger points right — see
+  // public/assets/shared/pointing-hand-static-rotated.webp, cropped tight
+  // to its alpha bounds). Native size 2696x1490 (~1.81:1).
+  const HAND_W = 360; // widened from 280 per Noah's request, still left-aligned
+  const LEFT_MARGIN = 36; // same left edge as the statement text/rule above
+  const PARAGRAPH_X = 438; // moved 100u left from 538 per Noah's request
+  const PARAGRAPH_MAX_WIDTH = 1381; // widened by the same 100u so the right edge holds
+  const RELEASE_EXTEND_UNITS = 90; // extends the sticky "stuck" range so it doesn't release too early (was 60, increased 30u per round 8)
+  const START_RAISE_UNITS = 20; // lifts the hand's initial rest position 20u higher (unchanged)
+
+  // When the statement wraps to two lines (tail drops down per Noah's
+  // request), the Stage needs extra height and the rule needs to sit
+  // below the second line instead of at its single-line position.
+  const STAGE_HEIGHT_ONE_LINE = 147;
+  const STAGE_HEIGHT_TWO_LINE = 260; // ~2x the single-line text height + gap before rule
+  const RULE_Y_ONE_LINE = 141;
+  const RULE_Y_TWO_LINE = 254;
+
+  return (
+    <div className="relative w-full" style={{ marginTop: "calc(var(--u) * 150)" }}>
+      {/* Statement line + rule — fixed, known height, still Stage/Place. */}
+      <Stage heightUnits={statementWrapped ? STAGE_HEIGHT_TWO_LINE : STAGE_HEIGHT_ONE_LINE} className="overflow-visible">
+        <Place x={36} y={0} className="z-10">
+          <StatementFitText
+            lead={lead}
+            emphasis={emphasis}
+            tail={tail}
+            maxWidthUnits={1841}
+            fontSizeUnits={105}
+            className="leading-[1] tracking-tight"
+            onWrapChange={setStatementWrapped}
+          />
+        </Place>
+        <Place x={36} y={statementWrapped ? RULE_Y_TWO_LINE : RULE_Y_ONE_LINE} w={1841} className="z-0">
+          <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
+        </Place>
+      </Stage>
+
+      {/* Hand + paragraph(s) — normal flow (intrinsic height). The hand's
+          wrapper is absolutely positioned but stretched (top offset raised
+          20u to lift its starting position, extended slightly past
+          bottom:0) to exceed the paragraph column's height by
+          RELEASE_EXTEND_UNITS; the hand itself is position:sticky inside
+          that wrapper, so it pins 100u from the viewport top while
+          scrolling through the text and releases just after the last
+          line, rather than slightly before it. */}
+      <div className="relative" style={{ marginTop: "calc(var(--u) * 75)" }}>
+        <div
+          className="absolute"
+          style={{
+            left: `calc(var(--u) * ${LEFT_MARGIN})`,
+            width: `calc(var(--u) * ${HAND_W})`,
+            top: `calc(var(--u) * -${START_RAISE_UNITS})`,
+            bottom: `calc(var(--u) * -${RELEASE_EXTEND_UNITS})`,
+          }}
+        >
+          <div className="sticky" style={{ top: "calc(var(--u) * 100)" }}>
+            <Image
+              src="/assets/shared/pointing-hand-static-rotated.webp"
+              alt=""
+              width={2696}
+              height={1490}
+              sizes="20vw"
+              className="w-full h-auto"
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            marginLeft: `calc(var(--u) * ${PARAGRAPH_X})`,
+            maxWidth: `calc(var(--u) * ${PARAGRAPH_MAX_WIDTH})`,
+          }}
+        >
+          {paragraphs.map((p, i) => (
+            <p
+              key={i}
+              className={`m-0 ${i > 0 ? "mt-[1em]" : ""}`}
+              style={{
+                fontSize: "calc(var(--text-lead) * 1.5)",
+                fontFamily: "var(--font-sans)",
+                lineHeight: "1.38125",
+              }}
+            >
+              {renderParagraph(p)}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

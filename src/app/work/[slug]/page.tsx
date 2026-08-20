@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -13,6 +14,9 @@ import {
   MediaFull,
   VideoEmbed,
 } from "@/components/project/ProjectScaffold";
+import { ProjectIdBox } from "@/components/project/ProjectIdBox";
+import { ProjectStatement } from "@/components/project/ProjectStatement";
+import { ProjectGroup } from "@/components/project/ProjectGroup";
 
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
@@ -37,6 +41,105 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
   if (!project) notFound();
 
   const { prev, next } = getAdjacent(slug);
+
+  const NavRow = (
+    <nav
+      className="px-(--gutter) py-[12vh] max-w-(--maxw) mx-auto flex justify-between gap-8 uppercase tracking-widest"
+      style={{ fontSize: "var(--text-caption)" }}
+    >
+      {prev ? (
+        <Link href={`/work/${prev.slug}`} className="hover:opacity-60 transition-opacity">
+          ← {prev.title}
+        </Link>
+      ) : (
+        <span />
+      )}
+      <Link href="/work" className="hover:opacity-60 transition-opacity">
+        All work
+      </Link>
+      {next ? (
+        <Link href={`/work/${next.slug}`} className="text-right hover:opacity-60 transition-opacity">
+          {next.title} →
+        </Link>
+      ) : (
+        <span />
+      )}
+    </nav>
+  );
+
+  // TEMPLATE PROJECT PAGE — used whenever a project has pageData (Sprouts
+  // is the reference build; see illustrator-artboard-build skill / the
+  // "Project Page - Sprouts" artboard). Same skeleton is meant to be
+  // reused for every future project: ID box -> hero -> statement -> N
+  // repeating content groups -> nav -> shared global footer (rendered
+  // once in layout.tsx, identical on every page, untouched here).
+  if (project.pageData) {
+    const { heroImage, credits, statement, paragraph, groups } = project.pageData;
+    const titleLines = project.title.toLowerCase().split(" ");
+    // Sprouts: ["sprouts", "farmers", "market"] -> ["sprouts", "farmers market"]
+    const title =
+      titleLines.length > 1 ? [titleLines[0], titleLines.slice(1).join(" ")] : titleLines;
+
+    return (
+      <main
+        className="mx-auto w-full max-w-[1920px]"
+        style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
+      >
+        {/* Hero image reaches the very top of the browser window (Noah:
+            "Make sure the top of the header image reaches the top of the
+            browser window"). The ID card floats ON TOP of it, absolutely
+            positioned, inset from the top/sides by --gutter — so the hero
+            itself has zero top offset while the card still reads with a
+            gap around it, per the earlier requirement that the card not
+            sit flush like it does in the raw artboard. */}
+        <div className="relative w-full overflow-hidden">
+          <Image
+            src={`/assets/${project.slug}/${heroImage}`}
+            alt={project.title}
+            width={3000}
+            height={1965}
+            sizes="100vw"
+            className="w-full h-auto"
+            priority
+          />
+          {/* ID card inset by 40u on top/left/right (round 9, was 65u) —
+              tightened gap to browser edges while keeping card internally
+              generous, per Noah's "hug the box closer to the edge" request. */}
+          <div
+            className="absolute z-20"
+            style={{
+              top: "calc(var(--u) * 40)",
+              left: "calc(var(--u) * 40)",
+              right: "calc(var(--u) * 40)",
+            }}
+          >
+            <ProjectIdBox title={title} credits={credits} />
+          </div>
+        </div>
+
+        <ProjectStatement
+          lead={statement.lead}
+          emphasis={statement.emphasis}
+          tail={statement.tail}
+          paragraph={paragraph}
+        />
+
+        {groups.map((group, i) => (
+          <ProjectGroup
+            key={group.descriptor}
+            slug={project.slug}
+            descriptor={group.descriptor}
+            rows={group.rows}
+            topGapUnits={i === 0 ? 300 : undefined}
+            bgColor={group.bgColor}
+          />
+        ))}
+      </main>
+    );
+  }
+
+  // LEGACY PLACEHOLDER LAYOUT — projects without pageData yet fall back to
+  // the original generic scaffold until their own artboards land.
   const [cover, ...rest] = project.images;
 
   return (
@@ -44,7 +147,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
       <ProjectHero project={project} />
 
       {cover && (
-        <div className="px-[--gutter] max-w-[--maxw] mx-auto">
+        <div className="px-(--gutter) max-w-(--maxw) mx-auto">
           <MediaFull slug={project.slug} image={cover} />
         </div>
       )}
@@ -66,22 +169,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
         </ProjectSection>
       )}
 
-      <nav className="px-[--gutter] py-[12vh] max-w-[--maxw] mx-auto flex justify-between gap-8 uppercase tracking-widest"
-           style={{ fontSize: "var(--text-caption)" }}>
-        {prev ? (
-          <Link href={`/work/${prev.slug}`} className="hover:opacity-60 transition-opacity">
-            ← {prev.title}
-          </Link>
-        ) : <span />}
-        <Link href="/work" className="hover:opacity-60 transition-opacity">
-          All work
-        </Link>
-        {next ? (
-          <Link href={`/work/${next.slug}`} className="text-right hover:opacity-60 transition-opacity">
-            {next.title} →
-          </Link>
-        ) : <span />}
-      </nav>
+      {NavRow}
     </main>
   );
 }

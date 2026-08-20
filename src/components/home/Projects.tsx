@@ -31,7 +31,7 @@ const CELLS: Cell[] = [
   { slug: "socal-earth", line1: "socal", line2: "earth", disciplines: "visual identity · brand strategy · web design" },
   { slug: "cultural-olympiad-poster", line1: "cultural", line2: "olympiad", disciplines: "poster · motion design · design contest" },
   { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
-  { slug: "other", line1: "other", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true },
+  { slug: "other", line1: "more", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true },
 ];
 
 // artboard coords — make columns 918u wide, symmetrical around divider
