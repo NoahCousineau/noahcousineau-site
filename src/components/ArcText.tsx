@@ -11,6 +11,17 @@
  * geometry would have been a standing invitation for the two to drift.
  */
 
+/** Rounds a computed path coordinate to a fixed precision.
+ *
+ * HYDRATION FIX (2026-08-20): the trig below can land on results that
+ * differ in the last bit or two between the server's JS engine and the
+ * browser's (e.g. 25.753321222267655 vs ...658). Interpolated raw into the
+ * path's `d` string, that produced two different strings for the same arc
+ * and React reported a hydration mismatch on every page carrying an arc.
+ * Rounding to 4dp is far finer than a subpixel at any viewport size, so it
+ * costs nothing visually and makes the markup deterministic. */
+const r = (n: number) => Number(n.toFixed(4));
+
 /** Arced text via SVG textPath. `flip` reverses the arc to open upward
  * (concave-down "smile") vs. downward; `startOffset` nudges start point.
  *
@@ -84,7 +95,7 @@ export function ArcText({
     ? centerY - radius * Math.cos(halfSpanRad)
     : centerY + radius * Math.cos(halfSpanRad);
   const sweep = flip ? 1 : 0;
-  const d = `M ${startX} ${arcPointY} A ${radius} ${radius} 0 0 ${sweep} ${endX} ${arcPointY}`;
+  const d = `M ${r(startX)} ${r(arcPointY)} A ${r(radius)} ${r(radius)} 0 0 ${sweep} ${r(endX)} ${r(arcPointY)}`;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
@@ -156,7 +167,7 @@ export function BottomArcText({
   // upright as seen by the viewer. (2026-08-18 round 9 fix — the
   // previous right-to-left/sweep=1 combo was rendering upside-down;
   // verified by direct on-screen inspection, not just geometry theory.)
-  const d = `M ${cx - radius * Math.sin(halfSpanRad)} ${arcPointY} A ${radius} ${radius} 0 0 0 ${cx + radius * Math.sin(halfSpanRad)} ${arcPointY}`;
+  const d = `M ${r(cx - radius * Math.sin(halfSpanRad))} ${r(arcPointY)} A ${r(radius)} ${r(radius)} 0 0 0 ${r(cx + radius * Math.sin(halfSpanRad))} ${r(arcPointY)}`;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>

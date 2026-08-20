@@ -215,30 +215,67 @@ export default function RagdollHead({
       return { hw: (w * c + h * s) / 2, hh: (w * s + h * c) / 2 };
     };
 
-    /** Head centre in container coordinates, at zero offset. Measured with
-     * the transform temporarily cleared so it describes the DESIGNED
-     * position, which is what `pos` is a delta from. */
-    const baseCentre = () => {
-      const prev = wrap.style.transform;
-      wrap.style.transform = `rotate(${BASE_ROTATION_DEG}deg)`;
+    /** Head centre in container coordinates at zero offset — the designed
+     * resting position, which everything in `pos` is a delta from.
+     *
+     * Derived from the CURRENT rect rather than by measuring with the
+     * transform cleared. A rotation about the element's own centre leaves
+     * that centre where it is, and the translate moves it by exactly
+     * `pos`, so `renderedCentre - pos` is the base by construction — no
+     * style mutation, nothing to restore, and correct whenever it's called.
+     *
+     * BUGFIX (2026-08-20): the previous version wrote
+     * `transform: rotate(42deg)` onto the element, measured, then put the
+     * old transform back. Run before layout had fully settled it returned a
+     * centre ~147px below the truth, which silently poisoned every wall
+     * calculation that depended on it: the floor sat far above the real
+     * bottom, so a thrown head "landed" and fell asleep in mid-air. Reading
+     * instead of writing removes both the timing sensitivity and the
+     * possibility of leaving a stale transform behind. */
+    const measureBase = () => {
       const r = wrap.getBoundingClientRect();
       const cr = container.getBoundingClientRect();
-      wrap.style.transform = prev;
-      return { x: r.left + r.width / 2 - cr.left, y: r.top + r.height / 2 - cr.top };
+      return {
+        x: r.left + r.width / 2 - cr.left - pos.current.x,
+        y: r.top + r.height / 2 - cr.top - pos.current.y,
+      };
     };
 
-    let base = baseCentre();
+    let base = measureBase();
+    // Re-measure once after the first paint: on the very first effect pass
+    // the container-query `--u` this layout is built on may not have
+    // resolved yet, so the initial read can be taken against a
+    // provisional box.
+    const initialMeasure = requestAnimationFrame(() => {
+      base = measureBase();
+    });
     const onResize = () => {
-      base = baseCentre();
+      base = measureBase();
     };
     window.addEventListener("resize", onResize);
 
+    /* The loop runs for as long as the component is mounted and simply
+     * skips the physics while the head is at rest.
+     *
+     * It used to stop itself when the head fell asleep and restart on the
+     * next grab, gated on `rafRef.current == null`. That was fragile in
+     * exactly the way lifecycle-gated loops usually are: any path that
+     * cancelled the frame without clearing the ref — a remount, a cancelled
+     * pointer, a throw between the cancel and the restart — left the gate
+     * permanently shut, and the head froze wherever it happened to be with
+     * no way back. An idle frame here costs one boolean test, which is not
+     * worth the class of bug it was buying. */
     const step = (ts: number) => {
+      rafRef.current = requestAnimationFrame(step);
+
       if (lastTs.current == null) lastTs.current = ts;
       // Clamp dt so a backgrounded tab returning doesn't integrate one
       // enormous step and hurl the head through a wall.
       const dt = Math.min((ts - lastTs.current) / 1000, 1 / 30);
       lastTs.current = ts;
+
+      // At rest and untouched: nothing to integrate, nothing to write.
+      if (asleep.current && !dragging.current) return;
 
       if (!dragging.current) {
         vel.current.y += GRAVITY * dt;
@@ -296,22 +333,13 @@ export default function RagdollHead({
       }
 
       apply();
-
-      if (asleep.current && !dragging.current) {
-        rafRef.current = null;
-        lastTs.current = null;
-        return;
-      }
-      rafRef.current = requestAnimationFrame(step);
     };
 
     const wake = () => {
       asleep.current = false;
-      if (rafRef.current == null) {
-        lastTs.current = null;
-        rafRef.current = requestAnimationFrame(step);
-      }
     };
+
+    rafRef.current = requestAnimationFrame(step);
 
     const pointerPos = (e: PointerEvent) => {
       const cr = container.getBoundingClientRect();
@@ -320,6 +348,10 @@ export default function RagdollHead({
 
     const onDown = (e: PointerEvent) => {
       e.preventDefault();
+      // Re-measure the home position on every grab. It's one rect read, and
+      // it keeps the walls honest across anything that could have shifted
+      // the layout since mount (font swap, image load, zoom).
+      base = measureBase();
       dragging.current = true;
       wrap.setPointerCapture(e.pointerId);
       wrap.style.cursor = "grabbing";
@@ -386,15 +418,31 @@ export default function RagdollHead({
     wrap.addEventListener("pointermove", onMove);
     wrap.addEventListener("pointerup", onUp);
     wrap.addEventListener("pointercancel", onUp);
+    // Safety net: pointer capture normally delivers the release back to
+    // `wrap`, but if capture is ever lost (another element claims the
+    // pointer, the browser cancels it, the button comes up over browser
+    // chrome) the head would stay glued to the cursor forever. A
+    // window-level release guarantees the drag always ends.
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     apply();
 
     return () => {
+      cancelAnimationFrame(initialMeasure);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       wrap.removeEventListener("pointerdown", onDown);
       wrap.removeEventListener("pointermove", onMove);
       wrap.removeEventListener("pointerup", onUp);
       wrap.removeEventListener("pointercancel", onUp);
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        // Must null it out, not just cancel: `wake()` refuses to start a
+        // loop while this looks live, so a stale id here would leave the
+        // head permanently frozen after a remount.
+        rafRef.current = null;
+      }
     };
   }, [containerRef]);
 
