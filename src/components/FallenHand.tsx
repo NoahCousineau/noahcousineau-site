@@ -19,11 +19,19 @@ import { THIRD_COLUMN_X } from "./footerLayout";
  * out of the page. Here it has come to rest at the bottom of the footer,
  * pointing at the way onward.
  *
- * THE ROCK, NOT A BOUNCE: what sells "it just fell from high up" is what
- * happens AFTER the landing, not the landing itself. So the drop is short
- * and the settle is a decaying rotational wobble — overshooting a little
- * less each pass, the way a heavy object dropped on its side rolls to a
- * stop.
+ * NO FALL, NO FADE (2026-08-20, per Noah: "I don't like how the hand fades
+ * in as we scroll down. It should already be down at the bottom and
+ * rocking to a standstill like it already fell.") The earlier build
+ * animated the hand IN — dropping from -34vh and fading from opacity 0 —
+ * which read as the hand arriving right then, tied to the reader's scroll
+ * position. Noah's correction: the fall already happened, off-screen,
+ * before the reader ever got here. So the hand's position and opacity
+ * never animate at all; it sits at its landed spot from the moment the
+ * component exists (invisible behind the footer curtain until scrolled
+ * into view, same as everything else back there). The ONLY thing that
+ * plays is a decaying rotational wobble, starting from a displaced tilt
+ * and settling to rest — the tail end of a fall the reader didn't see,
+ * not the fall itself.
  *
  * PIVOT = THE HAND'S OWN LOWEST PIXEL (2026-08-20, per Noah: "I just want
  * it brought down to the very bottom of the viewport. the bottom-most
@@ -112,22 +120,29 @@ export default function FallenHand({
         },
       });
 
-      // A short arrival, then the settle. `power2.in` accelerates into the
-      // landing so the drop reads as the tail of a longer fall.
+      // Rotation only — no y, no opacity. The "from" here is applied the
+      // moment this tween is created (GSAP's default immediateRender for
+      // fromTo), which is on mount, not on trigger — but the hand is
+      // sitting behind the opaque footer curtain at that point (see the
+      // full-page footer reveal in Footer.tsx), so the jump to a displaced
+      // tilt is never actually seen. All the reader sees is: the curtain
+      // slides away, the hand is already there, already a little tilted —
+      // and immediately settles, exactly as if it landed moments before
+      // they arrived.
       tl.fromTo(
         hand,
-        { y: "-34vh", rotate: REST_ROTATION - 22, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: "power2.in" }
-      ).to(hand, {
-        keyframes: [
-          { rotate: REST_ROTATION + 11, duration: 0.3, ease: "sine.out" },
-          { rotate: REST_ROTATION - 7.5, duration: 0.36, ease: "sine.inOut" },
-          { rotate: REST_ROTATION + 4.5, duration: 0.32, ease: "sine.inOut" },
-          { rotate: REST_ROTATION - 2.5, duration: 0.28, ease: "sine.inOut" },
-          { rotate: REST_ROTATION + 1.2, duration: 0.24, ease: "sine.inOut" },
-          { rotate: REST_ROTATION, duration: 0.22, ease: "sine.inOut" },
-        ],
-      });
+        { rotate: REST_ROTATION - 22 },
+        {
+          keyframes: [
+            { rotate: REST_ROTATION + 11, duration: 0.3, ease: "sine.out" },
+            { rotate: REST_ROTATION - 7.5, duration: 0.36, ease: "sine.inOut" },
+            { rotate: REST_ROTATION + 4.5, duration: 0.32, ease: "sine.inOut" },
+            { rotate: REST_ROTATION - 2.5, duration: 0.28, ease: "sine.inOut" },
+            { rotate: REST_ROTATION + 1.2, duration: 0.24, ease: "sine.inOut" },
+            { rotate: REST_ROTATION, duration: 0.22, ease: "sine.inOut" },
+          ],
+        }
+      );
     }, rootRef);
     return () => ctx.revert();
   }, [triggerRef]);

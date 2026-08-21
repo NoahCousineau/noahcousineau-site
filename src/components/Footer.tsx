@@ -88,14 +88,16 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
 // allowance) and rule y-positions, from the sketch's text baselines
 // (449 / 497.95) and rule y's (459.49 / 507.4-507.08, unified to one value
 // per row since Noah wants every rule visually consistent).
-// Shifted up another 18u on 2026-08-20 (Noah: "Move the group of links up
-// a tad as well") — all four by the same amount again, for the same reason
-// as the LINK BLOCK move below: it preserves the two rows' internal
-// spacing and their rules exactly as designed.
-const ROW1_TEXT_Y = 373.5; // was 391.5, was 431.5 — see LINK BLOCK note below
-const ROW1_RULE_Y = 401.49;
-const ROW2_TEXT_Y = 422.5;
-const ROW2_RULE_Y = 449.4;
+// Shifted up another 20u on 2026-08-20 (Noah, second pass: "shift the links
+// up a bit closer to the COUSINEAU logo as well") — all four by the same
+// amount again, for the same reason as the LINK BLOCK move below: it
+// preserves the two rows' internal spacing and their rules exactly as
+// designed. Gap from the logo's own box bottom (318.6u, per the LINK BLOCK
+// note) to the first link row is now ~34.9u, down from ~54.9u.
+const ROW1_TEXT_Y = 353.5; // was 373.5, was 391.5, was 431.5 — see LINK BLOCK note below
+const ROW1_RULE_Y = 381.49;
+const ROW2_TEXT_Y = 402.5;
+const ROW2_RULE_Y = 429.4;
 
 /* LINK BLOCK (2026-08-20, per Noah: "Move the Cousineau logo up more so it
  * sits just below the top of the browser. Move all the links upwards with
