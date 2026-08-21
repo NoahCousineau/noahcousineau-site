@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Stage, Place, uFont } from "./Stage";
+import PeekingHead from "./PeekingHead";
 
 /**
  * Global footer (on every page — rendered once in layout.tsx). Rebuilt per
@@ -119,11 +120,24 @@ export default function Footer() {
       {/* Reserves the scroll distance through which the content uncovers
           the fixed footer beneath it. */}
       <div aria-hidden className="w-full" style={{ height: "100svh" }} />
-      <footer className="fixed bottom-0 left-0 w-full bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex items-center z-0" style={{ height: "100svh" }}>
+      {/* LAYOUT (2026-08-20, per Noah: "Make it so the 'Cousineau' logo is
+          near the top with the page information below the logo. Then at the
+          bottom of the browser window, I want my head to just peek out from
+          the bottom.")
+          The wordmark + link columns are one artboard block, now anchored
+          near the TOP of the viewport instead of vertically centred in it,
+          with the head occupying the bottom edge. Achieved by aligning the
+          block to the start and giving it a top inset — the block's own
+          internal coordinates are untouched, so the footer's formatting
+          stays exactly as designed. */}
+      <footer className="fixed bottom-0 left-0 w-full bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start z-0 overflow-hidden" style={{ height: "100svh" }}>
       <div
-        className="mx-auto max-w-[1920px] w-full"
-        style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
+        className="relative mx-auto max-w-[1920px] w-full h-full"
+        style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)", paddingTop: "calc(var(--u) * 70)" }}
       >
+        {/* Scenery at the bottom edge; pointer-events off so it can never
+            steal a click from the link columns above it. */}
+        <PeekingHead />
         <Stage heightUnits={STAGE_HEIGHT}>
           {/* Large Cousineau wordmark — same asset as the old small footer
               logo, scaled to the sketch's exact bbox. */}

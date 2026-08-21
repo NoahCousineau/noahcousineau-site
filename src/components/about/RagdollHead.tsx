@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Image from "next/image";
+import HeadWithEyes from "@/components/HeadWithEyes";
 
 /*
  * RAGDOLL HEAD — grab it, drag it, throw it. On release it keeps the
@@ -52,15 +52,6 @@ const HEAD_WIDTH_UNITS = 318.705;
 const HEAD_RIGHT_UNITS = 32.235;
 const HEAD_BOTTOM_UNITS = -30.2325;
 
-// Eye socket centres as a fraction (0-1) of the head image's own box,
-// measured from head.png's alpha-channel hole positions.
-const LEFT_EYE_CENTER = { x: 0.2992, y: 0.4165 };
-const RIGHT_EYE_CENTER = { x: 0.6153, y: 0.4117 };
-
-// How far (px) a pupil may drift from dead-centre. Kept small and
-// radius-clamped so the socket edges never expose the transparent hole.
-const MAX_EYE_OFFSET_PX = 3.2;
-
 // --- Physics constants (px/s, px/s^2) -------------------------------------
 const GRAVITY = 2600;
 /** Energy kept after a bounce. */
@@ -79,97 +70,6 @@ const SLEEP_SPEED = 16;
 const SLEEP_SPIN = 8;
 /** Throw ceiling, so a violent flick can't outrun the eye. */
 const MAX_THROW_SPEED = 2600;
-
-/** One tracked eye: computes its own instantaneous vector to the cursor and
- * translates up to MAX_EYE_OFFSET_PX toward it — no easing, per Noah's
- * "instantaneous" requirement.
- *
- * Anchors off the eye element's OWN rect: getBoundingClientRect() on a
- * rotated element returns the axis-aligned box of the rotated shape, whose
- * corners are not the head's corners, so deriving the socket position from
- * the head's rect silently drifts. This div is placed by percentage inside
- * the head's unrotated content box, so the browser puts it in the right
- * spot at any rotation and its own rect centre IS the socket. */
-function TrackedEye({
-  src,
-  leftPct,
-  topPct,
-  widthPct,
-  rotationRef,
-}: {
-  src: string;
-  leftPct: number;
-  topPct: number;
-  widthPct: number;
-  /** Live total rotation of the head, degrees. */
-  rotationRef: React.RefObject<number>;
-}) {
-  const eyeRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleMove(e: MouseEvent) {
-      const el = eyeRef.current;
-      if (!el) return;
-      const prev = el.style.transform;
-      el.style.transform = "translate(-50%, -50%)";
-      const rect = el.getBoundingClientRect();
-      el.style.transform = prev;
-
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      const dist = Math.hypot(dx, dy) || 1;
-      const screenX = (dx / dist) * MAX_EYE_OFFSET_PX;
-      const screenY = (dy / dist) * MAX_EYE_OFFSET_PX;
-
-      // Counter-rotate into the head's local space: a child's translate
-      // happens in its parent's already-rotated frame.
-      const rad = (-rotationRef.current * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      el.style.transform = `translate(-50%, -50%) translate(${
-        screenX * cos - screenY * sin
-      }px, ${screenX * sin + screenY * cos}px)`;
-    }
-    window.addEventListener("mousemove", handleMove);
-    return () => window.removeEventListener("mousemove", handleMove);
-  }, [rotationRef]);
-
-  return (
-    <>
-      {/* Off-white backing disc BEHIND the eye so an extreme offset can
-          never expose the transparent socket hole. */}
-      <div
-        className="absolute"
-        style={{
-          left: `${leftPct}%`,
-          top: `${topPct}%`,
-          width: `${widthPct * 1.35}%`,
-          aspectRatio: "1/1",
-          transform: "translate(-50%, -50%)",
-          borderRadius: "50%",
-          background: "#f3ddc9",
-        }}
-      />
-      <div
-        ref={eyeRef}
-        className="absolute"
-        style={{
-          left: `${leftPct}%`,
-          top: `${topPct}%`,
-          width: `${widthPct}%`,
-          aspectRatio: "1/1",
-          transform: "translate(-50%, -50%)",
-          borderRadius: "50%",
-          overflow: "hidden",
-        }}
-      >
-        <Image src={src} alt="" fill className="object-cover" />
-      </div>
-    </>
-  );
-}
 
 export default function RagdollHead({
   containerRef,
@@ -485,34 +385,7 @@ export default function RagdollHead({
         willChange: "transform",
       }}
     >
-      <div className="relative w-full" style={{ aspectRatio: "1297/1970" }}>
-        {/* Eyes render BEHIND the head image — head.png's transparent socket
-            holes mask each eye to the correct almond shape, with the eyelid
-            skin painted into head.png on top. Eyes must come first in DOM
-            order for that masking to work. */}
-        <TrackedEye
-          src="/assets/about/eye-left.png"
-          leftPct={LEFT_EYE_CENTER.x * 100}
-          topPct={LEFT_EYE_CENTER.y * 100}
-          widthPct={11.2}
-          rotationRef={rotationRef}
-        />
-        <TrackedEye
-          src="/assets/about/eye-right.png"
-          leftPct={RIGHT_EYE_CENTER.x * 100}
-          topPct={RIGHT_EYE_CENTER.y * 100}
-          widthPct={11.6}
-          rotationRef={rotationRef}
-        />
-        <Image
-          src="/assets/about/head.png"
-          alt="Noah Cousineau"
-          fill
-          className="object-contain relative z-10 pointer-events-none"
-          priority
-          draggable={false}
-        />
-      </div>
+      <HeadWithEyes rotationRef={rotationRef} priority alt="Noah Cousineau" />
     </div>
   );
 }
