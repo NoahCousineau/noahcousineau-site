@@ -113,9 +113,24 @@ export default function FallenHand({
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger,
-          // The spacer's bottom clearing the viewport bottom means the page
-          // has scrolled out and the footer — and this hand — are in view.
-          start: "bottom bottom+=140",
+          // FIX (2026-08-20, per Noah: "make it start to rock as soon as we
+          // see it at the bottom") — this used to be "bottom bottom+=140",
+          // which fires only once the SPACER's bottom clears the viewport
+          // bottom by 140px more. Since the spacer is exactly one viewport
+          // tall and immediately precedes the fixed footer in the document,
+          // its bottom clearing the viewport doesn't happen until the
+          // reveal is already fully finished — so the wobble was starting
+          // well after the hand had been sitting there, fully visible, the
+          // whole time.
+          //
+          // The footer doesn't slide in; it's already there, fixed, the
+          // whole page long — what moves is .site-content sliding UP and
+          // off, uncovering the (stationary) footer from the BOTTOM of the
+          // viewport upward. The hand sits at the very bottom of the
+          // footer, so it's the very FIRST sliver the reveal exposes — the
+          // instant that happens is the spacer's TOP reaching the
+          // viewport's bottom, i.e. "top bottom", not its bottom.
+          start: "top bottom",
           once: true,
         },
       });
