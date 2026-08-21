@@ -376,10 +376,16 @@ export default function About() {
             into two columns per the design, on desktop; single column
             on narrow viewports. */}
         <div
-          className="relative z-10 mt-16 grid gap-x-12 gap-y-4 text-left"
+          // Two columns from md up, one below. The column count lives in
+          // classes rather than an inline gridTemplateColumns because the
+          // inline value won a specificity fight against the responsive
+          // classes and pinned the grid to two columns at every width — at
+          // 390px that gave ~146px columns, which the enlarged copy (now
+          // matched to the project pages) overflowed by 6px.
+          className="relative z-10 mt-16 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 text-left"
           style={{
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             maxWidth: "calc(var(--u) * 1600)",
+            overflowWrap: "break-word",
             fontFamily: "var(--font-sans)",
             // Matched to the project pages' description copy (2026-08-20,
             // per Noah) — same expression ProjectStatement uses for its
