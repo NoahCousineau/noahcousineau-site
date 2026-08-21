@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArcText } from "@/components/ArcText";
 import RagdollHead from "@/components/about/RagdollHead";
 import ParallaxPhotos from "@/components/about/ParallaxPhotos";
+import ApproachOnScroll from "@/components/about/ApproachOnScroll";
 
 /*
  * About Me page — built from Noah's design file
@@ -380,8 +381,12 @@ export default function About() {
             gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             maxWidth: "calc(var(--u) * 1600)",
             fontFamily: "var(--font-sans)",
-            fontSize: "calc(var(--u) * 24)",
-            lineHeight: 1.5,
+            // Matched to the project pages' description copy (2026-08-20,
+            // per Noah) — same expression ProjectStatement uses for its
+            // lead paragraph, referenced rather than re-derived so the two
+            // can't drift apart.
+            fontSize: "calc(var(--text-lead) * 1.5)",
+            lineHeight: 1.38125,
           }}
         >
           <p className="m-0">
@@ -405,36 +410,45 @@ export default function About() {
         className="w-full flex flex-col items-center"
         style={{ padding: "calc(var(--u) * 260) calc(var(--u) * 120) calc(var(--u) * 340)", marginBottom: "calc(var(--u) * 200)" }}
       >
-        <a
-          href="/assets/_documents/noah-cousineau-resume.pdf"
-          target="_blank"
-          rel="noreferrer"
-          className="block no-underline"
-          style={{ width: "calc(var(--u) * 1050)", height: "calc(var(--u) * 330)" }}
-        >
-          <ArcText
-            id="resume-arc"
-            text="Download My Résumé"
-            width={1050}
-            height={330}
-            radius={630}
-            baselineY={20}
-            fontSize={69}
-            flip={true}
-            color="var(--color-ink)"
-          />
-        </a>
+        {/* Headline and card travel toward the viewer together as this
+            section scrolls in — see ApproachOnScroll. Wrapping BOTH (rather
+            than the card alone) is what makes it read as one object arriving
+            and closing out the page, which is the "natural conclusion"
+            Noah described. */}
+        <ApproachOnScroll>
+          <div className="w-full flex flex-col items-center">
+            <a
+              href="/assets/_documents/noah-cousineau-resume.pdf"
+              target="_blank"
+              rel="noreferrer"
+              className="block no-underline"
+              style={{ width: "calc(var(--u) * 1050)", height: "calc(var(--u) * 330)" }}
+            >
+              <ArcText
+                id="resume-arc"
+                text="Download My Résumé"
+                width={1050}
+                height={330}
+                radius={630}
+                baselineY={20}
+                fontSize={69}
+                flip={true}
+                color="var(--color-ink)"
+              />
+            </a>
 
-        {/* Résumé card — draggable 3D object with a real back face and
-            slight paper thickness (see DraggableResumeCard above). Lives
-            outside the <a> above: dragging to spin needs its own
-            mousedown/touchstart handler, which would conflict with a
-            wrapping link's click-to-navigate — the download action is on
-            the curved headline text instead. */}
-        <DraggableResumeCard
-          frontSrc="/assets/about/resume-preview.jpg"
-          backSrc="/assets/about/resume-back.png"
-        />
+            {/* Résumé card — draggable 3D object with a real back face and
+                slight paper thickness (see DraggableResumeCard above). Lives
+                outside the <a> above: dragging to spin needs its own
+                mousedown/touchstart handler, which would conflict with a
+                wrapping link's click-to-navigate — the download action is on
+                the curved headline text instead. */}
+            <DraggableResumeCard
+              frontSrc="/assets/about/resume-preview.jpg"
+              backSrc="/assets/about/resume-back.png"
+            />
+          </div>
+        </ApproachOnScroll>
       </section>
 
       {/* CLOCK / CONTACT-PROMPT removed 2026-08-20 per Noah: "I want to
@@ -446,140 +460,13 @@ export default function About() {
           layout.tsx — moved intact (same circle, same oversized watch, same
           two upright arcs), only its trigger changed. */}
 
-      {/* ================= SPACER SECTION (black background) ================= */}
-      <section
-        className="w-full"
-        style={{ 
-          background: "var(--color-ink)",
-          height: "calc(var(--u) * 300)"
-        }}
-      ></section>
+      {/* CONTACT INFO + page-specific footer removed 2026-08-20 per Noah:
+          "Let's also delete the contact info and have the normal site footer
+          on the about me page." The contact details now live on the away
+          screen (components/AwayOverlay.tsx) flanking the clock, and the
+          shared site footer is rendered for this route again by
+          components/ConditionalFooter.tsx. */}
 
-      {/* ================= CONTACT INFO ================= */}
-      <section
-        className="w-full flex items-center justify-center"
-        style={{ 
-          padding: "calc(var(--u) * 100) calc(var(--u) * 50)",
-          background: "var(--color-ink)"
-        }}
-      >
-        <div className="flex items-center justify-between w-full" style={{ marginBottom: "calc(var(--u) * -80)" }}>
-          <div
-            className="text-center"
-            style={{ 
-              display: "inline-block"
-            }}
-          >
-            <a
-              href="mailto:noah@noahcousineau.com"
-              className="text-center"
-              style={{ 
-                color: "white",
-                textDecoration: "none",
-                fontSize: "calc(var(--u) * 36)",
-                letterSpacing: "0.02em",
-                display: "block",
-                borderBottom: "3px solid white",
-                paddingBottom: "calc(var(--u) * 6)",
-                whiteSpace: "nowrap"
-              }}
-            >
-              noah@noahcousineau.com
-            </a>
-          </div>
-          <div
-            className="text-center"
-            style={{ 
-              display: "inline-block"
-            }}
-          >
-            <a
-              href="tel:(862)520-8040"
-              className="text-center"
-              style={{ 
-                color: "white",
-                textDecoration: "none",
-                fontSize: "calc(var(--u) * 36)",
-                letterSpacing: "0.02em",
-                display: "block",
-                borderBottom: "3px solid white",
-                paddingBottom: "calc(var(--u) * 6)",
-                whiteSpace: "nowrap"
-              }}
-            >
-              (862) 520-8040
-            </a>
-          </div>
-          <div
-            className="text-center"
-            style={{ 
-              display: "inline-block"
-            }}
-          >
-            <a
-              href="https://www.linkedin.com/in/noah-cousineau/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-center"
-              style={{ 
-                color: "white",
-                textDecoration: "none",
-                fontSize: "calc(var(--u) * 36)",
-                letterSpacing: "0.02em",
-                display: "block",
-                borderBottom: "3px solid white",
-                paddingBottom: "calc(var(--u) * 6)",
-                whiteSpace: "nowrap"
-              }}
-            >
-              LinkedIn
-            </a>
-          </div>
-          <div
-            className="text-center"
-            style={{ 
-              display: "inline-block"
-            }}
-          >
-            <a
-              href="https://www.instagram.com/noahcousineau/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-center"
-              style={{ 
-                color: "white",
-                textDecoration: "none",
-                fontSize: "calc(var(--u) * 36)",
-                letterSpacing: "0.02em",
-                display: "block",
-                borderBottom: "3px solid white",
-                paddingBottom: "calc(var(--u) * 6)",
-                whiteSpace: "nowrap"
-              }}
-            >
-              Instagram
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= ABOUT-PAGE FOOTER ================= */}
-      {/* Custom footer for THIS PAGE ONLY — keep just the Cousineau logo,
-          remove all the contact info/links from the generic footer. */}
-      <footer
-        className="w-full flex items-center justify-center"
-        style={{ background: "var(--color-ink)", padding: "calc(var(--u) * 60) calc(var(--u) * 60)" }}
-      >
-        <Link href="/" className="block w-full">
-          <Image
-            src="/assets/home/cousineau-logo-white.svg"
-            alt="Cousineau"
-            width={711}
-            height={119}
-            className="w-full h-auto"
-          />
-        </Link>
-      </footer>
     </main>
   );
 }

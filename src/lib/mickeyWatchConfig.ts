@@ -59,7 +59,15 @@ export const MICKEY_WATCH_CANVAS_SIZE = 600;
 // before pasting it here — see the editor, which now shows/exports the
 // correct unrotated x/y directly so this conversion isn't needed by hand.
 export const mickeyWatchConfig: MickeyWatchConfig = {
-  body: { width: 209, height: 265, x: 10, y: 50 },
+  // body.x nudged 10 -> -4 (2026-08-20, per Noah: "move the image of the
+  // person standing (me) over just a hair"). Direction and amount measured
+  // rather than eyeballed: the figure's own OPAQUE content centre sat
+  // 13.8 canvas-px right of the watch face's opaque content centre (read
+  // off the rendered editor via alpha-channel bounds), so -13.8 lands the
+  // standing figure dead centre under the 12. Hands untouched, per
+  // "Keep the clock hands the same" — which does mean the pointing finger
+  // no longer sits exactly on the hand pivot.
+  body: { width: 209, height: 265, x: -4, y: 50 },
   watchFace: { width: 559, height: 584, x: 0, y: -1 },
   hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -90 },
   minuteHand: { width: 182, height: 234.1, x: 76.2, y: 15.26, rotation: 267 },

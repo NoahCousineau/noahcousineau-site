@@ -4,84 +4,92 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 
 /*
- * RAGDOLL HEAD (2026-08-20, per Noah: "I want to be able to click and hold
- * on the head and have the cursor hold the head. I want the ability for it
- * to ragdoll within the red space, so a user can throw the head and it
- * moves around.")
+ * RAGDOLL HEAD — grab it, drag it, throw it. On release it keeps the
+ * velocity of the throw, falls under gravity, tumbles, rolls along the
+ * floor and bounces off the walls of the red header, losing energy until it
+ * settles — and then STAYS WHERE IT LANDS (Noah's explicit choice over
+ * springing back to its designed spot).
  *
- * Grab it, drag it, throw it. On release it keeps the velocity of the
- * throw, falls under gravity, tumbles, and bounces off the four walls of
- * the red header, losing energy each time until it settles — and then STAYS
- * WHERE IT LANDS (Noah's explicit choice over springing back to its
- * designed spot).
+ * COLLIDES WITH THE VISIBLE HEAD, NOT ITS BOX (2026-08-20, per Noah: "I
+ * wish it used the edge of the red space as the 'floor' or the bottom most
+ * point it can touch. Right now it's floating a bit too much above it.")
  *
- * The eye-tracking from the original static head is preserved: each eye
- * still computes its own vector to the cursor and counter-rotates it into
- * the head's local space. The one change is that the head's rotation is no
- * longer the fixed 42deg constant it used to be — it changes every frame
- * once thrown — so the eyes read the live angle from `rotationRef` instead
- * of a module constant. Without that, the pupils would drift sideways by
- * exactly the tumble angle the moment the head was thrown.
+ * head.png carries a lot of transparent margin — the artwork's lowest
+ * opaque pixel sits well above the bottom of its own image box. Colliding
+ * the element's layout box against the container therefore parked the head
+ * with a band of empty pixels resting on the floor, reading as hovering.
+ * The physics body is now the image's ALPHA BOUNDS: measured once from the
+ * decoded PNG, carried as fractions of the element box, and rotated with
+ * the head each frame. Because that opaque rect is off-centre within the
+ * box, rotating it moves its centre too — hence the rotated offset applied
+ * below, not just a rotated size.
  *
- * PHYSICS NOTES
- * - State lives in refs and is written straight to the DOM via transform
- *   inside a single rAF loop. Driving this through React state would queue
- *   a re-render per frame for an animation React has no reason to know
- *   about, and would fight the eyes' own per-frame updates.
- * - Collision uses the head's ROTATED axis-aligned bounding box, computed
- *   analytically (w|cos| + h|sin|) rather than by reading
- *   getBoundingClientRect() every frame. Measuring per frame would force a
- *   synchronous layout on every tick right after writing a transform — the
- *   classic layout-thrash pattern — and would also lag one frame behind
- *   the transform it's meant to describe.
- * - The loop parks itself when the head is asleep and restarts on grab, so
- *   an untouched page isn't burning a rAF slot forever.
+ * ROLLING (same round, per "I also want to make sure the head rolls and has
+ * proper physics. Right now there's a feeling of it getting stuck.")
+ * Contact with the floor now drives spin from horizontal speed the way a
+ * wheel rolls (omega = v / r), instead of receiving a single impulse at the
+ * moment of impact and then being killed by drag. Angular drag is much
+ * lower, floor friction bleeds speed over about a second rather than
+ * instantly, and the sleep thresholds sit low enough that the head is
+ * genuinely finished moving before it parks.
+ *
+ * SIZE: 25% smaller than the original build, per Noah. The right/bottom
+ * insets scale with it, since both were derived from the head's own
+ * transparent margins.
+ *
+ * Eye tracking is unchanged except that each eye reads the head's LIVE
+ * angle from `rotationRef`; a fixed constant would send the pupils sideways
+ * by the tumble angle the moment the head was thrown.
  */
 
-// Head's designed resting angle in the header (unchanged from the original
-// static build — the whole composition was measured around this tilt).
+// Head's designed resting angle in the header.
 const BASE_ROTATION_DEG = 42;
 
-// Eye socket centers as a fraction (0-1) of the head image's own box,
-// measured directly from head.png's alpha-channel hole positions.
+// Designed resting geometry, in artboard units. All three scaled by 0.75
+// together (from 424.94 / 42.98 / -40.31) so the smaller head still sits
+// flush to the header's right edge with its neck meeting the bottom.
+const HEAD_WIDTH_UNITS = 318.705;
+const HEAD_RIGHT_UNITS = 32.235;
+const HEAD_BOTTOM_UNITS = -30.2325;
+
+// Eye socket centres as a fraction (0-1) of the head image's own box,
+// measured from head.png's alpha-channel hole positions.
 const LEFT_EYE_CENTER = { x: 0.2992, y: 0.4165 };
 const RIGHT_EYE_CENTER = { x: 0.6153, y: 0.4117 };
 
-// How far (px) a pupil may drift from dead-center. Kept small and
-// radius-clamped so the socket edges never expose the transparent hole /
-// red background behind — Noah: "it's important the eyes don't move too
-// much... it will look unnatural and reveal the red background behind."
+// How far (px) a pupil may drift from dead-centre. Kept small and
+// radius-clamped so the socket edges never expose the transparent hole.
 const MAX_EYE_OFFSET_PX = 3.2;
 
 // --- Physics constants (px/s, px/s^2) -------------------------------------
 const GRAVITY = 2600;
-/** Energy kept after a wall bounce. Below ~0.4 it thuds; above ~0.7 it
- * pings around long enough to feel out of control. */
-const RESTITUTION = 0.52;
-/** Horizontal energy kept when scraping along the floor. */
-const FLOOR_FRICTION = 0.82;
-/** Per-second air drag on both travel and spin. */
-const AIR_DRAG = 0.35;
-const ANGULAR_DRAG = 0.9;
-/** Below these, the head is considered at rest and the loop parks. */
-const SLEEP_SPEED = 26;
-const SLEEP_SPIN = 12;
-/** Throw speed ceiling — stops a violent flick from launching the head
- * across the box faster than the eye can follow. */
+/** Energy kept after a bounce. */
+const RESTITUTION = 0.5;
+/** Fraction of horizontal speed shed per second while touching the floor.
+ * Tuned so a good throw rolls for roughly a second before settling. */
+const FLOOR_FRICTION_PER_SEC = 1.15;
+/** Per-second drag on travel and spin while airborne. Angular drag is much
+ * lower than the first build's 0.9, which was strangling the tumble. */
+const AIR_DRAG = 0.22;
+const ANGULAR_DRAG = 0.3;
+/** How fast floor contact pulls spin toward the true rolling rate. */
+const ROLL_LOCK_RATE = 10;
+/** Below these, on the floor, the head is done. */
+const SLEEP_SPEED = 16;
+const SLEEP_SPIN = 8;
+/** Throw ceiling, so a violent flick can't outrun the eye. */
 const MAX_THROW_SPEED = 2600;
 
-/** One tracked eye: computes its own instantaneous vector to the cursor
- * and translates by up to MAX_EYE_OFFSET_PX toward it — no easing/lerp,
- * per Noah's "instantaneous" requirement.
+/** One tracked eye: computes its own instantaneous vector to the cursor and
+ * translates up to MAX_EYE_OFFSET_PX toward it — no easing, per Noah's
+ * "instantaneous" requirement.
  *
- * Anchors off the eye element's OWN rect rather than deriving a position
- * from the head's rect: getBoundingClientRect() on a rotated element
- * returns the axis-aligned box of the rotated shape, whose corners are not
- * the head's corners, so a derived anchor silently drifts. This div is
- * positioned by percentage inside the head's unrotated content box, so the
- * browser puts it in the right place at any rotation and its own rect
- * centre IS the true socket position.
- */
+ * Anchors off the eye element's OWN rect: getBoundingClientRect() on a
+ * rotated element returns the axis-aligned box of the rotated shape, whose
+ * corners are not the head's corners, so deriving the socket position from
+ * the head's rect silently drifts. This div is placed by percentage inside
+ * the head's unrotated content box, so the browser puts it in the right
+ * spot at any rotation and its own rect centre IS the socket. */
 function TrackedEye({
   src,
   leftPct,
@@ -93,8 +101,7 @@ function TrackedEye({
   leftPct: number;
   topPct: number;
   widthPct: number;
-  /** Live total rotation of the head, in degrees. Read per-event so the
-   * counter-rotation stays correct while the head tumbles. */
+  /** Live total rotation of the head, degrees. */
   rotationRef: React.RefObject<number>;
 }) {
   const eyeRef = useRef<HTMLDivElement>(null);
@@ -103,9 +110,6 @@ function TrackedEye({
     function handleMove(e: MouseEvent) {
       const el = eyeRef.current;
       if (!el) return;
-      // Reset any existing offset transform before measuring, so the rect
-      // reflects this eye's neutral (centered) position rather than
-      // compounding on the previous frame's translate.
       const prev = el.style.transform;
       el.style.transform = "translate(-50%, -50%)";
       const rect = el.getBoundingClientRect();
@@ -119,10 +123,8 @@ function TrackedEye({
       const screenX = (dx / dist) * MAX_EYE_OFFSET_PX;
       const screenY = (dy / dist) * MAX_EYE_OFFSET_PX;
 
-      // Counter-rotate the screen-space vector into the rotated head's
-      // local space: a child's translate happens in its parent's already
-      // rotated frame, so without this the pupils track a direction
-      // offset by the head's current angle.
+      // Counter-rotate into the head's local space: a child's translate
+      // happens in its parent's already-rotated frame.
       const rad = (-rotationRef.current * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
@@ -136,10 +138,8 @@ function TrackedEye({
 
   return (
     <>
-      {/* Off-white backing disc BEHIND the eye, slightly larger, so an
-          extreme offset can never expose the transparent socket hole (and
-          the red header through it). Static so it always fully backs the
-          socket regardless of the eye's current offset. */}
+      {/* Off-white backing disc BEHIND the eye so an extreme offset can
+          never expose the transparent socket hole. */}
       <div
         className="absolute"
         style={{
@@ -174,16 +174,16 @@ function TrackedEye({
 export default function RagdollHead({
   containerRef,
 }: {
-  /** The red header section the head is confined to. */
+  /** The red header the head is confined to. */
   containerRef: React.RefObject<HTMLElement | null>;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  // Live total rotation (base tilt + tumble), shared with the eyes.
   const rotationRef = useRef<number>(BASE_ROTATION_DEG);
 
-  // Offset from the head's designed CSS position, in px. Everything below
-  // works in this delta space so the original right/bottom-anchored layout
-  // stays the source of truth for where the head "belongs".
+  // Alpha bounds of head.png as fractions of the element box. Starts as the
+  // full box and tightens once the PNG has been measured.
+  const opaque = useRef({ x0: 0, y0: 0, x1: 1, y1: 1 });
+
   const pos = useRef({ x: 0, y: 0 });
   const vel = useRef({ x: 0, y: 0 });
   const spin = useRef(0);
@@ -191,10 +191,51 @@ export default function RagdollHead({
   const asleep = useRef(true);
   const rafRef = useRef<number | null>(null);
   const lastTs = useRef<number | null>(null);
-  // Rolling pointer samples for throw velocity — a single last-frame delta
-  // is far too noisy to read as intent.
   const samples = useRef<{ x: number; y: number; t: number }[]>([]);
   const grabOffset = useRef({ x: 0, y: 0 });
+
+  // Measure the artwork's opaque bounds once. Done from the decoded image
+  // rather than hardcoded so it stays correct if the asset is re-exported.
+  useEffect(() => {
+    let cancelled = false;
+    const img = new window.Image();
+    img.src = "/assets/about/head.png";
+    img.onload = () => {
+      if (cancelled) return;
+      // A small raster is plenty: this only needs to be accurate to a
+      // fraction of a percent of the head's size.
+      const W = 160;
+      const H = Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * W));
+      const c = document.createElement("canvas");
+      c.width = W;
+      c.height = H;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, W, H);
+      const d = ctx.getImageData(0, 0, W, H).data;
+      let minX = W, minY = H, maxX = -1, maxY = -1;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          if (d[(y * W + x) * 4 + 3] > 24) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (maxX < 0) return;
+      opaque.current = {
+        x0: minX / W,
+        y0: minY / H,
+        x1: (maxX + 1) / W,
+        y1: (maxY + 1) / H,
+      };
+    };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -205,33 +246,33 @@ export default function RagdollHead({
       wrap.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${rotationRef.current}deg)`;
     };
 
-    /** Half-extents of the head's rotated axis-aligned bounding box. */
-    const halfExtents = () => {
-      const w = wrap.offsetWidth;
-      const h = wrap.offsetHeight;
+    /** The physics body: the artwork's opaque rect, rotated. Returns its
+     * half-extents plus the offset of its centre from the element's centre
+     * (rotation about the element centre carries the off-centre opaque rect
+     * around with it). */
+    const body = () => {
+      const W = wrap.offsetWidth;
+      const H = wrap.offsetHeight;
+      const o = opaque.current;
+      const ow = (o.x1 - o.x0) * W;
+      const oh = (o.y1 - o.y0) * H;
+      // Opaque centre relative to the element centre, unrotated.
+      const ox = ((o.x0 + o.x1) / 2 - 0.5) * W;
+      const oy = ((o.y0 + o.y1) / 2 - 0.5) * H;
       const rad = (rotationRef.current * Math.PI) / 180;
-      const c = Math.abs(Math.cos(rad));
-      const s = Math.abs(Math.sin(rad));
-      return { hw: (w * c + h * s) / 2, hh: (w * s + h * c) / 2 };
+      const c = Math.cos(rad);
+      const s = Math.sin(rad);
+      return {
+        hw: (ow * Math.abs(c) + oh * Math.abs(s)) / 2,
+        hh: (ow * Math.abs(s) + oh * Math.abs(c)) / 2,
+        // Rotated offset of the opaque centre.
+        rx: ox * c - oy * s,
+        ry: ox * s + oy * c,
+      };
     };
 
-    /** Head centre in container coordinates at zero offset — the designed
-     * resting position, which everything in `pos` is a delta from.
-     *
-     * Derived from the CURRENT rect rather than by measuring with the
-     * transform cleared. A rotation about the element's own centre leaves
-     * that centre where it is, and the translate moves it by exactly
-     * `pos`, so `renderedCentre - pos` is the base by construction — no
-     * style mutation, nothing to restore, and correct whenever it's called.
-     *
-     * BUGFIX (2026-08-20): the previous version wrote
-     * `transform: rotate(42deg)` onto the element, measured, then put the
-     * old transform back. Run before layout had fully settled it returned a
-     * centre ~147px below the truth, which silently poisoned every wall
-     * calculation that depended on it: the floor sat far above the real
-     * bottom, so a thrown head "landed" and fell asleep in mid-air. Reading
-     * instead of writing removes both the timing sensitivity and the
-     * possibility of leaving a stale transform behind. */
+    /** Element centre at zero offset, derived from the rendered rect minus
+     * the current offset — no style mutation, correct whenever called. */
     const measureBase = () => {
       const r = wrap.getBoundingClientRect();
       const cr = container.getBoundingClientRect();
@@ -242,10 +283,6 @@ export default function RagdollHead({
     };
 
     let base = measureBase();
-    // Re-measure once after the first paint: on the very first effect pass
-    // the container-query `--u` this layout is built on may not have
-    // resolved yet, so the initial read can be taken against a
-    // provisional box.
     const initialMeasure = requestAnimationFrame(() => {
       base = measureBase();
     });
@@ -254,27 +291,20 @@ export default function RagdollHead({
     };
     window.addEventListener("resize", onResize);
 
-    /* The loop runs for as long as the component is mounted and simply
-     * skips the physics while the head is at rest.
-     *
-     * It used to stop itself when the head fell asleep and restart on the
-     * next grab, gated on `rafRef.current == null`. That was fragile in
-     * exactly the way lifecycle-gated loops usually are: any path that
-     * cancelled the frame without clearing the ref — a remount, a cancelled
-     * pointer, a throw between the cancel and the restart — left the gate
-     * permanently shut, and the head froze wherever it happened to be with
-     * no way back. An idle frame here costs one boolean test, which is not
-     * worth the class of bug it was buying. */
+    /* Runs for as long as the component is mounted and skips the physics
+     * while at rest. It used to stop and restart itself behind a rafRef
+     * gate; any path that cancelled a frame without clearing the ref shut
+     * that gate permanently and froze the head. An idle frame costs one
+     * boolean test, which is cheaper than that class of bug. */
     const step = (ts: number) => {
       rafRef.current = requestAnimationFrame(step);
 
       if (lastTs.current == null) lastTs.current = ts;
-      // Clamp dt so a backgrounded tab returning doesn't integrate one
-      // enormous step and hurl the head through a wall.
+      // Clamp dt so a backgrounded tab returning can't integrate one huge
+      // step and hurl the head through a wall.
       const dt = Math.min((ts - lastTs.current) / 1000, 1 / 30);
       lastTs.current = ts;
 
-      // At rest and untouched: nothing to integrate, nothing to write.
       if (asleep.current && !dragging.current) return;
 
       if (!dragging.current) {
@@ -288,46 +318,53 @@ export default function RagdollHead({
         pos.current.y += vel.current.y * dt;
         rotationRef.current += spin.current * dt;
 
-        // --- Walls -------------------------------------------------------
         const cr = container.getBoundingClientRect();
-        const { hw, hh } = halfExtents();
-        const cx = base.x + pos.current.x;
-        const cy = base.y + pos.current.y;
+        const b = body();
+        // Position of the VISIBLE head's centre, which is what collides.
+        const cx = base.x + pos.current.x + b.rx;
+        const cy = base.y + pos.current.y + b.ry;
 
-        const minX = hw;
-        const maxX = cr.width - hw;
-        const minY = hh;
-        const maxY = cr.height - hh;
+        const minX = b.hw;
+        const maxX = cr.width - b.hw;
+        const minY = b.hh;
+        const maxY = cr.height - b.hh;
 
         if (cx < minX) {
           pos.current.x += minX - cx;
           vel.current.x = Math.abs(vel.current.x) * RESTITUTION;
-          spin.current += vel.current.y * 0.08;
+          spin.current -= vel.current.y * 0.06;
         } else if (cx > maxX) {
           pos.current.x -= cx - maxX;
           vel.current.x = -Math.abs(vel.current.x) * RESTITUTION;
-          spin.current -= vel.current.y * 0.08;
+          spin.current += vel.current.y * 0.06;
         }
 
         if (cy < minY) {
           pos.current.y += minY - cy;
           vel.current.y = Math.abs(vel.current.y) * RESTITUTION;
         } else if (cy > maxY) {
+          // Sit exactly on the floor — the bottom of the VISIBLE head now
+          // meets the bottom of the red header, with no transparent gap.
           pos.current.y -= cy - maxY;
-          vel.current.y = -Math.abs(vel.current.y) * RESTITUTION;
-          // Scraping the floor bleeds horizontal speed and converts some
-          // of it into tumble, which is what sells the ragdoll read.
-          vel.current.x *= FLOOR_FRICTION;
-          spin.current = spin.current * 0.5 + vel.current.x * 0.35;
+          if (vel.current.y > 0) vel.current.y = -vel.current.y * RESTITUTION;
 
-          // Settle: once the bounce is small and it's on the floor, stop.
-          if (Math.abs(vel.current.y) < SLEEP_SPEED && Math.abs(vel.current.x) < SLEEP_SPEED) {
+          // Roll: ground contact ties spin to horizontal speed the way a
+          // wheel rolls, easing toward it rather than snapping so a skid
+          // becomes a roll instead of an instant lock.
+          const rEff = Math.max(b.hh, 1);
+          const rollSpin = (vel.current.x / rEff) * (180 / Math.PI);
+          spin.current += (rollSpin - spin.current) * Math.min(1, ROLL_LOCK_RATE * dt);
+          vel.current.x *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * dt);
+
+          if (
+            Math.abs(vel.current.y) < SLEEP_SPEED &&
+            Math.abs(vel.current.x) < SLEEP_SPEED &&
+            Math.abs(spin.current) < SLEEP_SPIN
+          ) {
             vel.current.x = 0;
             vel.current.y = 0;
-            if (Math.abs(spin.current) < SLEEP_SPIN) {
-              spin.current = 0;
-              asleep.current = true;
-            }
+            spin.current = 0;
+            asleep.current = true;
           }
         }
       }
@@ -339,8 +376,6 @@ export default function RagdollHead({
       asleep.current = false;
     };
 
-    rafRef.current = requestAnimationFrame(step);
-
     const pointerPos = (e: PointerEvent) => {
       const cr = container.getBoundingClientRect();
       return { x: e.clientX - cr.left, y: e.clientY - cr.top };
@@ -348,16 +383,13 @@ export default function RagdollHead({
 
     const onDown = (e: PointerEvent) => {
       e.preventDefault();
-      // Re-measure the home position on every grab. It's one rect read, and
-      // it keeps the walls honest across anything that could have shifted
-      // the layout since mount (font swap, image load, zoom).
+      // One rect read, and it keeps the walls honest across anything that
+      // shifted the layout since mount (font swap, image load, zoom).
       base = measureBase();
       dragging.current = true;
       wrap.setPointerCapture(e.pointerId);
       wrap.style.cursor = "grabbing";
       const p = pointerPos(e);
-      // Preserve where on the head it was grabbed, so it doesn't snap its
-      // centre to the cursor.
       grabOffset.current = { x: base.x + pos.current.x - p.x, y: base.y + pos.current.y - p.y };
       samples.current = [{ ...p, t: performance.now() }];
       vel.current = { x: 0, y: 0 };
@@ -371,9 +403,8 @@ export default function RagdollHead({
       pos.current.y = p.y + grabOffset.current.y - base.y;
       const now = performance.now();
       samples.current.push({ ...p, t: now });
-      // Keep only the last ~90ms of movement — long enough to smooth
-      // jitter, short enough that a throw reflects the final gesture and
-      // not where the pointer wandered a moment ago.
+      // Keep the last ~90ms: long enough to smooth jitter, short enough
+      // that a throw reflects the final gesture.
       while (samples.current.length > 2 && now - samples.current[0].t > 90) {
         samples.current.shift();
       }
@@ -385,7 +416,7 @@ export default function RagdollHead({
       try {
         wrap.releasePointerCapture(e.pointerId);
       } catch {
-        /* pointer already gone (e.g. cancelled) — nothing to release */
+        /* pointer already gone — nothing to release */
       }
       wrap.style.cursor = "grab";
 
@@ -393,22 +424,20 @@ export default function RagdollHead({
       if (s.length >= 2) {
         const first = s[0];
         const last = s[s.length - 1];
-        const dt = (last.t - first.t) / 1000;
-        if (dt > 0) {
-          let vx = (last.x - first.x) / dt;
-          let vy = (last.y - first.y) / dt;
+        const dtSec = (last.t - first.t) / 1000;
+        if (dtSec > 0) {
+          let vx = (last.x - first.x) / dtSec;
+          let vy = (last.y - first.y) / dtSec;
           const speed = Math.hypot(vx, vy);
           if (speed > MAX_THROW_SPEED) {
             vx = (vx / speed) * MAX_THROW_SPEED;
             vy = (vy / speed) * MAX_THROW_SPEED;
           }
           vel.current = { x: vx, y: vy };
-          // Spin proportional to how hard it was thrown sideways.
-          spin.current = vx * 0.22;
+          spin.current = vx * 0.2;
         }
       }
       samples.current = [];
-      asleep.current = false;
       wake();
     };
 
@@ -418,13 +447,11 @@ export default function RagdollHead({
     wrap.addEventListener("pointermove", onMove);
     wrap.addEventListener("pointerup", onUp);
     wrap.addEventListener("pointercancel", onUp);
-    // Safety net: pointer capture normally delivers the release back to
-    // `wrap`, but if capture is ever lost (another element claims the
-    // pointer, the browser cancels it, the button comes up over browser
-    // chrome) the head would stay glued to the cursor forever. A
-    // window-level release guarantees the drag always ends.
+    // Safety net: if pointer capture is ever lost, a window-level release
+    // still ends the drag instead of leaving the head glued to the cursor.
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
+    rafRef.current = requestAnimationFrame(step);
     apply();
 
     return () => {
@@ -438,9 +465,8 @@ export default function RagdollHead({
       wrap.removeEventListener("pointercancel", onUp);
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
-        // Must null it out, not just cancel: `wake()` refuses to start a
-        // loop while this looks live, so a stale id here would leave the
-        // head permanently frozen after a remount.
+        // Null it, don't just cancel: a stale id here would keep a remount
+        // from ever starting a new loop.
         rafRef.current = null;
       }
     };
@@ -451,12 +477,9 @@ export default function RagdollHead({
       ref={wrapRef}
       className="absolute select-none"
       style={{
-        // Designed resting position, unchanged from the original static
-        // build (right edge flush with the header, neck touching its
-        // bottom). `pos` is a delta from exactly this.
-        right: "calc(var(--u) * 42.98)",
-        bottom: "calc(var(--u) * -40.31)",
-        width: "calc(var(--u) * 424.94)",
+        right: `calc(var(--u) * ${HEAD_RIGHT_UNITS})`,
+        bottom: `calc(var(--u) * ${HEAD_BOTTOM_UNITS})`,
+        width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
         transform: `rotate(${BASE_ROTATION_DEG}deg)`,
         transformOrigin: "center center",
         willChange: "transform",
@@ -464,9 +487,9 @@ export default function RagdollHead({
     >
       <div className="relative w-full" style={{ aspectRatio: "1297/1970" }}>
         {/* Eyes render BEHIND the head image — head.png's transparent socket
-            holes mask each eye down to the correct narrow almond shape
-            (the eyelid skin is painted into head.png, on top). Eyes must be
-            first in DOM order for that masking to work. */}
+            holes mask each eye to the correct almond shape, with the eyelid
+            skin painted into head.png on top. Eyes must come first in DOM
+            order for that masking to work. */}
         <TrackedEye
           src="/assets/about/eye-left.png"
           leftPct={LEFT_EYE_CENTER.x * 100}
