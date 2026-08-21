@@ -353,18 +353,42 @@ export function ProjectStatement({
    * lands in the footer — see components/FallenHand.tsx, which is the other
    * half of "it should feel as if it fell off and went all the way to the
    * bottom of the page."
+   *
+   * TRIGGER TIMING FIX (2026-08-20, second pass — Noah: "the turning and
+   * dropping is happening too early. It should only happen when the pointer
+   * finger reaches the very end of the last paragraph.") The old trigger,
+   * `start: "bottom 78%"`, fired once the paragraph's bottom edge reached
+   * 78% down the VIEWPORT — a number with no relationship to where the hand
+   * actually sits. The hand pins at `top: 100u` (see the sticky wrapper
+   * below), which is close to the TOP of the screen, not 78% down — so the
+   * swing fired while several lines of text were still below the hand,
+   * un-read.
+   *
+   * The fingertip only "reaches the end" at the moment the paragraph's own
+   * bottom edge scrolls up PAST the hand's fixed height — since the hand
+   * stays put on screen while the text moves up through it, that's the
+   * instant the last line passes the hand, matching the reader's own
+   * progress rather than an arbitrary viewport fraction. `handStickyRef`
+   * below is measured (not hardcoded) because `top: 100u` is a --u value
+   * that scales with viewport width — its real pixel offset is whatever
+   * the browser resolves `calc(var(--u) * 100)` to right now, which a
+   * static ScrollTrigger position can't express.
    */
+  const handStickyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (!handRef.current || !paragraphRef.current) return;
+    if (!handRef.current || !paragraphRef.current || !handStickyRef.current) return;
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: paragraphRef.current,
-          // Fires as the last lines of copy clear the lower third of the
-          // viewport — the moment the reader finishes the paragraph.
-          start: "bottom 78%",
+          // The hand's own resolved sticky offset, in real px — see the
+          // TRIGGER TIMING FIX note above. A function so it's re-read on
+          // every ScrollTrigger refresh (resize, font load, etc.), the same
+          // way the rest of this codebase keeps --u-derived pixel values
+          // live rather than snapshotting them once.
+          start: () => `bottom ${parseFloat(getComputedStyle(handStickyRef.current!).top)}px`,
           once: true,
         },
       });
@@ -442,9 +466,24 @@ export function ProjectStatement({
             width: `calc(var(--u) * ${HAND_W})`,
             top: `calc(var(--u) * -${START_RAISE_UNITS})`,
             bottom: `calc(var(--u) * -${RELEASE_EXTEND_UNITS})`,
+            // HAND STAYS ABOVE PROJECT CONTENT WHILE IT FALLS (2026-08-20,
+            // per Noah: "Make it so when the hand falls, it doesn't get
+            // covered by any of the project content.") Every project group
+            // section below carries an explicit z-index (see
+            // StackedSection's `stackIndex + 1`, needed for the
+            // stacking-scroll effect) — a real, positive number. This
+            // wrapper had none, which for stacking purposes is treated as
+            // z-index:auto (effectively 0), so as soon as the falling hand
+            // dropped low enough to visually overlap any section, that
+            // section — having an explicit, higher z-index — painted OVER
+            // it, not under. A number safely above the highest realistic
+            // stackIndex (comfortably clears even a project with dozens of
+            // groups) keeps the hand on top for its entire fall, without
+            // guessing the exact count for any given project.
+            zIndex: 100,
           }}
         >
-          <div className="sticky" style={{ top: "calc(var(--u) * 100)" }}>
+          <div ref={handStickyRef} className="sticky" style={{ top: "calc(var(--u) * 100)" }}>
             {/* Rotation wrapper for the end-of-paragraph swing (see the
                 effect above). Kept separate from the sticky element so the
                 two transforms never fight: sticky owns the vertical
