@@ -123,22 +123,26 @@ const STICKY_TOP_SPACE_UNITS = 34;
  *
  * Akzidenz = --font-sans, and the italic serif treatment is dropped.
  *
- * The size is derived from Noah's constraint rather than picked by eye.
- * With the grid inset at GRID_MARGIN_UNITS a side, its content spans
- * 1564/1920 = 0.8146 of the viewport width, so a 16:9 row inside it stands
- *   0.8146 * 9/16 = 0.4582 viewport-widths tall.
- * On a 16:9 display the viewport itself is 0.5625 viewport-widths tall,
- * which leaves 0.5625 - 0.4582 = 0.1043 vw of headroom, or ~200 artboard
- * units, for the pinned header — and "comfortably" means not spending all
- * of it. The header measures
- *   STICKY_TOP_SPACE + title + gap + rule = 34 + 40 + 24 + 8 = 106u,
- * a little over half the budget, so a 16:9 video clears the pinned header
- * with room to spare and still has margin at the bottom of the screen.
+ * The size was originally derived from that 16:9 constraint: with the grid
+ * inset at GRID_MARGIN_UNITS a side, its content spans 1564/1920 = 0.8146
+ * of the viewport width, so a 16:9 row inside it stands 0.8146 * 9/16 =
+ * 0.4582 viewport-widths tall — against a 16:9 display's own 0.5625,
+ * leaving ~200 artboard units of headroom for the pinned header.
+ *
+ * SHRUNK A FURTHER THIRD (same day, second pass — Noah: "shrink the section
+ * titles down by a third"). Every term of the size clamp scaled by 2/3
+ * (40 -> 26.67, 0.95rem -> 0.63rem, 3rem -> 2rem) so the reduction holds at
+ * every viewport width, not just where one clamp term happens to win — the
+ * same technique used for the home page's --text-descriptor cut. The
+ * header now measures
+ *   STICKY_TOP_SPACE + title + gap + rule = 34 + 26.67 + 24 + 8 = 92.67u,
+ * well under the ~200u budget, so the 16:9-video headroom this size was
+ * originally built around only got more comfortable, not tighter.
  *
  * Clamped at both ends so the title stays legible on a phone and doesn't
  * run away on an ultra-wide monitor. */
-const DESCRIPTOR_SIZE_UNITS = 40;
-const DESCRIPTOR_SIZE_CSS = `clamp(0.95rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS}), 3rem)`;
+const DESCRIPTOR_SIZE_UNITS = 26.67;
+const DESCRIPTOR_SIZE_CSS = `clamp(0.63rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS}), 2rem)`;
 const DESCRIPTOR_GAP_UNITS = 24;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
