@@ -6,6 +6,7 @@ import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { uFont } from "./Stage";
+import { THIRD_COLUMN_X } from "./footerLayout";
 
 /*
  * FALLEN HAND + NEXT PROJECT (2026-08-20, per Noah: "Let's have the hand on
@@ -20,10 +21,22 @@ import { uFont } from "./Stage";
  *
  * THE ROCK, NOT A BOUNCE: what sells "it just fell from high up" is what
  * happens AFTER the landing, not the landing itself. So the drop is short
- * and the settle is a decaying rotational wobble about the wrist —
- * overshooting a little less each pass, the way a heavy object dropped on
- * its side rolls to a stop. The pivot is set near the wrist rather than the
- * element's centre; rocking about the middle would read as spinning.
+ * and the settle is a decaying rotational wobble — overshooting a little
+ * less each pass, the way a heavy object dropped on its side rolls to a
+ * stop.
+ *
+ * PIVOT = THE HAND'S OWN LOWEST PIXEL (2026-08-20, per Noah: "I just want
+ * it brought down to the very bottom of the viewport. the bottom-most
+ * point of the hand should be rocking on the footer bottom.") Measured off
+ * pointing-hand-static-rotated.webp's alpha channel: the artwork's lowest
+ * opaque pixel sits at 99.9% down the image (effectively its own bottom
+ * edge — this asset carries almost no transparent margin) at 38.4% across.
+ * The wrapper sits flush (`bottom: 0`) against the footer's bottom edge,
+ * and `transformOrigin` is set to that exact point, so it is the one pixel
+ * that never moves under rotation — rocking happens AROUND it, which is
+ * what "rocking on the footer bottom" means literally, not just visually.
+ * A centre-of-element pivot would instead swing the whole hand through the
+ * floor on every downswing.
  *
  * WHY IT TRIGGERS OFF THE SPACER: the footer is `position: fixed` (see the
  * curtain note in Footer.tsx), so it never travels through the scrollport
@@ -40,6 +53,34 @@ import { uFont } from "./Stage";
 /** Where the hand comes to rest, in degrees. Slightly nose-up so the finger
  * reads as pointing at the label rather than lying flat. */
 const REST_ROTATION = -6;
+
+/** Hand width, artboard units — unchanged from the previous build. */
+const HAND_W_UNITS = 330;
+/** Gap between the hand and the label. */
+const HAND_LABEL_GAP_UNITS = 30;
+/** The label's left edge lands at THIRD_COLUMN_X (2026-08-20, per Noah:
+ * "Have 'next project' in the same column as 'valley strong credit union'
+ * and 'more work'. Shift the hand over as needed to keep it pointing to
+ * it.") The row is `left + [hand][gap][label]`, so solving for the row's
+ * own left edge is what shifts the hand along with the label — moving
+ * either alone would separate the finger from what it's pointing at. */
+const ROOT_LEFT_UNITS = THIRD_COLUMN_X - HAND_W_UNITS - HAND_LABEL_GAP_UNITS;
+
+/** Pivot point, as a fraction of the hand image's own box — the artwork's
+ * measured bottom-most opaque pixel (see the file header). */
+const PIVOT = { xPct: 38.4, yPct: 99.9 };
+
+/** Hand height, derived from its width and the asset's own aspect ratio
+ * (2696x1490), for the fingertip math below. */
+const HAND_H_UNITS = (HAND_W_UNITS * 1490) / 2696;
+/** How far up from the row's bottom edge the label sits, so it lands at
+ * fingertip height rather than at an eyeballed offset. The fingertip
+ * (rightmost opaque pixel) measures 32.3% down the hand's own box, i.e.
+ * HAND_H_UNITS * (1 - 0.323) above the bottom — trimmed by the label's own
+ * ~10u bottom padding (its underline sits below the text baseline), since
+ * what needs to land at fingertip height is the visible text, not the
+ * link element's outer box. */
+const LABEL_MARGIN_BOTTOM_UNITS = HAND_H_UNITS * (1 - 0.32315) - 10;
 
 export default function FallenHand({
   triggerRef,
@@ -94,11 +135,11 @@ export default function FallenHand({
   return (
     <div
       ref={rootRef}
-      className="absolute flex items-center"
+      className="absolute flex items-end"
       style={{
-        left: "calc(var(--u) * 96)",
-        bottom: "calc(var(--u) * 54)",
-        gap: "calc(var(--u) * 30)",
+        left: `calc(var(--u) * ${ROOT_LEFT_UNITS})`,
+        bottom: 0,
+        gap: `calc(var(--u) * ${HAND_LABEL_GAP_UNITS})`,
       }}
     >
       <div
@@ -106,9 +147,8 @@ export default function FallenHand({
         aria-hidden
         className="pointer-events-none select-none shrink-0"
         style={{
-          width: "calc(var(--u) * 330)",
-          // Pivot at the wrist end, so the settle rocks rather than spins.
-          transformOrigin: "18% 82%",
+          width: `calc(var(--u) * ${HAND_W_UNITS})`,
+          transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
           transform: `rotate(${REST_ROTATION}deg)`,
           willChange: "transform, opacity",
         }}
@@ -124,8 +164,8 @@ export default function FallenHand({
       </div>
       {/* Matches the footer's own link treatment — same face, same size,
           same underline — so it reads as part of the footer rather than a
-          separate control. Nudged up to meet the fingertip, which sits
-          above the hand's vertical centre. */}
+          separate control. marginBottom lands it at fingertip height (see
+          LABEL_MARGIN_BOTTOM_UNITS above), not an eyeballed offset. */}
       <Link
         href={nextHref}
         className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
@@ -134,7 +174,7 @@ export default function FallenHand({
           fontSize: uFont(17.9),
           borderBottom: "2px solid currentColor",
           paddingBottom: "calc(var(--u) * 10)",
-          marginBottom: "calc(var(--u) * 96)",
+          marginBottom: `calc(var(--u) * ${LABEL_MARGIN_BOTTOM_UNITS})`,
         }}
       >
         next project

@@ -6,6 +6,7 @@ import { Stage, Place, uFont } from "./Stage";
 import PeekingHead from "./PeekingHead";
 import FallenHand from "./FallenHand";
 import { useRef } from "react";
+import { THIRD_COLUMN_X } from "./footerLayout";
 
 /**
  * Global footer (on every page — rendered once in layout.tsx). Rebuilt per
@@ -61,7 +62,7 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
     ],
   },
   {
-    x: 516.99,
+    x: THIRD_COLUMN_X,
     items: [
       { label: "valley strong credit union", href: "/work/valley-strong-credit-union" },
       { label: "more work", href: "/work/more-work" },
@@ -87,10 +88,14 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
 // allowance) and rule y-positions, from the sketch's text baselines
 // (449 / 497.95) and rule y's (459.49 / 507.4-507.08, unified to one value
 // per row since Noah wants every rule visually consistent).
-const ROW1_TEXT_Y = 391.5; // was 431.5 — see LINK BLOCK note below
-const ROW1_RULE_Y = 419.49;
-const ROW2_TEXT_Y = 440.5;
-const ROW2_RULE_Y = 467.4;
+// Shifted up another 18u on 2026-08-20 (Noah: "Move the group of links up
+// a tad as well") — all four by the same amount again, for the same reason
+// as the LINK BLOCK move below: it preserves the two rows' internal
+// spacing and their rules exactly as designed.
+const ROW1_TEXT_Y = 373.5; // was 391.5, was 431.5 — see LINK BLOCK note below
+const ROW1_RULE_Y = 401.49;
+const ROW2_TEXT_Y = 422.5;
+const ROW2_RULE_Y = 449.4;
 
 /* LINK BLOCK (2026-08-20, per Noah: "Move the Cousineau logo up more so it
  * sits just below the top of the browser. Move all the links upwards with
@@ -165,8 +170,10 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
         )}
         <Stage heightUnits={STAGE_HEIGHT}>
           {/* Large Cousineau wordmark — same asset as the old small footer
-              logo, scaled to the sketch's exact bbox. */}
-          <Place x={72.68} y={41.44} w={1774.62}>
+              logo, scaled to the sketch's exact bbox. y nudged 41.44 ->
+              21.44 on 2026-08-20 (Noah: "Shift the 'cousineau' logo up just
+              a tad"). */}
+          <Place x={72.68} y={21.44} w={1774.62}>
             <Link href="/" className="block">
               <Image
                 src="/assets/home/cousineau-logo-white.svg"
