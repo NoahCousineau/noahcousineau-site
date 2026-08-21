@@ -54,6 +54,39 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
  * more, so a trigger derived from the section itself drifts. The sentinel is
  * a zero-height sibling immediately before it, always in normal flow, so it
  * always reports the section's true document position.
+ *
+ * BUGFIX (2026-08-20, per Noah: "make sure that during the transition parts
+ * between sections that the old images we already saw don't reappear at the
+ * top of the window") — ProjectGroup's own inner title header is ALSO
+ * `position: sticky; top: 0`, by design: that's what keeps it pinned while
+ * THIS section's own rows scroll underneath it. Its containing block is
+ * this outer <section>, whose old design comment claimed the header
+ * "releases exactly at the end of its own section" — true before this
+ * outer sticky/hold mechanic existed, but wrong now: once the outer
+ * section starts HOLDING (frozen, bottom pinned to the viewport bottom),
+ * its own box still spans from far above y=0 down to y=800, so y=0 is
+ * still comfortably inside it — meaning the inner header keeps re-sticking
+ * to the top of the screen for the ENTIRE ~800px scroll it takes the next
+ * section to rise up and cover it. The reader would see the OLD section's
+ * title (and, since it's the same containing block, whatever else is
+ * anchored near the top) sitting at the top of the window through the
+ * whole transition, well after they'd moved on to the next section's
+ * content below it. Verified directly: 400px into the transition, the
+ * pixel at the top of the viewport still belonged to the section that was
+ * supposed to be finished.
+ *
+ * Fixed via a callback rather than a ref reaching into the caller's DOM
+ * node: `onHoldChange(held)` fires the instant holding starts or ends
+ * (same threshold the recede scale uses), and ProjectGroup — which owns
+ * the header element — reacts by flipping ITS OWN ref's `position` between
+ * `static` (tucked away at its natural in-flow position deep inside the
+ * now-frozen box, off-screen with the rest of the section's already-seen
+ * content) and `sticky` (restored if the reader scrolls back up past the
+ * hold point, so scrolling back into a section still re-pins its title as
+ * designed). Keeping the mutation inside the component that owns the ref
+ * is also what the React Compiler's lint rules expect — reaching into a
+ * ref received through another component's props to mutate its node is
+ * flagged even though DOM refs are normally the sanctioned escape hatch.
  */
 
 /** How far the held section's contents shrink while being covered. */
@@ -75,12 +108,17 @@ export default function StackedSection({
   surface,
   paddingXUnits,
   paddingBottomUnits,
+  onHoldChange,
   children,
 }: {
   stackIndex: number;
   surface: string;
   paddingXUnits: number;
   paddingBottomUnits: number;
+  /** Fires the instant this section starts (true) or stops (false) holding
+   * — see the BUGFIX note above. Called once synchronously on mount too,
+   * with whatever's actually true for the current scroll position. */
+  onHoldChange?: (held: boolean) => void;
   children: React.ReactNode;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -118,19 +156,34 @@ export default function StackedSection({
   }, []);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = sectionRef.current;
     const inner = innerRef.current;
     const sentinel = sentinelRef.current;
     if (!el || !inner || !sentinel) return;
     gsap.registerPlugin(ScrollTrigger);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Shared by both effects below (recede-scale and header un-stick), so
+    // moved out of the scrollTrigger config where it'd otherwise be defined
+    // twice and risk drifting apart.
+    const holdStartY = () =>
+      documentTop(sentinel) + el.offsetHeight - window.innerHeight;
+
+    // Correct the caller's header state immediately for a page that loads
+    // already scrolled past this section's hold point (a deep link, a
+    // restored scroll position, forward/back navigation) — onEnter/
+    // onLeaveBack below only fire on an actual crossing, not on the state
+    // already in effect when this runs.
+    onHoldChange?.(window.scrollY >= holdStartY());
 
     const ctx = gsap.context(() => {
       gsap.fromTo(
         inner,
         { scale: 1 },
         {
-          scale: RECEDE_SCALE,
+          // No visible recede under reduced motion, but the trigger itself
+          // still needs to exist — it's what drives the header un-stick.
+          scale: reduced ? 1 : RECEDE_SCALE,
           ease: "none",
           scrollTrigger: {
             trigger: el,
@@ -139,17 +192,25 @@ export default function StackedSection({
             // the moment the section begins holding (its bottom meets the
             // viewport bottom) and runs for one screen of scrolling, which
             // is roughly how long the next section takes to cover it.
-            start: () =>
-              documentTop(sentinel) + el.offsetHeight - window.innerHeight,
+            start: holdStartY,
             end: () => documentTop(sentinel) + el.offsetHeight,
-            scrub: true,
+            scrub: reduced ? false : true,
             invalidateOnRefresh: true,
+            // See the BUGFIX note above: the header re-sticks to the top of
+            // the screen for as long as it's `position: sticky` and its
+            // containing block (this section) spans y=0, which is true for
+            // the section's entire held duration — not just its own
+            // content's normal scroll-through. onEnter/onLeaveBack bracket
+            // exactly the held region: unstick the moment holding starts,
+            // restick only if the reader scrolls back up past that point.
+            onEnter: () => onHoldChange?.(true),
+            onLeaveBack: () => onHoldChange?.(false),
           },
         }
       );
     }, el);
     return () => ctx.revert();
-  }, []);
+  }, [onHoldChange]);
 
   return (
     <>

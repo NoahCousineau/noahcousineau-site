@@ -1,3 +1,6 @@
+"use client";
+
+import { useCallback, useRef } from "react";
 import Image from "next/image";
 import { InViewVideo } from "./InViewVideo";
 import { Stage } from "@/components/Stage";
@@ -114,7 +117,11 @@ const SECTION_PADDING_UNITS = 150;
 // bar immediately below it to be sticky." This is intentionally much
 // smaller than SECTION_PADDING_UNITS — it's the breathing room that stays
 // glued to the title once pinned, not the between-sections gap.
-const STICKY_TOP_SPACE_UNITS = 34;
+// Roughly halved (34 -> 16) on 2026-08-20, second pass — Noah: "make the
+// top gap white bar that hosts the project title name thinner. This will
+// allow more room for the images below." See DESCRIPTOR_GAP_UNITS below
+// for the matching cut to the space under the title.
+const STICKY_TOP_SPACE_UNITS = 16;
 
 /* SECTION TITLE (2026-08-20, per Noah: "change the section titles to the
  * Akzidenz-Grotesk type that we've been using. I also want it smaller. the
@@ -133,17 +140,22 @@ const STICKY_TOP_SPACE_UNITS = 34;
  * titles down by a third"). Every term of the size clamp scaled by 2/3
  * (40 -> 26.67, 0.95rem -> 0.63rem, 3rem -> 2rem) so the reduction holds at
  * every viewport width, not just where one clamp term happens to win — the
- * same technique used for the home page's --text-descriptor cut. The
- * header now measures
- *   STICKY_TOP_SPACE + title + gap + rule = 34 + 26.67 + 24 + 8 = 92.67u,
- * well under the ~200u budget, so the 16:9-video headroom this size was
- * originally built around only got more comfortable, not tighter.
+ * same technique used for the home page's --text-descriptor cut.
+ *
+ * WHITE BAR THINNED (same day, third pass — Noah, pointing at a screenshot:
+ * "make the top gap white bar that hosts the project title name thinner.
+ * This will allow more room for the images below.") STICKY_TOP_SPACE and
+ * this gap roughly halved together (34->16, 24->10). The header now
+ * measures
+ *   STICKY_TOP_SPACE + title + gap + rule = 16 + 26.67 + 10 + 8 = 60.67u,
+ * down from 92.67u — still comfortably under the ~200u 16:9-video budget
+ * this size was originally built around.
  *
  * Clamped at both ends so the title stays legible on a phone and doesn't
  * run away on an ultra-wide monitor. */
 const DESCRIPTOR_SIZE_UNITS = 26.67;
 const DESCRIPTOR_SIZE_CSS = `clamp(0.63rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS}), 2rem)`;
-const DESCRIPTOR_GAP_UNITS = 24;
+const DESCRIPTOR_GAP_UNITS = 10;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
 // All images rendered at full source resolution for maximum PPI.
@@ -362,15 +374,19 @@ export function ProjectGroup({
    * one long page, but rather that we are staying stationary and the
    * sections are the things that are scrolling."
    *
-   * Built from two cooperating pieces, both pure CSS (no scroll listener,
-   * so it costs nothing per frame and can't drift out of sync with Lenis):
+   * Built from two cooperating pieces:
    *
    * 1. The header (top space + descriptor + its rule) is `position: sticky;
    *    top: 0` INSIDE the section, painted on an opaque surface. Because
    *    it's opaque, the section's own rows slide underneath and disappear
-   *    behind it. Sticky is naturally bounded by its parent, so the header
-   *    releases exactly at the end of its own section — "this will continue
-   *    until we reach the end of the section" — with no measurement needed.
+   *    behind it — "this will continue until we reach the end of the
+   *    section". `headerRef` below hands this element to StackedSection,
+   *    which un-sticks it once the SECTION itself starts holding (see the
+   *    BUGFIX note there) — sticky alone stays glued to the top for the
+   *    entire time its containing block spans y=0, which turned out to be
+   *    the whole next-section transition too, not just this section's own
+   *    scroll-through, and let an already-finished section's title (and
+   *    everything anchored under it) linger at the top of the window.
    *
    * 2. Each section is opaque and carries an increasing z-index, so the
    *    NEXT section paints over the previous one as it scrolls up, rather
@@ -391,6 +407,13 @@ export function ProjectGroup({
   // behind the header, and on a section being able to cover its
   // predecessor.
   const surface = bgColor || "var(--color-paper)";
+  // Unstuck via StackedSection's onHoldChange once its outer section starts
+  // holding — see the BUGFIX note in StackedSection.tsx. The mutation stays
+  // in this component since it's the one that owns headerRef.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const handleHoldChange = useCallback((held: boolean) => {
+    if (headerRef.current) headerRef.current.style.position = held ? "static" : "sticky";
+  }, []);
   return (
     <>
       {topGapUnits != null && <Stage heightUnits={topGapUnits} />}
@@ -399,6 +422,7 @@ export function ProjectGroup({
         surface={surface}
         paddingXUnits={GRID_MARGIN_UNITS}
         paddingBottomUnits={SECTION_PADDING_UNITS}
+        onHoldChange={handleHoldChange}
       >
         <div className="w-full">
           {/* Sticky header — the "stationary frame" the section scrolls
@@ -406,6 +430,7 @@ export function ProjectGroup({
               title"; the section's between-groups gap lives on the
               wrapper below so it scrolls away instead of riding along. */}
           <div
+            ref={headerRef}
             className="sticky top-0 z-20"
             style={{
               background: surface,
