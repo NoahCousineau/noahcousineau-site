@@ -395,17 +395,54 @@ export function ProjectStatement({
 
       tl.to(handRef.current, {
         keyframes: [
-          { rotate: 99, duration: 0.55, ease: "power2.out" },
-          { rotate: 80, duration: 0.46, ease: "sine.inOut" },
-          { rotate: 94, duration: 0.38, ease: "sine.inOut" },
-          { rotate: 86.5, duration: 0.31, ease: "sine.inOut" },
-          { rotate: 90, duration: 0.26, ease: "sine.inOut" },
+          { rotate: 99, duration: 0.28, ease: "power2.out" },
+          { rotate: 80, duration: 0.23, ease: "sine.inOut" },
+          { rotate: 94, duration: 0.19, ease: "sine.inOut" },
+          { rotate: 86.5, duration: 0.16, ease: "sine.inOut" },
+          { rotate: 90, duration: 0.13, ease: "sine.inOut" },
         ],
       }).to(
         handRef.current,
-        { y: "135vh", rotate: 148, duration: 1.05, ease: "power2.in" },
-        "+=0.25"
-      );
+        { y: "135vh", rotate: 148, duration: 0.6, ease: "power2.in" },
+        "+=0.1"
+      ).to(
+        // Fades out over the fall's last 0.3s — belt-and-suspenders with
+        // the hard hide below, so it visually dissolves rather than
+        // snapping away if anything ever renders a frame right at the
+        // cutoff.
+        handRef.current,
+        { opacity: 0, duration: 0.3, ease: "power1.in" },
+        "-=0.3"
+      ).set(handRef.current, {
+        // DOESN'T JUST STOP (2026-08-20, third pass — Noah: "make sure the
+        // hand doesn't just stop at some point. Right now it's reaching
+        // the first project grid and stopping over it. This is breaking
+        // the illusion that it's falling.")
+        //
+        // The fall's y:135vh transform sends the hand well past the
+        // viewport bottom relative to where it's PINNED at the moment the
+        // fall starts — but "pinned" is `position: sticky`, and sticky
+        // isn't permanent: as the reader keeps scrolling past the
+        // paragraph, the hand's wrapper un-sticks (per ordinary sticky
+        // rules, once its containing block's own bottom edge passes) and
+        // returns to a normal, in-flow document position — with the fall's
+        // transform still sitting on top of it, now just a fixed pixel
+        // offset on an otherwise ordinary scrolling element. From that
+        // point on it scrolls like anything else, and wherever the reader
+        // happens to stop scrolling is wherever it visually ends up —
+        // which can easily be hovering over the first project grid,
+        // exactly the "stopping" Noah saw.
+        //
+        // Fixed by making the disappearance unconditional rather than
+        // relying on the fall having carried it far enough off-screen
+        // before any of that could happen: `visibility: hidden` the
+        // instant this one-time animation completes, permanently, so
+        // there's no scroll position — during the fall, right after, or
+        // much later — where it can be visible again. It isn't needed
+        // again after this: the "landed" payoff is FallenHand.tsx, in the
+        // footer, a separate element entirely.
+        visibility: "hidden",
+      });
     });
     return () => ctx.revert();
   }, []);

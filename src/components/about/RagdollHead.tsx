@@ -146,16 +146,43 @@ export default function RagdollHead({
       wrap.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${rotationRef.current}deg)`;
     };
 
-    /** The physics body: the artwork's opaque rect, rotated. Returns its
-     * half-extents plus the offset of its centre from the element's centre
-     * (rotation about the element centre carries the off-centre opaque rect
-     * around with it). */
+    /** The physics body: an ELLIPSE inscribed in the artwork's opaque rect,
+     * rotated. Returns its half-extents plus the offset of its centre from
+     * the element's centre (rotation about the element centre carries the
+     * off-centre opaque rect around with it).
+     *
+     * BUGFIX (2026-08-20, per Noah: "there's an invisible gap between the
+     * actual edge of the head and then the edges of the red box... work on
+     * how to make this gap go away"). The previous version used the
+     * ROTATED RECTANGLE's own axis-aligned bounding box as the collision
+     * extent — but a rotated rectangle's AABB is strictly LARGER than the
+     * rectangle itself at any angle other than 0/90/180/270 (a square
+     * rotated 45deg has an AABB ~41% wider than the square), and the head
+     * rests at 42deg, close to where that overestimation is near its worst.
+     * The head's actual silhouette is roughly oval, not rectangular, so
+     * colliding against the full rotated-rectangle AABB stopped the head
+     * measurably before its VISIBLE edge reached the wall — exactly the
+     * gap reported.
+     *
+     * An ellipse inscribed in that same opaque rect is a much closer match
+     * to a head's actual silhouette, and its rotated AABB has a simple
+     * closed form: for semi-axes (a,b) rotated by angle θ, the half-extents
+     * are sqrt((a·cosθ)² + (b·sinθ)²) and sqrt((a·sinθ)² + (b·cosθ)²) — this
+     * is provably tighter than the rectangle's AABB at every angle except
+     * the four where they coincide, so it can only close the gap, never
+     * reopen it. It slightly UNDER-covers real protrusions (chin, hair)
+     * relative to a perfect silhouette trace, but a small amount of the
+     * head sinking into the wall on those points reads far less wrong than
+     * the visible gap this replaces — favoring tighter over looser is the
+     * right tradeoff for this specific complaint. */
     const body = () => {
       const W = wrap.offsetWidth;
       const H = wrap.offsetHeight;
       const o = opaque.current;
       const ow = (o.x1 - o.x0) * W;
       const oh = (o.y1 - o.y0) * H;
+      const a = ow / 2; // ellipse semi-axis, unrotated width direction
+      const b = oh / 2; // ellipse semi-axis, unrotated height direction
       // Opaque centre relative to the element centre, unrotated.
       const ox = ((o.x0 + o.x1) / 2 - 0.5) * W;
       const oy = ((o.y0 + o.y1) / 2 - 0.5) * H;
@@ -163,8 +190,8 @@ export default function RagdollHead({
       const c = Math.cos(rad);
       const s = Math.sin(rad);
       return {
-        hw: (ow * Math.abs(c) + oh * Math.abs(s)) / 2,
-        hh: (ow * Math.abs(s) + oh * Math.abs(c)) / 2,
+        hw: Math.sqrt((a * c) ** 2 + (b * s) ** 2),
+        hh: Math.sqrt((a * s) ** 2 + (b * c) ** 2),
         // Rotated offset of the opaque centre.
         rx: ox * c - oy * s,
         ry: ox * s + oy * c,

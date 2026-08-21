@@ -49,7 +49,17 @@ export default function Hero() {
   const RIGHT_MAX_W = 887;
 
   return (
-    <Stage heightUnits={900} className="overflow-hidden">
+    // Stage height 900 -> 1080 (2026-08-20, per Noah: "add some more space
+    // between the top animation and the text area for more gravitas").
+    // Hero's own content (head, starburst, lockup) already fills its 900u
+    // box almost exactly (content spans y104-898), so that box had no
+    // built-in bottom margin at all — Description's first line began
+    // essentially right where Hero's content ended. The extra 180u lands
+    // here, as pure trailing space after Hero, rather than shifting every
+    // one of Description's fixed Place coordinates, which would touch that
+    // component's own internal composition for a gap that's really about
+    // the boundary BETWEEN the two sections.
+    <Stage heightUnits={1080} className="overflow-hidden">
       {/* Spiky yellow starburst behind head, x73–875 y104–898 */}
       <Place x={73} y={104} w={802} h={794} className="z-0">
         <svg ref={burstRef} viewBox="0 0 100 100" className="w-full h-full">
