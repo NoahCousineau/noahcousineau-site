@@ -247,14 +247,14 @@ export default function AwayOverlay() {
         className="grid items-center w-full"
         style={{
           gridTemplateColumns: "1fr auto 1fr",
-          gap: "clamp(0.75rem, calc(var(--u) * 56), 3.5rem)",
+          gap: "clamp(1.25rem, calc(var(--u) * 132), 8rem)",
         }}
       >
         {/* Email and phone side by side, per Noah, and pushed toward the
             clock so both groups read as flanking it. */}
         <div
           className="flex flex-wrap items-center justify-end"
-          style={{ gap: "clamp(0.75rem, calc(var(--u) * 40), 2.25rem)" }}
+          style={{ gap: "clamp(1rem, calc(var(--u) * 76), 4.25rem)" }}
         >
           {CONTACT_LEFT.map((c) => (
             <a key={c.href} href={c.href} style={linkStyle}>
@@ -311,7 +311,7 @@ export default function AwayOverlay() {
 
         <div
           className="flex flex-wrap items-center justify-start"
-          style={{ gap: "clamp(0.75rem, calc(var(--u) * 40), 2.25rem)" }}
+          style={{ gap: "clamp(1rem, calc(var(--u) * 76), 4.25rem)" }}
         >
           {CONTACT_RIGHT.map((c) => (
             <a key={c.href} href={c.href} target="_blank" rel="noreferrer" style={linkStyle}>

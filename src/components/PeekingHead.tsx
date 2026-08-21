@@ -31,13 +31,22 @@ const HEAD_WIDTH_UNITS = 300;
 const HEAD_HEIGHT_UNITS = (HEAD_WIDTH_UNITS * 1970) / 1297;
 const HIDDEN_UNITS = HEAD_HEIGHT_UNITS * (1 - REVEAL_FRACTION);
 
-export default function PeekingHead() {
+export default function PeekingHead({
+  /** Horizontal centre, in artboard units. Defaults to the page centre; the
+   * footer places it under its right-hand link columns instead (2026-08-20,
+   * per Noah: "shift the head over so it's below the 'about me' and email
+   * link"). */
+  centerXUnits = 960,
+}: {
+  centerXUnits?: number;
+}) {
   return (
     <div
-      className="absolute left-1/2 pointer-events-none select-none"
+      className="absolute pointer-events-none select-none"
       style={{
         width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
         bottom: `calc(var(--u) * -${HIDDEN_UNITS})`,
+        left: `calc(var(--u) * ${centerXUnits})`,
         transform: "translateX(-50%)",
       }}
       aria-hidden

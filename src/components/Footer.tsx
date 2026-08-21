@@ -87,10 +87,23 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
 // allowance) and rule y-positions, from the sketch's text baselines
 // (449 / 497.95) and rule y's (459.49 / 507.4-507.08, unified to one value
 // per row since Noah wants every rule visually consistent).
-const ROW1_TEXT_Y = 431.5; // baseline 449 minus ~17.5u ascender allowance
-const ROW1_RULE_Y = 459.49;
-const ROW2_TEXT_Y = 480.5; // baseline 497.95 minus ~17.5u
-const ROW2_RULE_Y = 507.4;
+const ROW1_TEXT_Y = 391.5; // was 431.5 — see LINK BLOCK note below
+const ROW1_RULE_Y = 419.49;
+const ROW2_TEXT_Y = 440.5;
+const ROW2_RULE_Y = 467.4;
+
+/* LINK BLOCK (2026-08-20, per Noah: "Move the Cousineau logo up more so it
+ * sits just below the top of the browser. Move all the links upwards with
+ * it. Have the links just a little closer to the logo.")
+ *
+ * The logo rises because the footer's top padding drops to zero, leaving
+ * only the wordmark's own 41.44u artboard offset between it and the top of
+ * the window. Everything in the Stage travels with it.
+ *
+ * The links then close up independently: all four y-values moved up 40u,
+ * which narrows the gap below the wordmark (its box ends at 338.6u) from
+ * ~93u to ~53u. Moving all four by the same amount keeps the two rows'
+ * internal spacing and their rules exactly as designed. */
 
 /*
  * FULL-PAGE FOOTER REVEAL (2026-08-20, per Noah: "I want an interaction
@@ -116,7 +129,7 @@ const ROW2_RULE_Y = 507.4;
  * a static layout, so there's no motion to suppress — worst case the
  * footer simply shows as a tall black panel.
  */
-export default function Footer({ showFallenHand = false }: { showFallenHand?: boolean }) {
+export default function Footer({ nextProjectHref }: { nextProjectHref?: string }) {
   // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
   // — which does scroll — is what tells the fallen hand it has arrived.
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -138,12 +151,18 @@ export default function Footer({ showFallenHand = false }: { showFallenHand?: bo
       <footer className="fixed bottom-0 left-0 w-full bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start z-0 overflow-hidden" style={{ height: "100svh" }}>
       <div
         className="relative mx-auto max-w-[1920px] w-full h-full"
-        style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)", paddingTop: "calc(var(--u) * 70)" }}
+        style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
         {/* Scenery at the bottom edge; pointer-events off so it can never
             steal a click from the link columns above it. */}
-        <PeekingHead />
-        {showFallenHand && <FallenHand triggerRef={spacerRef} />}
+        {/* Centred under the two right-hand link columns ("about me" /
+            "résumé" at x1409.32 and email / phone at x1630.09, each
+            RULE_WIDTH wide), i.e. the midpoint of 1409.32 and
+            1630.09 + 204.22. */}
+        <PeekingHead centerXUnits={(1409.32 + 1630.09 + RULE_WIDTH) / 2} />
+        {nextProjectHref && (
+          <FallenHand triggerRef={spacerRef} nextHref={nextProjectHref} />
+        )}
         <Stage heightUnits={STAGE_HEIGHT}>
           {/* Large Cousineau wordmark — same asset as the old small footer
               logo, scaled to the sketch's exact bbox. */}

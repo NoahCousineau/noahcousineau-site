@@ -69,7 +69,31 @@ export const mickeyWatchConfig: MickeyWatchConfig = {
   // no longer sits exactly on the hand pivot.
   body: { width: 209, height: 265, x: -4, y: 50 },
   watchFace: { width: 559, height: 584, x: 0, y: -1 },
-  hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -90 },
-  minuteHand: { width: 182, height: 234.1, x: 76.2, y: 15.26, rotation: 267 },
+  /* HAND CALIBRATION (2026-08-20, per Noah: "properly rotate the hour hand
+   * so the pointer finger is properly pointing at the corresponding hour
+   * location.")
+   *
+   * These offsets were eyeballed in the editor and were each a few degrees
+   * out. They're now derived rather than posed: for each hand PNG, the
+   * fingertip is the farthest opaque pixel from that hand's rotation axis,
+   * and the angle from axis to fingertip — measured clockwise from
+   * straight up, the same convention the clock math uses — is the hand's
+   * built-in direction at rotation 0. The offset that makes the finger land
+   * on the true hour is simply the negative of that angle, since the
+   * component adds offset on top of the clock angle.
+   *
+   *   hour   fingertip sits at  93.92deg  ->  offset -93.92  (was -90, 3.9deg out)
+   *   minute fingertip sits at  85.93deg  ->  offset -85.93  (was 267 = -93, 7.1deg out)
+   *
+   * The minute hand is corrected too even though Noah only flagged the
+   * hour: it was the further out of the two, and leaving it would mean the
+   * hands disagreed about what time it is.
+   *
+   * Checked against the artwork before trusting the math — the face's
+   * numerals sit on true 30deg marks (mean deviation -1.6deg measured off
+   * watch-face.png's alpha channel), so exact clock angles really do point
+   * at the drawn numbers. */
+  hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -93.92 },
+  minuteHand: { width: 182, height: 234.1, x: 76.2, y: 15.26, rotation: -85.93 },
   rotationAxis: { x: 50, y: 47 },
 };
