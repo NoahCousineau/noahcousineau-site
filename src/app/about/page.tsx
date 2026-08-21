@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { ArcText } from "@/components/ArcText";
 import RagdollHead from "@/components/about/RagdollHead";

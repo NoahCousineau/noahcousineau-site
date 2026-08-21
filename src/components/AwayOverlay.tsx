@@ -6,49 +6,50 @@ import { ArcText, BottomArcText } from "./ArcText";
 
 /*
  * AWAY SCREEN — black full-viewport panel carrying the clock lockup and
- * Noah's contact details, shown whenever the viewer leaves the site.
+ * Noah's contact details.
  *
- * WHAT COUNTS AS "CLICKING OFF THE SITE": two different browser signals,
- * because neither alone covers it.
- *   - `visibilitychange` fires when the tab is hidden — switching tabs,
- *     minimizing, moving to another space. It does NOT fire when the user
- *     clicks a different app while this tab stays visible.
- *   - `blur`/`focus` on window covers exactly that case.
+ * IT APPEARS ON TWO TRIGGERS:
  *
- * MEDIA GUARD (2026-08-20, per Noah: "I tried playing the reel that is on
- * the Sprouts page and the clock screen immediately came up, stopping me
- * from watching the video. Have the site operate where if a user is
- * actively trying to watch, listen to a video, the clock screen doesn't
- * show up.")
+ * 1. IDLE (2026-08-20, per Noah: "Let's have this page appear after the
+ *    user is inactive on the site for 20 seconds.") Tracked with a single
+ *    one-second poll against a last-activity timestamp rather than a timer
+ *    that gets torn down and rebuilt on every mousemove — pointer moves
+ *    arrive dozens of times a second and only need to stamp a number.
  *
- * Watching a video legitimately blurs the window in several ordinary ways:
- * going fullscreen hands focus to the fullscreen surface, picture-in-
- * picture moves it to a separate window, and clicking into the native
- * control bar can shift focus off the document. All of those look
- * identical to "left the site" from a bare `blur` listener, which is why
- * the panel was ambushing playback. So playback is now a hard veto: while
- * any video is actually rolling — or anything is fullscreen or in PiP —
- * the away screen stays down, and if playback STARTS while it's already
- * up, it retreats immediately.
+ * 2. LEAVING — `visibilitychange` covers hiding the tab (switching tabs,
+ *    minimizing, another space) and `blur`/`focus` covers focus moving to
+ *    another application while this tab stays visible. Neither signal
+ *    catches the other's case, so both are needed.
  *
- * Detection listens in the CAPTURE phase on the document rather than
- * binding to elements: media events (`play`, `pause`, `ended`) do not
- * bubble, and the videos here mount and unmount as the reader scrolls
- * through a project page, so there is no stable set of elements to attach
- * to.
+ * Any activity dismisses it and restarts the clock.
  *
- * A short ENTER DELAY keeps the panel from flashing on an alt-tab bounce
- * or focus briefly touching browser chrome. Leaving is deliberate after
- * ~400ms; returning is instant, and the fade out is quicker than the fade
- * in, per "quickly fade away once the user is on the site again."
+ * MEDIA GUARD (per Noah: "I tried playing the reel that is on the Sprouts
+ * page and the clock screen immediately came up, stopping me from watching
+ * the video.") Watching a video legitimately blurs the window in several
+ * ordinary ways — fullscreen hands focus to the fullscreen surface,
+ * picture-in-picture moves it to a separate window, clicking native
+ * controls can shift focus off the document — and, worse for the idle
+ * trigger, watching a video IS being inactive. So playback is a hard veto
+ * on both triggers: while any video is rolling, or anything is fullscreen
+ * or in PiP, the panel stays down, and it retreats if playback starts while
+ * it is already up.
  *
- * Deliberately NOT a route: Noah described "a new page", but the behavior
- * he described — appears when you leave, gone when you come back — can't
- * be a navigation, since navigating away is precisely what hasn't
- * happened. A fixed full-viewport layer is what behaves that way.
+ * Media detection listens in the CAPTURE phase on the document: media
+ * events do not bubble, and these videos mount and unmount as the reader
+ * scrolls a project page, so there is no stable set of elements to bind to.
+ *
+ * Deliberately NOT a route: Noah described "a new page", but the behavior —
+ * appears when you leave or go idle, gone the moment you come back — can't
+ * be a navigation, since navigating away is precisely what hasn't happened.
  */
 
-const ENTER_DELAY_MS = 400;
+/** Inactivity before the panel appears. */
+const IDLE_MS = 20_000;
+/** How often the idle poll checks the activity stamp. */
+const IDLE_POLL_MS = 1000;
+/** Debounce on the leave triggers, so an alt-tab bounce or focus brushing
+ * browser chrome doesn't flash a full-screen black panel. */
+const LEAVE_DELAY_MS = 400;
 
 const CONTACT_LEFT = [
   { label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" },
@@ -59,41 +60,59 @@ const CONTACT_RIGHT = [
   { label: "Instagram", href: "https://www.instagram.com/noahcousineau/" },
 ];
 
-/* ARC GEOMETRY — the fix for "contact Noah" not following the circle.
+/* ARC GEOMETRY.
  *
  * The arcs are drawn in a 100x100 viewBox laid over a box sized 140% of the
- * white circle and offset -20%, so within that viewBox the real circle is
- * centred at (50, 50) with radius 100/140 * 50 = 35.71. Text only follows
- * the circle's curve if its path is drawn on a CONCENTRIC circle — same
- * centre, radius offset by the gap you want.
+ * white circle and offset -20%, so within that viewBox the circle is
+ * centred at (50, 50) with radius 100/140 * 50 = 35.71. Text follows the
+ * circle's curve only if its path is drawn on a CONCENTRIC circle.
  *
- * Previously the two arcs shared neither the circle's centre nor each
- * other's radius: the top ran r=35.7 about centre y=46.23, and the bottom
- * ran r=50 about y=47. r=50 is a much flatter curve than the circle's
- * 35.71, which is exactly why "CONTACT NOAH" read as sitting on its own
- * unrelated arc instead of hugging the circle.
+ * THE TWO ARCS NEED DIFFERENT RADII, which is what the previous version got
+ * wrong (Noah: "'contact noah' appears to have the right curve, but it's
+ * overlapping the circle"). SVG glyphs sit with their baseline ON the path
+ * and their bodies extending toward the path's left-hand side:
  *
- * Both now share centre (50, 50) and radius CIRCLE_R + ARC_GAP, so they are
- * concentric with the circle and with each other by construction.
+ *   - Top arc, travelling left-to-right over the top, puts that side
+ *     OUTWARD, so the letters grow away from the circle. A baseline at
+ *     circle + gap is already clear.
+ *   - Bottom arc, travelling left-to-right under the bottom, puts that side
+ *     INWARD, so the letters grow back toward the circle. A baseline at
+ *     circle + gap therefore drops the letter TOPS inside the circle — the
+ *     overlap. Its baseline has to sit a cap-height further out.
  *
- * `spanDeg` is the length of PATH drawn, not the size of the text: the
- * label is centred at 50% of the path with textAnchor="middle", so the
- * path only has to be longer than the text. A full 180 gives generous room
- * and lets font size alone decide how much of the circle the words wrap. */
+ * Expressing both from one TEXT_INNER_R means the two labels occupy the
+ * same band (inner edge at circle + gap, outer edge a cap-height beyond),
+ * so the gap reads identically top and bottom, and both stay concentric
+ * with the circle. This is how a real seal is set.
+ */
 const CIRCLE_CENTRE = 50;
 const CIRCLE_R = 35.71;
-const ARC_GAP = 2.6;
-const ARC_R = CIRCLE_R + ARC_GAP;
+/** Clear space between the circle's edge and the nearest ink. */
+const ARC_GAP = 3;
 const ARC_FONT = 8.4;
+/** Cap height as a share of font size, for Akzidenz. */
+const CAP_RATIO = 0.75;
+/** Inner edge of the text band — the same for both labels. */
+const TEXT_INNER_R = CIRCLE_R + ARC_GAP;
+/** Top label: baseline is the inner edge; letters grow outward from it. */
+const TOP_ARC_R = TEXT_INNER_R;
+/** Bottom label: letters grow inward, so the baseline sits a cap-height
+ * beyond the inner edge to leave the same clear space. */
+const BOTTOM_ARC_R = TEXT_INNER_R + ARC_FONT * CAP_RATIO;
 
 export default function AwayOverlay() {
-  // Always starts hidden, including in the server-rendered HTML, so a page
-  // opened in a background tab hydrates clean. Deliberately not seeded from
-  // `document.hidden`, which would differ between server and client.
+  // Always starts hidden, including in server-rendered HTML, so a page
+  // opened in a background tab hydrates clean.
   const [away, setAway] = useState(false);
-  const timerRef = useRef<number | null>(null);
-  // True while a video is actually rolling, or anything is fullscreen/PiP.
-  const mediaBusyRef = useRef(false);
+  // Mirrors `away` so the long-lived listeners below can read the current
+  // value without being torn down and re-subscribed on every toggle.
+  // Synced in an effect rather than assigned during render, which is not a
+  // safe place to touch a ref.
+  const awayRef = useRef(false);
+  useEffect(() => {
+    awayRef.current = away;
+  }, [away]);
+  const leaveTimerRef = useRef<number | null>(null);
 
   const isMediaBusy = useCallback(() => {
     if (document.fullscreenElement) return true;
@@ -104,55 +123,81 @@ export default function AwayOverlay() {
   }, []);
 
   useEffect(() => {
-    const clearTimer = () => {
-      if (timerRef.current != null) {
-        window.clearTimeout(timerRef.current);
-        timerRef.current = null;
+    let lastActivity = Date.now();
+
+    const clearLeaveTimer = () => {
+      if (leaveTimerRef.current != null) {
+        window.clearTimeout(leaveTimerRef.current);
+        leaveTimerRef.current = null;
       }
     };
 
-    const arrive = () => {
-      clearTimer();
-      setAway(false);
+    const dismiss = () => {
+      clearLeaveTimer();
+      // Functional update so a mousemove while already dismissed returns
+      // the identical value and React skips the re-render entirely.
+      setAway((prev) => (prev ? false : prev));
     };
 
+    const onActivity = () => {
+      lastActivity = Date.now();
+      if (awayRef.current) dismiss();
+    };
+
+    // --- Idle ------------------------------------------------------------
+    const idlePoll = window.setInterval(() => {
+      if (awayRef.current) return;
+      if (document.hidden) return; // the leave triggers own that case
+      if (Date.now() - lastActivity < IDLE_MS) return;
+      if (isMediaBusy()) {
+        // Watching counts as being present: hold the clock off and treat it
+        // as activity so the countdown restarts when playback ends.
+        lastActivity = Date.now();
+        return;
+      }
+      setAway(true);
+    }, IDLE_POLL_MS);
+
+    // --- Leaving ---------------------------------------------------------
     const leave = () => {
-      clearTimer();
-      // Re-check at the moment of firing rather than trusting the cached
-      // flag: playback may have started during the enter delay.
+      clearLeaveTimer();
       if (isMediaBusy()) return;
-      timerRef.current = window.setTimeout(() => {
+      leaveTimerRef.current = window.setTimeout(() => {
         if (isMediaBusy()) return;
         setAway(true);
-      }, ENTER_DELAY_MS);
+      }, LEAVE_DELAY_MS);
     };
-
+    const arrive = () => {
+      lastActivity = Date.now();
+      dismiss();
+    };
     const onVisibility = () => (document.hidden ? leave() : arrive());
 
     const onMediaChange = () => {
-      const busy = isMediaBusy();
-      mediaBusyRef.current = busy;
-      // Playback starting while the panel is up pulls it straight back down.
-      if (busy) arrive();
+      if (isMediaBusy()) {
+        lastActivity = Date.now();
+        dismiss();
+      }
     };
 
-    // Media events don't bubble, so capture-phase document listeners are
-    // the only way to catch videos that mount and unmount during scroll.
+    const ACTIVITY = ["mousemove", "mousedown", "keydown", "wheel", "touchstart", "scroll"] as const;
+    ACTIVITY.forEach((e) =>
+      window.addEventListener(e, onActivity, { passive: true })
+    );
+
     const MEDIA_EVENTS = ["play", "playing", "pause", "ended", "emptied"] as const;
     MEDIA_EVENTS.forEach((e) => document.addEventListener(e, onMediaChange, true));
     document.addEventListener("fullscreenchange", onMediaChange);
-    document.addEventListener("enterpictureinpicture", onMediaChange, true);
-    document.addEventListener("leavepictureinpicture", onMediaChange, true);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", leave);
     window.addEventListener("focus", arrive);
 
     return () => {
-      clearTimer();
+      window.clearInterval(idlePoll);
+      clearLeaveTimer();
+      ACTIVITY.forEach((e) => window.removeEventListener(e, onActivity));
       MEDIA_EVENTS.forEach((e) => document.removeEventListener(e, onMediaChange, true));
       document.removeEventListener("fullscreenchange", onMediaChange);
-      document.removeEventListener("enterpictureinpicture", onMediaChange, true);
-      document.removeEventListener("leavepictureinpicture", onMediaChange, true);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", leave);
       window.removeEventListener("focus", arrive);
@@ -165,12 +210,12 @@ export default function AwayOverlay() {
     display: "block",
     whiteSpace: "nowrap",
     fontFamily: "var(--font-sans)",
-    fontSize: "clamp(0.68rem, calc(var(--u) * 24), 1.25rem)",
+    fontSize: "clamp(0.62rem, calc(var(--u) * 21), 1.1rem)",
     letterSpacing: "0.02em",
     borderBottom: "2px solid #fff",
     paddingBottom: "0.32em",
-    // The panel itself is inert so it can never trap a click; the links opt
-    // back in. Clicking as you return to the window does reach them.
+    // The panel is inert so it can never trap a click; the links opt back
+    // in, so a click made on the way back to the window still lands.
     pointerEvents: "auto",
   };
 
@@ -183,9 +228,8 @@ export default function AwayOverlay() {
         background: "var(--color-ink)",
         opacity: away ? 1 : 0,
         visibility: away ? "visible" : "hidden",
-        // Asymmetric timing: unhurried in, "quickly fade away" out. The
-        // visibility flip is delayed until the fade-out finishes so the
-        // panel doesn't vanish mid-dissolve.
+        // Asymmetric: unhurried in, "quickly fade away" out. The visibility
+        // flip waits for the fade-out so it can't vanish mid-dissolve.
         transitionProperty: "opacity, visibility",
         transitionTimingFunction: "ease",
         transitionDuration: away ? "520ms, 0ms" : "180ms, 0ms",
@@ -194,17 +238,23 @@ export default function AwayOverlay() {
         ["--u" as string]: "calc(100cqw / 1920)",
       }}
     >
-      {/* Contact columns flank the clock and share its centre line, per
-          Noah: "I want the text aligned horizontally with the middle of the
-          clock... email and phone on the left and then the LinkedIn and
-          Instagram on the right." */}
+      {/* `1fr auto 1fr` puts the CLOCK dead centre on the page regardless of
+          how wide either contact group is (2026-08-20, per Noah: "please
+          also center the clock in the center of the page"). A flex row with
+          justify-center would instead centre the row as a whole, letting the
+          wider left group push the clock off-centre. */}
       <div
-        className="flex items-center justify-center w-full"
-        style={{ gap: "clamp(1rem, calc(var(--u) * 70), 4.5rem)" }}
+        className="grid items-center w-full"
+        style={{
+          gridTemplateColumns: "1fr auto 1fr",
+          gap: "clamp(0.75rem, calc(var(--u) * 56), 3.5rem)",
+        }}
       >
+        {/* Email and phone side by side, per Noah, and pushed toward the
+            clock so both groups read as flanking it. */}
         <div
-          className="flex flex-col items-end text-right"
-          style={{ gap: "clamp(0.9rem, calc(var(--u) * 34), 2rem)" }}
+          className="flex flex-wrap items-center justify-end"
+          style={{ gap: "clamp(0.75rem, calc(var(--u) * 40), 2.25rem)" }}
         >
           {CONTACT_LEFT.map((c) => (
             <a key={c.href} href={c.href} style={linkStyle}>
@@ -215,7 +265,7 @@ export default function AwayOverlay() {
 
         <div
           className="relative flex items-center justify-center shrink-0"
-          style={{ width: "min(calc(var(--u) * 560), 54vh)", aspectRatio: "1/1" }}
+          style={{ width: "min(calc(var(--u) * 520), 52vh)", aspectRatio: "1/1" }}
         >
           {/* White circle backdrop, clipping the oversized watch to a clean edge */}
           <div className="absolute inset-0 rounded-full bg-white overflow-hidden">
@@ -226,14 +276,14 @@ export default function AwayOverlay() {
               <MickeyWatch />
             </div>
           </div>
-          {/* Top arc: "IT'S TIME TO" — upright letters over the circle's top. */}
+          {/* Top arc: "IT'S TIME TO" — letters grow outward from the baseline. */}
           <div className="absolute" style={{ width: "140%", height: "140%", left: "-20%", top: "-20%" }}>
             <ArcText
               id="away-clock-arc-top"
               text="It's Time To"
               width={100}
               height={100}
-              radius={ARC_R}
+              radius={TOP_ARC_R}
               centerY={CIRCLE_CENTRE}
               spanDeg={180}
               fontSize={ARC_FONT}
@@ -241,14 +291,16 @@ export default function AwayOverlay() {
               color="#fff"
             />
           </div>
-          {/* Bottom arc: "CONTACT NOAH" — same circle, letters upright. */}
+          {/* Bottom arc: "CONTACT NOAH" — letters grow inward, so this
+              baseline sits a cap-height further out to keep the same clear
+              space off the circle. */}
           <div className="absolute" style={{ width: "140%", height: "140%", left: "-20%", top: "-20%" }}>
             <BottomArcText
               id="away-clock-arc-bottom"
               text="Contact Noah"
               width={100}
               height={100}
-              radius={ARC_R}
+              radius={BOTTOM_ARC_R}
               centerY={CIRCLE_CENTRE}
               spanDeg={180}
               fontSize={ARC_FONT}
@@ -258,8 +310,8 @@ export default function AwayOverlay() {
         </div>
 
         <div
-          className="flex flex-col items-start text-left"
-          style={{ gap: "clamp(0.9rem, calc(var(--u) * 34), 2rem)" }}
+          className="flex flex-wrap items-center justify-start"
+          style={{ gap: "clamp(0.75rem, calc(var(--u) * 40), 2.25rem)" }}
         >
           {CONTACT_RIGHT.map((c) => (
             <a key={c.href} href={c.href} target="_blank" rel="noreferrer" style={linkStyle}>
