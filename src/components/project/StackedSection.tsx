@@ -40,56 +40,69 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
  *
  * 2. OVERLAP — each section is opaque and carries an increasing z-index
  *    (set by the caller), so the next one, still scrolling normally, rides
- *    up over the held one. No JS, nothing to keep in sync with Lenis.
+ *    up over the held one. No JS, nothing to keep in sync with Lenis. This
+ *    is ALSO what covers the previous section's sticky title header once
+ *    the next section's box visually arrives — see HEADER PLACEMENT below.
  *
- * 3. RECEDE — a slight scale-down of the held section's contents while it
- *    is being covered: the "pulled back" read from the sketch. Subtle on
- *    purpose; the holding and overlap already communicate the stack.
+ * 3. RECEDE — a slight scale-down of the held section's own ROWS (not its
+ *    header — see HEADER PLACEMENT) while it's being covered: the "pulled
+ *    back" read from the sketch. Subtle on purpose; the holding and overlap
+ *    already communicate the stack.
  *
  * WHY THE SCALE IS ON AN INNER WRAPPER: a transform on the sticky element
  * itself would give it a containing block and fight its own positioning.
  *
- * WHY A SENTINEL DRIVES THE TRIGGER: once a section is holding, neither its
- * client rect nor its offsetTop describes where it sits in the document any
- * more, so a trigger derived from the section itself drifts. The sentinel is
- * a zero-height sibling immediately before it, always in normal flow, so it
- * always reports the section's true document position.
+ * HEADER PLACEMENT (2026-08-20, two rounds of feedback the same day):
  *
- * BUGFIX (2026-08-20, per Noah: "make sure that during the transition parts
- * between sections that the old images we already saw don't reappear at the
- * top of the window") — ProjectGroup's own inner title header is ALSO
- * `position: sticky; top: 0`, by design: that's what keeps it pinned while
- * THIS section's own rows scroll underneath it. Its containing block is
- * this outer <section>, whose old design comment claimed the header
- * "releases exactly at the end of its own section" — true before this
- * outer sticky/hold mechanic existed, but wrong now: once the outer
- * section starts HOLDING (frozen, bottom pinned to the viewport bottom),
- * its own box still spans from far above y=0 down to y=800, so y=0 is
- * still comfortably inside it — meaning the inner header keeps re-sticking
- * to the top of the screen for the ENTIRE ~800px scroll it takes the next
- * section to rise up and cover it. The reader would see the OLD section's
- * title (and, since it's the same containing block, whatever else is
- * anchored near the top) sitting at the top of the window through the
- * whole transition, well after they'd moved on to the next section's
- * content below it. Verified directly: 400px into the transition, the
- * pixel at the top of the viewport still belonged to the section that was
- * supposed to be finished.
+ * ProjectGroup's title header is `position: sticky; top: 0` inside this
+ * section — that's what keeps it pinned while THIS section's own rows
+ * scroll underneath it. The caller passes it as `header`, kept separate
+ * from `children` and rendered as a SIBLING of the scaled wrapper, not
+ * nested inside it. That placement is load-bearing, not cosmetic:
  *
- * Fixed via a callback rather than a ref reaching into the caller's DOM
- * node: `onHoldChange(held)` fires the instant holding starts or ends
- * (same threshold the recede scale uses), and ProjectGroup — which owns
- * the header element — reacts by flipping ITS OWN ref's `position` between
- * `static` (tucked away at its natural in-flow position deep inside the
- * now-frozen box, off-screen with the rest of the section's already-seen
- * content) and `sticky` (restored if the reader scrolls back up past the
- * hold point, so scrolling back into a section still re-pins its title as
- * designed). Keeping the mutation inside the component that owns the ref
- * is also what the React Compiler's lint rules expect — reaching into a
- * ref received through another component's props to mutate its node is
- * flagged even though DOM refs are normally the sanctioned escape hatch.
+ * A CSS `transform` on an ancestor — even `scale(1)`, numerically a no-op
+ * — establishes a new containing block for its descendants, sticky
+ * positioning included. Nesting the header inside the scaled wrapper (the
+ * first version of this fix did) meant the header's sticky containing
+ * block was that wrapper's OWN box, not the outer section's — and since
+ * the recede scale is anchored at the bottom (`50% 100%`), shrinking it
+ * pulls the wrapper's TOP edge DOWN, dragging the header's sticky ceiling
+ * down with it as the recede animates. The header's visible lifetime ended
+ * up governed by how far the scale tween had progressed, not by whether
+ * the next section had actually arrived on screen — which could make it
+ * vanish before the next section covered it, or persist in odd
+ * partial-recede states depending on scroll speed and whether that
+ * frame's tween value had actually updated yet.
+ *
+ * First fix (2026-08-20, per Noah: "make sure that during the transition
+ * parts between sections that the old images we already saw don't
+ * reappear at the top of the window") tried explicitly un-sticking the
+ * header via JS the instant holding began. That overcorrected — per
+ * Noah's very next message, "I don't like how the section title disappears
+ * towards the bottom. Make it so it's visible until the next section
+ * covers it" — because it hid the header immediately at hold-start,
+ * regardless of whether the next section had actually risen far enough to
+ * cover that point yet.
+ *
+ * Moving the header outside the transform's reach fixes the root cause
+ * directly: with nothing between it and the (untransformed) outer
+ * section, the header's sticky containing block is simply that section's
+ * own box, which spans y=0 for its entire held duration. So it stays
+ * correctly pinned at the top the WHOLE time this section is the topmost
+ * visible thing — exactly "visible until the next section covers it" —
+ * and disappears the instant (and only the instant) the next section's
+ * own stacking context, opaque and at a strictly higher z-index, actually
+ * paints over that pixel. No scroll math, no JS toggle: ordinary z-index
+ * stacking already does this correctly once nothing is fighting it.
+ *
+ * WHY A SENTINEL DRIVES THE RECEDE TRIGGER: once a section is holding,
+ * neither its client rect nor its offsetTop describes where it sits in the
+ * document any more, so a trigger derived from the section itself drifts.
+ * The sentinel is a zero-height sibling immediately before it, always in
+ * normal flow, so it always reports the section's true document position.
  */
 
-/** How far the held section's contents shrink while being covered. */
+/** How far the held section's rows shrink while being covered. */
 const RECEDE_SCALE = 0.94;
 
 /** Document-space top of a normal-flow element, via layout offsets. */
@@ -108,17 +121,17 @@ export default function StackedSection({
   surface,
   paddingXUnits,
   paddingBottomUnits,
-  onHoldChange,
+  header,
   children,
 }: {
   stackIndex: number;
   surface: string;
   paddingXUnits: number;
   paddingBottomUnits: number;
-  /** Fires the instant this section starts (true) or stops (false) holding
-   * — see the BUGFIX note above. Called once synchronously on mount too,
-   * with whatever's actually true for the current scroll position. */
-  onHoldChange?: (held: boolean) => void;
+  /** The section's sticky title header — rendered OUTSIDE the recede
+   * scale's transform on purpose. See HEADER PLACEMENT above. */
+  header: React.ReactNode;
+  /** The section's rows — these get the recede-scale treatment. */
   children: React.ReactNode;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -156,34 +169,19 @@ export default function StackedSection({
   }, []);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = sectionRef.current;
     const inner = innerRef.current;
     const sentinel = sentinelRef.current;
     if (!el || !inner || !sentinel) return;
     gsap.registerPlugin(ScrollTrigger);
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // Shared by both effects below (recede-scale and header un-stick), so
-    // moved out of the scrollTrigger config where it'd otherwise be defined
-    // twice and risk drifting apart.
-    const holdStartY = () =>
-      documentTop(sentinel) + el.offsetHeight - window.innerHeight;
-
-    // Correct the caller's header state immediately for a page that loads
-    // already scrolled past this section's hold point (a deep link, a
-    // restored scroll position, forward/back navigation) — onEnter/
-    // onLeaveBack below only fire on an actual crossing, not on the state
-    // already in effect when this runs.
-    onHoldChange?.(window.scrollY >= holdStartY());
 
     const ctx = gsap.context(() => {
       gsap.fromTo(
         inner,
         { scale: 1 },
         {
-          // No visible recede under reduced motion, but the trigger itself
-          // still needs to exist — it's what drives the header un-stick.
-          scale: reduced ? 1 : RECEDE_SCALE,
+          scale: RECEDE_SCALE,
           ease: "none",
           scrollTrigger: {
             trigger: el,
@@ -192,25 +190,17 @@ export default function StackedSection({
             // the moment the section begins holding (its bottom meets the
             // viewport bottom) and runs for one screen of scrolling, which
             // is roughly how long the next section takes to cover it.
-            start: holdStartY,
+            start: () =>
+              documentTop(sentinel) + el.offsetHeight - window.innerHeight,
             end: () => documentTop(sentinel) + el.offsetHeight,
-            scrub: reduced ? false : true,
+            scrub: true,
             invalidateOnRefresh: true,
-            // See the BUGFIX note above: the header re-sticks to the top of
-            // the screen for as long as it's `position: sticky` and its
-            // containing block (this section) spans y=0, which is true for
-            // the section's entire held duration — not just its own
-            // content's normal scroll-through. onEnter/onLeaveBack bracket
-            // exactly the held region: unstick the moment holding starts,
-            // restick only if the reader scrolls back up past that point.
-            onEnter: () => onHoldChange?.(true),
-            onLeaveBack: () => onHoldChange?.(false),
           },
         }
       );
     }, el);
     return () => ctx.revert();
-  }, [onHoldChange]);
+  }, []);
 
   return (
     <>
@@ -228,6 +218,7 @@ export default function StackedSection({
           paddingBottom: `calc(var(--u) * ${paddingBottomUnits})`,
         }}
       >
+        {header}
         <div
           ref={innerRef}
           style={{ transformOrigin: "50% 100%", willChange: "transform" }}

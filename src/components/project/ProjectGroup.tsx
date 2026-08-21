@@ -1,6 +1,3 @@
-"use client";
-
-import { useCallback, useRef } from "react";
 import Image from "next/image";
 import { InViewVideo } from "./InViewVideo";
 import { Stage } from "@/components/Stage";
@@ -374,24 +371,29 @@ export function ProjectGroup({
    * one long page, but rather that we are staying stationary and the
    * sections are the things that are scrolling."
    *
+   * Refined twice more the same day: first "make sure... the old images we
+   * already saw don't reappear at the top", then, after that fix
+   * overcorrected, "I don't like how the section title disappears towards
+   * the bottom. Make it so it's visible until the next section covers it."
+   * Both are now handled by WHERE this header is placed in the tree, not by
+   * any scroll math here — see the HEADER PLACEMENT note in
+   * StackedSection.tsx, which is passed the header as its own `header` prop
+   * specifically so it can render outside the recede-scale's transform.
+   *
    * Built from two cooperating pieces:
    *
    * 1. The header (top space + descriptor + its rule) is `position: sticky;
-   *    top: 0` INSIDE the section, painted on an opaque surface. Because
-   *    it's opaque, the section's own rows slide underneath and disappear
-   *    behind it — "this will continue until we reach the end of the
-   *    section". `headerRef` below hands this element to StackedSection,
-   *    which un-sticks it once the SECTION itself starts holding (see the
-   *    BUGFIX note there) — sticky alone stays glued to the top for the
-   *    entire time its containing block spans y=0, which turned out to be
-   *    the whole next-section transition too, not just this section's own
-   *    scroll-through, and let an already-finished section's title (and
-   *    everything anchored under it) linger at the top of the window.
+   *    top: 0`, painted on an opaque surface. Because it's opaque, the
+   *    section's own rows slide underneath and disappear behind it — "this
+   *    will continue until we reach the end of the section".
    *
    * 2. Each section is opaque and carries an increasing z-index, so the
-   *    NEXT section paints over the previous one as it scrolls up, rather
-   *    than the two blending or the old one showing through. That's the
-   *    "scroll up and over the old section" half.
+   *    NEXT section paints over the previous one — header included — as it
+   *    scrolls up, rather than the two blending or the old one showing
+   *    through. That's the "scroll up and over the old section" half, and
+   *    it's also what makes the header disappear at exactly the right
+   *    moment: the instant the next section's box actually arrives, no
+   *    earlier and no later.
    *
    * Deliberately NOT done by making the whole <section> sticky: these
    * sections are far taller than the viewport, and a sticky element taller
@@ -407,13 +409,29 @@ export function ProjectGroup({
   // behind the header, and on a section being able to cover its
   // predecessor.
   const surface = bgColor || "var(--color-paper)";
-  // Unstuck via StackedSection's onHoldChange once its outer section starts
-  // holding — see the BUGFIX note in StackedSection.tsx. The mutation stays
-  // in this component since it's the one that owns headerRef.
-  const headerRef = useRef<HTMLDivElement>(null);
-  const handleHoldChange = useCallback((held: boolean) => {
-    if (headerRef.current) headerRef.current.style.position = held ? "static" : "sticky";
-  }, []);
+  const header = (
+    <div
+      className="sticky top-0 z-20"
+      style={{
+        background: surface,
+        paddingTop: `calc(var(--u) * ${STICKY_TOP_SPACE_UNITS})`,
+        marginTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
+      }}
+    >
+      <h2
+        className="leading-none"
+        style={{
+          fontSize: DESCRIPTOR_SIZE_CSS,
+          fontFamily: "var(--font-sans)",
+          marginBottom: `calc(var(--u) * ${DESCRIPTOR_GAP_UNITS})`,
+        }}
+      >
+        {descriptor}
+      </h2>
+
+      <Rule />
+    </div>
+  );
   return (
     <>
       {topGapUnits != null && <Stage heightUnits={topGapUnits} />}
@@ -422,35 +440,9 @@ export function ProjectGroup({
         surface={surface}
         paddingXUnits={GRID_MARGIN_UNITS}
         paddingBottomUnits={SECTION_PADDING_UNITS}
-        onHoldChange={handleHoldChange}
+        header={header}
       >
         <div className="w-full">
-          {/* Sticky header — the "stationary frame" the section scrolls
-              past. Its own top padding is the "small space above the
-              title"; the section's between-groups gap lives on the
-              wrapper below so it scrolls away instead of riding along. */}
-          <div
-            ref={headerRef}
-            className="sticky top-0 z-20"
-            style={{
-              background: surface,
-              paddingTop: `calc(var(--u) * ${STICKY_TOP_SPACE_UNITS})`,
-              marginTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
-            }}
-          >
-            <h2
-              className="leading-none"
-              style={{
-                fontSize: DESCRIPTOR_SIZE_CSS,
-                fontFamily: "var(--font-sans)",
-                marginBottom: `calc(var(--u) * ${DESCRIPTOR_GAP_UNITS})`,
-              }}
-            >
-              {descriptor}
-            </h2>
-
-            <Rule />
-          </div>
           {rows.map((row, i) => {
             // Support asymmetric column widths: if any cell in the row
             // specifies a `colWidth` (relative width weight, e.g. 60/40
