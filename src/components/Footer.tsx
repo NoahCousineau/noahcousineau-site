@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Stage, Place, uFont } from "./Stage";
 import PeekingHead from "./PeekingHead";
+import FallenHand from "./FallenHand";
+import { useRef } from "react";
 
 /**
  * Global footer (on every page — rendered once in layout.tsx). Rebuilt per
@@ -114,12 +116,15 @@ const ROW2_RULE_Y = 507.4;
  * a static layout, so there's no motion to suppress — worst case the
  * footer simply shows as a tall black panel.
  */
-export default function Footer() {
+export default function Footer({ showFallenHand = false }: { showFallenHand?: boolean }) {
+  // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
+  // — which does scroll — is what tells the fallen hand it has arrived.
+  const spacerRef = useRef<HTMLDivElement>(null);
   return (
     <>
       {/* Reserves the scroll distance through which the content uncovers
           the fixed footer beneath it. */}
-      <div aria-hidden className="w-full" style={{ height: "100svh" }} />
+      <div ref={spacerRef} aria-hidden className="w-full" style={{ height: "100svh" }} />
       {/* LAYOUT (2026-08-20, per Noah: "Make it so the 'Cousineau' logo is
           near the top with the page information below the logo. Then at the
           bottom of the browser window, I want my head to just peek out from
@@ -138,6 +143,7 @@ export default function Footer() {
         {/* Scenery at the bottom edge; pointer-events off so it can never
             steal a click from the link columns above it. */}
         <PeekingHead />
+        {showFallenHand && <FallenHand triggerRef={spacerRef} />}
         <Stage heightUnits={STAGE_HEIGHT}>
           {/* Large Cousineau wordmark — same asset as the old small footer
               logo, scaled to the sketch's exact bbox. */}

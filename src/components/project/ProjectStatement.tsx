@@ -326,43 +326,62 @@ export function ProjectStatement({
   const handRef = useRef<HTMLDivElement>(null);
   const paragraphRef = useRef<HTMLDivElement>(null);
 
-  /* END-OF-PARAGRAPH SWING (2026-08-20, per Noah: "when we reach the end of
-   * the paragraph, it swings downwards to suggest to look below. There's a
-   * bit of swing and easy ease when this occurs.")
+  /* SWING, THEN FALL (2026-08-20, per Noah: "change the hand from a
+   * scrolling animation to more of a one-and-done triggered animation. In
+   * this, the hand rotation downwards doesn't start until we get to the end
+   * of the paragraph. It then swings a bit as if it's swinging from one
+   * loose nail. The hand then falls down and out of the view of the project
+   * page.")
    *
-   * The hand asset is pre-rotated so the finger points RIGHT at rest (see
-   * the note on its <Image> below), which means +90deg points it straight
-   * DOWN — at the content waiting underneath.
+   * The hand asset is pre-rotated so the finger points RIGHT at rest, which
+   * makes +90deg point it straight DOWN — at the content waiting below.
    *
-   * Deliberately a PLAYED tween rather than a scrubbed one: "a bit of
-   * swing" means the hand overshoots and settles back, and a scrub can't
-   * produce overshoot — scrubbing locks rotation to scroll position, so
-   * the hand could only ever ease monotonically toward its end value and
-   * would run backwards the instant the user nudged upward. back.out
-   * overshoots past 90deg and eases back, reading as real weight swinging
-   * down. It reverses if the reader scrolls back up into the paragraph.
+   * ONE-AND-DONE: `once: true`, so it fires at the end of the paragraph and
+   * never rewinds. The previous version used toggleActions with a reverse,
+   * which meant nudging back up the page un-dropped the hand — wrong for a
+   * gesture that is supposed to have happened.
    *
-   * The pivot sits at the wrist end (left side of the rotated asset), not
-   * the center, so the hand swings from the arm like a hinge instead of
-   * spinning around its own middle. */
+   * THE LOOSE NAIL: a decaying alternation around 90deg, overshooting then
+   * undershooting by less each pass. That shape is the point — a single
+   * eased tween arrives smoothly and reads as a mechanism, whereas swinging
+   * past the mark and losing amplitude each time reads as weight hanging
+   * off one nail. The pivot sits at the wrist end, not the centre, so it
+   * hinges from the arm rather than spinning about its middle.
+   *
+   * THE FALL: after the swing settles it drops clean off the bottom of the
+   * page, turning as it goes, on an accelerating ease so gravity reads. It
+   * lands in the footer — see components/FallenHand.tsx, which is the other
+   * half of "it should feel as if it fell off and went all the way to the
+   * bottom of the page."
+   */
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (!handRef.current || !paragraphRef.current) return;
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
-      gsap.to(handRef.current, {
-        rotate: 90,
-        duration: 1.15,
-        ease: "back.out(1.9)",
+      const tl = gsap.timeline({
         scrollTrigger: {
           trigger: paragraphRef.current,
           // Fires as the last lines of copy clear the lower third of the
-          // viewport — i.e. as the reader finishes the paragraph, which is
-          // the moment the gesture is meant to punctuate.
+          // viewport — the moment the reader finishes the paragraph.
           start: "bottom 78%",
-          toggleActions: "play none none reverse",
+          once: true,
         },
       });
+
+      tl.to(handRef.current, {
+        keyframes: [
+          { rotate: 99, duration: 0.55, ease: "power2.out" },
+          { rotate: 80, duration: 0.46, ease: "sine.inOut" },
+          { rotate: 94, duration: 0.38, ease: "sine.inOut" },
+          { rotate: 86.5, duration: 0.31, ease: "sine.inOut" },
+          { rotate: 90, duration: 0.26, ease: "sine.inOut" },
+        ],
+      }).to(
+        handRef.current,
+        { y: "135vh", rotate: 148, duration: 1.05, ease: "power2.in" },
+        "+=0.25"
+      );
     });
     return () => ctx.revert();
   }, []);

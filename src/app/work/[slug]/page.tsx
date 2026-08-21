@@ -18,6 +18,13 @@ import { ProjectIdBox } from "@/components/project/ProjectIdBox";
 import { ProjectStatement } from "@/components/project/ProjectStatement";
 import { ProjectGroup } from "@/components/project/ProjectGroup";
 
+/* Gap between the end of the statement paragraph and the first content
+ * section. 300 -> 420 -> 780 (2026-08-20, per Noah: "add a lot more space
+ * between the end of the paragraph and the start of the projects"). It also
+ * gives the pointing hand room to finish its swing and fall clear of the
+ * page before the first grid arrives. */
+const FIRST_GROUP_TOP_GAP_UNITS = 780;
+
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
 }
@@ -133,7 +140,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             slug={project.slug}
             descriptor={group.descriptor}
             rows={group.rows}
-            topGapUnits={i === 0 ? 420 : undefined}
+            topGapUnits={i === 0 ? FIRST_GROUP_TOP_GAP_UNITS : undefined}
             bgColor={group.bgColor}
             stackIndex={i}
           />

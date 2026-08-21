@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { InViewVideo } from "./InViewVideo";
 import { Stage } from "@/components/Stage";
+import StackedSection from "./StackedSection";
 
 /*
  * ProjectGroup — one repeating "chunk" of project content: an italic
@@ -114,6 +115,31 @@ const SECTION_PADDING_UNITS = 150;
 // smaller than SECTION_PADDING_UNITS — it's the breathing room that stays
 // glued to the title once pinned, not the between-sections gap.
 const STICKY_TOP_SPACE_UNITS = 34;
+
+/* SECTION TITLE (2026-08-20, per Noah: "change the section titles to the
+ * Akzidenz-Grotesk type that we've been using. I also want it smaller. the
+ * titles should be sized where a 16:9 video can fully and comfortably sit
+ * inside the viewport of the browser.")
+ *
+ * Akzidenz = --font-sans, and the italic serif treatment is dropped.
+ *
+ * The size is derived from Noah's constraint rather than picked by eye.
+ * With the grid inset at GRID_MARGIN_UNITS a side, its content spans
+ * 1564/1920 = 0.8146 of the viewport width, so a 16:9 row inside it stands
+ *   0.8146 * 9/16 = 0.4582 viewport-widths tall.
+ * On a 16:9 display the viewport itself is 0.5625 viewport-widths tall,
+ * which leaves 0.5625 - 0.4582 = 0.1043 vw of headroom, or ~200 artboard
+ * units, for the pinned header — and "comfortably" means not spending all
+ * of it. The header measures
+ *   STICKY_TOP_SPACE + title + gap + rule = 34 + 40 + 24 + 8 = 106u,
+ * a little over half the budget, so a 16:9 video clears the pinned header
+ * with room to spare and still has margin at the bottom of the screen.
+ *
+ * Clamped at both ends so the title stays legible on a phone and doesn't
+ * run away on an ultra-wide monitor. */
+const DESCRIPTOR_SIZE_UNITS = 40;
+const DESCRIPTOR_SIZE_CSS = `clamp(0.95rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS}), 3rem)`;
+const DESCRIPTOR_GAP_UNITS = 24;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
 // All images rendered at full source resolution for maximum PPI.
@@ -364,15 +390,11 @@ export function ProjectGroup({
   return (
     <>
       {topGapUnits != null && <Stage heightUnits={topGapUnits} />}
-      <section
-        className="relative"
-        style={{
-          zIndex: stackIndex + 1,
-          background: surface,
-          paddingLeft: `calc(var(--u) * ${GRID_MARGIN_UNITS})`,
-          paddingRight: `calc(var(--u) * ${GRID_MARGIN_UNITS})`,
-          paddingBottom: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
-        }}
+      <StackedSection
+        stackIndex={stackIndex}
+        surface={surface}
+        paddingXUnits={GRID_MARGIN_UNITS}
+        paddingBottomUnits={SECTION_PADDING_UNITS}
       >
         <div className="w-full">
           {/* Sticky header — the "stationary frame" the section scrolls
@@ -388,8 +410,12 @@ export function ProjectGroup({
             }}
           >
             <h2
-              className="italic mb-8 leading-none"
-              style={{ fontSize: "var(--text-descriptor)", fontFamily: "var(--font-serif)" }}
+              className="leading-none"
+              style={{
+                fontSize: DESCRIPTOR_SIZE_CSS,
+                fontFamily: "var(--font-sans)",
+                marginBottom: `calc(var(--u) * ${DESCRIPTOR_GAP_UNITS})`,
+              }}
             >
               {descriptor}
             </h2>
@@ -505,7 +531,7 @@ export function ProjectGroup({
             );
           })}
         </div>
-      </section>
+      </StackedSection>
     </>
   );
 }

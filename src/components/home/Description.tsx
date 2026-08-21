@@ -20,6 +20,8 @@ import { FitText } from "./FitText";
 export default function Description() {
   const root = useRef<HTMLDivElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
+  // The element ScrollTrigger pins while the three lines reveal.
+  const pinRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -40,41 +42,60 @@ export default function Description() {
         }
       );
 
-      /* LINE REVEAL (2026-08-20, per Noah: "I want the 'Noah Cousineau is a
-       * graphic...' text to rise up from the black line as we scroll up. It
-       * should be in order, so the first line appears first, then the
-       * second, then the third.")
+      /* LINE REVEAL, HELD (2026-08-20, per Noah: "I also want the site to
+       * feel like it's holding on this more. As we [scroll] down to this
+       * section, the site should feel as if its still. Have the first line
+       * appear and then hold for a bit of scrolling. Then the same for the
+       * next line, then the last. We can then scroll down into the project
+       * areas.")
        *
-       * Each of the three statement lines sits directly ABOVE its own rule
-       * (line 1 y381 / rule y522, line 2 y565 / rule y706, line 3 y741 /
-       * rule y882). Each line is wrapped in an overflow-hidden mask whose
-       * bottom edge is that rule, so translating the type down by its own
-       * height parks it entirely behind the rule; animating back to 0
-       * makes it rise out of the line, which is the gesture described.
+       * The section PINS: for the length of the sequence the page stops
+       * travelling and the reader's scrolling is spent revealing lines
+       * instead. That is what produces "feel as if it's still" — a plain
+       * scrubbed reveal would still be sliding the whole section up the
+       * screen while the lines arrived.
        *
-       * yPercent (not a pixel y) because these lines are set in artboard
-       * units and rescale with the viewport — a fixed pixel offset would
-       * under- or over-hide the type at other widths, letting descenders
-       * peek out below the rule on wide screens.
+       * The holds are empty tweens between the reveals. Scrub maps scroll
+       * distance onto timeline time, so a stretch of timeline where nothing
+       * animates becomes a stretch of scrolling where nothing moves — which
+       * is exactly the beat Noah asked for after each line.
        *
-       * stagger sequences them 1 -> 2 -> 3. `once: true` because this is an
-       * entrance: replaying it every time the reader scrolls back up the
-       * homepage would turn a flourish into a tic. */
-      gsap.fromTo(
-        ".js-desc-line",
-        { yPercent: 115 },
-        {
-          yPercent: 0,
-          duration: 1.05,
-          ease: "power3.out",
-          stagger: 0.16,
-          scrollTrigger: {
-            trigger: root.current,
-            start: "top 72%",
-            once: true,
-          },
-        }
-      );
+       * Each line rises out from behind its own rule: line 1 sits above the
+       * rule at y522, line 2 above y706, line 3 above y882, and each is
+       * wrapped in an overflow-hidden mask whose bottom edge is that rule.
+       * Translating the type down by more than its own height parks it
+       * entirely behind the rule; animating back to 0 makes it rise out.
+       *
+       * yPercent (not a pixel offset) because these lines are set in
+       * artboard units and rescale with the viewport — a fixed pixel offset
+       * would under- or over-hide the type at other widths. 135 rather than
+       * a bare 100 covers the mask's descender padding too (see the masks
+       * in the markup below), so nothing peeks above the rule at rest. */
+      const lines = gsap.utils.toArray<HTMLElement>(".js-desc-line");
+      gsap.set(lines, { yPercent: 135 });
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: pinRef.current,
+          start: "top top",
+          // Roughly two screens of scrolling spent on the three reveals and
+          // their holds, then the page resumes.
+          end: "+=200%",
+          pin: true,
+          anticipatePin: 1,
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+        },
+      });
+
+      const REVEAL = 1;
+      const HOLD = 0.85;
+      lines.forEach((line, i) => {
+        tl.to(line, { yPercent: 0, duration: REVEAL, ease: "power3.out" });
+        // A hold after every line, including the last, so the third line
+        // gets a beat to land before the page starts moving again.
+        tl.to({}, { duration: i === lines.length - 1 ? HOLD * 0.7 : HOLD });
+      });
     }, root);
     return () => ctx.revert();
   }, []);
@@ -94,6 +115,7 @@ export default function Description() {
     // the Stage rather than to the individual <Place> coordinates keeps every
     // element's artboard position — and therefore the composition — exactly
     // as designed, and just lengthens the run-out before the projects grid.
+    <div ref={pinRef}>
     <Stage heightUnits={2460} className="overflow-hidden">
       <div ref={root} className="absolute inset-0">
         {/* Lines 1–3. Each is wrapped in an overflow-hidden mask so it can
@@ -104,7 +126,7 @@ export default function Description() {
             mask itself untransformed as a fixed window. */}
         {/* Line 1 y381 (was y81, moved down 300u) */}
         <Place x={36} y={381} className="z-10">
-          <div className="overflow-hidden">
+          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
             <div className="js-desc-line">
               <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
                 Noah Cousineau is a <span className="italic" style={serif}>graphic designer</span>
@@ -116,7 +138,7 @@ export default function Description() {
 
         {/* Line 2 y565 (was y265, moved down 300u) */}
         <Place x={36} y={565} className="z-10">
-          <div className="overflow-hidden">
+          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
             <div className="js-desc-line">
               <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
                 who uses wit, play, and humor to solve
@@ -128,7 +150,7 @@ export default function Description() {
 
         {/* Line 3 y741 (was y441, moved down 300u) */}
         <Place x={36} y={741} className="z-10">
-          <div className="overflow-hidden">
+          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
             <div className="js-desc-line">
               <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
                 your <span className="italic" style={serif}>visual problems</span><span className="italic" style={serif}>.</span>
@@ -174,5 +196,6 @@ export default function Description() {
         {rule(1528)}
       </div>
     </Stage>
+    </div>
   );
 }
