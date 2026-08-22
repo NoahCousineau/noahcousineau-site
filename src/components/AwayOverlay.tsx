@@ -111,10 +111,25 @@ const TOP_ARC_R = TEXT_INNER_R;
  * beyond the inner edge to leave the same clear space. */
 const BOTTOM_ARC_R = TEXT_INNER_R + ARC_FONT * CAP_RATIO;
 
+/** Fired on `window` each time the away screen appears. */
+export const AWAY_SCREEN_SHOWN = "nc:away-screen-shown";
+
 export default function AwayOverlay() {
   // Always starts hidden, including in server-rendered HTML, so a page
   // opened in a background tab hydrates clean.
   const [away, setAway] = useState(false);
+
+  /* Announce the away screen so the rest of the site can stand itself back up
+   * behind it (2026-08-22, per Noah: "It would also be good if the animations
+   * reset when the clock screen comes on."). An event rather than shared state
+   * because the listeners are incidental — the project-grid objects care, and
+   * nothing renders differently here — and because it fires exactly on the
+   * transition rather than making every listener diff a boolean. Dispatched in
+   * an effect keyed on `away` so it follows the state whichever of the several
+   * triggers raised the screen. */
+  useEffect(() => {
+    if (away) window.dispatchEvent(new CustomEvent(AWAY_SCREEN_SHOWN));
+  }, [away]);
   // Mirrors `away` so the long-lived listeners below can read the current
   // value without being torn down and re-subscribed on every toggle.
   // Synced in an effect rather than assigned during render, which is not a

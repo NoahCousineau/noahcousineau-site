@@ -12,7 +12,7 @@ import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimat
  * about-me head] is looking and essentially want it to happen on the
  * homepage.")
  *
- * Sprouts, Corita and the Cultural Olympiad are edited; SoCal Earth, Valley
+ * Sprouts, Corita, SoCal Earth and the Cultural Olympiad are edited; Valley
  * Strong and More Work still have raws only, so those tiles keep their hover
  * video until frames arrive. Both paths live side by side on purpose — a tile
  * shows an object if it has one and falls back to video if it doesn't — so
@@ -20,9 +20,9 @@ import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimat
  *
  * Frames are registered before export so the subject doesn't hop between
  * them, each with its own anchor: the apple holds its STEM (the only part
- * that survives being eaten), the heart its CENTRE ("Have the heart grow from
- * the center") and the flame its BASE ("Have the flame growing from the
- * base"). See tools/project-animations/align_frames.py. */
+ * that survives being eaten), the heart and the sun their CENTRE ("Have the
+ * heart grow from the center"; the sun "starting as a dot") and the flame its
+ * BASE ("Have the flame growing from the base"). See tools/project-animations/align_frames.py. */
 const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: number }> = {
   "sprouts-farmers-market": {
     frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/sprouts/${n}.webp`),
@@ -35,6 +35,12 @@ const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: numbe
     width: 700,
     height: 714,
     heightFraction: 0.367,
+  },
+  "socal-earth": {
+    frames: [1, 2, 3].map((n) => `/assets/home/project-animations/socal-earth/${n}.webp`),
+    width: 700,
+    height: 709,
+    heightFraction: 0.365,
   },
   "cultural-olympiad-poster": {
     frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/olympics/${n}.webp`),
@@ -161,6 +167,12 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
     <Link
       ref={tileRef}
       href={href}
+      // Anchors are natively draggable, and dragging one raises the browser's
+      // own link ghost — the title-and-URL chip Noah caught in a screenshot
+      // while dragging the apple. The object stops its own dragstart too, but
+      // the gesture starts on the anchor, so it has to be refused here.
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
       className="group absolute inset-0 block w-full h-full"
       onMouseEnter={play}
       onMouseLeave={stop}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useThrowable } from "@/lib/useThrowable";
+import { AWAY_SCREEN_SHOWN } from "@/components/AwayOverlay";
 
 /**
  * A hand-shot object sitting in a project tile: click it and it animates,
@@ -63,6 +64,9 @@ export default function ProjectFrameAnimation({
 }) {
   const { frames, width, height } = animation;
   const [index, setIndex] = useState(0);
+  /* Mirrors `index` for the physics, which reads it inside a rAF loop and must
+   * not be re-subscribed on every frame change. */
+  const frameRef = useRef(0);
   const spent = useRef(false);
   const timer = useRef<number | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -111,38 +115,51 @@ export default function ProjectFrameAnimation({
     }, FRAME_MS);
   }, [clearTimer, frames.length, rock]);
 
+  useEffect(() => {
+    frameRef.current = index;
+  }, [index]);
+
   const { reset: resetThrow } = useThrowable({
     elementRef: hostRef,
     containerRef,
-    imageSrc: frames[0],
+    imageSrcs: frames,
+    frameRef,
     onClick: play,
   });
 
-  /* Back to frame 1, upright and back in place, whenever the tile leaves the
-   * viewport — so returning to it finds the object whole again. */
+  /** Whole again: frame 1, upright, back where it started. */
+  const restore = useCallback(() => {
+    clearTimer();
+    spent.current = false;
+    setIndex(0);
+    resetThrow();
+    if (rockRef.current) {
+      rockRef.current.style.transition = "none";
+      rockRef.current.style.transform = "rotate(0deg)";
+    }
+  }, [clearTimer, resetThrow]);
+
+  /* Restore whenever the tile leaves the viewport — so returning to it finds
+   * the object whole — and whenever the away screen covers the page, which is
+   * the other moment nobody can see it happen. Noah: "It would also be good if
+   * the animations reset when the clock screen comes on." */
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) return;
-        clearTimer();
-        spent.current = false;
-        setIndex(0);
-        resetThrow();
-        if (rockRef.current) {
-          rockRef.current.style.transition = "none";
-          rockRef.current.style.transform = "rotate(0deg)";
-        }
+        if (!entry.isIntersecting) restore();
       },
       { threshold: 0 }
     );
     io.observe(el);
+    window.addEventListener(AWAY_SCREEN_SHOWN, restore);
     return () => {
       io.disconnect();
+      window.removeEventListener(AWAY_SCREEN_SHOWN, restore);
       clearTimer();
     };
-  }, [clearTimer, resetThrow]);
+  }, [clearTimer, restore]);
 
   return (
     <div

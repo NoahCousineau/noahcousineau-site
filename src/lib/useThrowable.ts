@@ -27,22 +27,34 @@ import { defaultSilhouette, measureSilhouette, supportAt, type Silhouette } from
  */
 
 const GRAVITY_PER_HEIGHT = 6.2; // of container heights per second squared
-const RESTITUTION = 0.45;
-const AIR_DRAG = 0.25;
-const ANGULAR_DRAG = 0.5;
-const FLOOR_FRICTION_PER_SEC = 1.6;
+/* Noah, on the first pass: "The drag and throw is really stiff." It was —
+ * every damping term had been set higher than the head's, so a throw lost its
+ * energy almost immediately and the object stopped dead instead of tumbling
+ * and settling. These now sit at or below the head's values: it keeps more of
+ * a bounce, spins far longer (angular drag more than halved), skids further
+ * before friction takes it, and has to get slower before it is allowed to
+ * fall asleep. */
+const RESTITUTION = 0.58;
+const AIR_DRAG = 0.2;
+const ANGULAR_DRAG = 0.22;
+const FLOOR_FRICTION_PER_SEC = 1.0;
 const ROLL_LOCK_RATE = 9;
-const SLEEP_SPEED = 14;
-const SLEEP_SPIN = 8;
+const SLEEP_SPEED = 9;
+const SLEEP_SPIN = 5;
 const WALL_REST_SPEED = 18;
 const MAX_THROW_SPEED = 2400;
-/** Pointer travel (px) before a press stops being a click and becomes a drag. */
+/** Spin imparted by a throw, per px/s of horizontal release speed. */
+const THROW_SPIN = 0.42;
+/** How far the object leans into the direction it is being dragged. */
+const DRAG_LEAN_DEG_PER_SPEED = 0.016;
+const MAX_DRAG_LEAN_DEG = 22;
 const DRAG_THRESHOLD_PX = 4;
 
 export function useThrowable({
   elementRef,
   containerRef,
-  imageSrc,
+  imageSrcs,
+  frameRef,
   onClick,
   enabled = true,
 }: {
@@ -50,13 +62,31 @@ export function useThrowable({
   elementRef: React.RefObject<HTMLElement | null>;
   /** The box it is confined to. Must be the element's offsetParent. */
   containerRef: React.RefObject<HTMLElement | null>;
-  /** Decoded to measure the true shape; falls back to a blob if unavailable. */
-  imageSrc: string;
+  /** Every frame, decoded to measure its own outline — see the note below. */
+  imageSrcs: string[];
+  /** Which frame is on screen right now; picks the outline to collide with. */
+  frameRef?: React.RefObject<number>;
   /** Fired on release when the press never became a drag. */
   onClick?: () => void;
   enabled?: boolean;
 }) {
-  const shape = useRef<Silhouette>(defaultSilhouette());
+  /* ONE OUTLINE PER FRAME, not one for the whole animation. Noah: "do a more
+   * accurate job of capturing the silhouettes of the objects at all frames."
+   * These shapes change a lot as they play — the apple loses most of its body
+   * to a core, the sun grows from a dot — so colliding every frame against
+   * frame 1's outline would have a fully eaten core resting on thin air where
+   * the whole apple used to reach, and a tiny sun bouncing off a boundary the
+   * size of its final self. */
+  const shapes = useRef<Silhouette[]>([defaultSilhouette()]);
+  /* Stable identity: the physics effect below reads this and must not be torn
+   * down and re-subscribed on every render. Both refs it closes over are
+   * themselves stable, so there is nothing for it to go stale against. */
+  const shapeNow = useCallback(
+    () =>
+      shapes.current[Math.min(frameRef?.current ?? 0, shapes.current.length - 1)] ??
+      shapes.current[0],
+    [frameRef]
+  );
   const pos = useRef({ x: 0, y: 0 });
   const vel = useRef({ x: 0, y: 0 });
   const rot = useRef(0);
@@ -89,20 +119,25 @@ export function useThrowable({
     if (el) el.style.transform = "translate(0px, 0px) rotate(0deg)";
   }, [elementRef]);
 
-  // Measure the real outline once the artwork has decoded.
+  // Measure every frame's outline once its artwork has decoded.
   useEffect(() => {
     let cancelled = false;
-    const img = new window.Image();
-    img.src = imageSrc;
-    img.onload = () => {
-      if (cancelled) return;
-      const s = measureSilhouette(img);
-      if (s) shape.current = s;
-    };
+    const measured: Silhouette[] = imageSrcs.map(() => defaultSilhouette());
+    shapes.current = measured;
+    imageSrcs.forEach((src, i) => {
+      const img = new window.Image();
+      img.src = src;
+      img.onload = () => {
+        if (cancelled) return;
+        const s = measureSilhouette(img);
+        if (s) measured[i] = s;
+      };
+    });
     return () => {
       cancelled = true;
     };
-  }, [imageSrc]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageSrcs.join("|")]);
 
   useEffect(() => {
     const el = elementRef.current;
@@ -118,8 +153,8 @@ export function useThrowable({
      * at any rotation with no caching and no assumption that the rotation
      * origin is the box's centre. */
     const pivotPos = () => ({
-      x: el.offsetLeft + shape.current.pivot.x * el.offsetWidth + pos.current.x,
-      y: el.offsetTop + shape.current.pivot.y * el.offsetHeight + pos.current.y,
+      x: el.offsetLeft + shapeNow().pivot.x * el.offsetWidth + pos.current.x,
+      y: el.offsetTop + shapeNow().pivot.y * el.offsetHeight + pos.current.y,
     });
 
     const step = (ts: number) => {
@@ -145,10 +180,10 @@ export function useThrowable({
 
       const p = pivotPos();
       const r = rot.current;
-      const right = supportAt(shape.current.support, 0 - r) * W;
-      const down = supportAt(shape.current.support, 90 - r) * W;
-      const left = supportAt(shape.current.support, 180 - r) * W;
-      const up = supportAt(shape.current.support, 270 - r) * W;
+      const right = supportAt(shapeNow().support, 0 - r) * W;
+      const down = supportAt(shapeNow().support, 90 - r) * W;
+      const left = supportAt(shapeNow().support, 180 - r) * W;
+      const up = supportAt(shapeNow().support, 270 - r) * W;
 
       if (p.x < left) {
         pos.current.x += left - p.x;
@@ -236,6 +271,22 @@ export function useThrowable({
       while (samples.current.length > 2 && now - samples.current[0].t > 90) {
         samples.current.shift();
       }
+      /* Lean into the drag. Held perfectly upright while being hauled about,
+       * the object reads as a sticker being slid rather than a thing with
+       * weight — a good part of what made the first pass feel stiff. The lean
+       * is eased toward rather than snapped to, so quick direction changes
+       * swing instead of jumping, and it is what the release spin continues
+       * from. */
+      const prev = samples.current[samples.current.length - 2];
+      if (prev) {
+        const dtS = Math.max((now - prev.t) / 1000, 1 / 240);
+        const vx = (p.x - prev.x) / dtS;
+        const lean = Math.max(
+          -MAX_DRAG_LEAN_DEG,
+          Math.min(MAX_DRAG_LEAN_DEG, vx * DRAG_LEAN_DEG_PER_SPEED)
+        );
+        rot.current += (lean - rot.current) * 0.25;
+      }
       apply();
     };
 
@@ -267,7 +318,7 @@ export function useThrowable({
             vy = (vy / sp) * MAX_THROW_SPEED;
           }
           vel.current = { x: vx, y: vy };
-          spin.current = vx * 0.25;
+          spin.current = vx * THROW_SPIN;
         }
       }
       samples.current = [];
@@ -294,7 +345,7 @@ export function useThrowable({
         raf.current = null;
       }
     };
-  }, [elementRef, containerRef, enabled]);
+  }, [elementRef, containerRef, enabled, shapeNow]);
 
   return { reset, rotationRef: rot };
 }
