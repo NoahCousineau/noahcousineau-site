@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import HeadWithEyes from "./HeadWithEyes";
 
 /*
@@ -19,8 +20,14 @@ import HeadWithEyes from "./HeadWithEyes";
  * clears them with room to spare and the tracking is actually visible,
  * which is the whole point of putting a tracking head down there.
  *
- * pointer-events are off: it's scenery, and it sits over the footer's link
- * columns' airspace, so it must never intercept a click meant for them.
+ * LINKS TO ABOUT ME (2026-08-20, second pass — Noah: "Let's also make the
+ * head on the footer a link to the 'about me' page.") The OUTER wrapper
+ * stays `pointer-events-none` — it's still scenery first, and sits over
+ * the footer's link columns' airspace, so it must never intercept a click
+ * meant for THEM. Only the <Link> immediately around the head re-enables
+ * pointer events, so the clickable area is scoped to exactly the head's
+ * own box (which sits well clear of the link columns above it), not the
+ * empty space around it.
  */
 
 /** Share of the head's height left visible above the bottom edge. */
@@ -49,9 +56,14 @@ export default function PeekingHead({
         left: `calc(var(--u) * ${centerXUnits})`,
         transform: "translateX(-50%)",
       }}
-      aria-hidden
     >
-      <HeadWithEyes />
+      <Link
+        href="/about"
+        aria-label="About me"
+        className="block pointer-events-auto hover:opacity-80 transition-opacity"
+      >
+        <HeadWithEyes />
+      </Link>
     </div>
   );
 }

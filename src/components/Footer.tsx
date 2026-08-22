@@ -143,8 +143,11 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
   return (
     <>
       {/* Reserves the scroll distance through which the content uncovers
-          the fixed footer beneath it. */}
-      <div ref={spacerRef} aria-hidden className="w-full" style={{ height: "100svh" }} />
+          the fixed footer beneath it. `dvh` (dynamic viewport height)
+          rather than `svh` — see the NO GAP AT THE TOP note below; this
+          just keeps the reserved scroll distance matched to the footer's
+          own sizing so the reveal still completes at the right point. */}
+      <div ref={spacerRef} aria-hidden className="w-full" style={{ height: "100dvh" }} />
       {/* LAYOUT (2026-08-20, per Noah: "Make it so the 'Cousineau' logo is
           near the top with the page information below the logo. Then at the
           bottom of the browser window, I want my head to just peek out from
@@ -154,8 +157,21 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           with the head occupying the bottom edge. Achieved by aligning the
           block to the start and giving it a top inset — the block's own
           internal coordinates are untouched, so the footer's formatting
-          stays exactly as designed. */}
-      <footer className="fixed bottom-0 left-0 w-full bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start z-0 overflow-hidden" style={{ height: "100svh" }}>
+          stays exactly as designed.
+
+          NO GAP AT THE TOP (2026-08-20, second pass — Noah: "there's the
+          slightest bit of white space at the very top of the footer").
+          This used to be sized with `bottom-0` + `height: 100svh` — on any
+          browser whose current viewport is taller than its OWN `svh` unit
+          (Safari/Chrome's dynamic address bar: `svh` is measured with the
+          toolbar SHOWN, i.e. the shortest state), the footer's height
+          could fall short of the real viewport, and since only its BOTTOM
+          edge was anchored, the shortfall opened up as a sliver at the
+          TOP — showing the white page background behind it. `inset-0`
+          anchors all four edges directly to the actual current viewport
+          instead of computing a height from any vh-flavoured unit at all,
+          so there's no unit to fall short regardless of toolbar state. */}
+      <footer className="fixed inset-0 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start z-0 overflow-hidden">
       <div
         className="relative mx-auto max-w-[1920px] w-full h-full"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}

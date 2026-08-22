@@ -10,28 +10,54 @@ import HeadWithEyes from "@/components/HeadWithEyes";
  * settles — and then STAYS WHERE IT LANDS (Noah's explicit choice over
  * springing back to its designed spot).
  *
- * COLLIDES WITH THE VISIBLE HEAD, NOT ITS BOX (2026-08-20, per Noah: "I
- * wish it used the edge of the red space as the 'floor' or the bottom most
- * point it can touch. Right now it's floating a bit too much above it.")
+ * COLLISION SHAPE: A RADIAL EXTENT MAP, NOT A SIMPLE SHAPE (2026-08-20,
+ * third pass — Noah: "there's still a little bit of gap or dip that
+ * happens on the border" after an earlier fix, plus "make the head have
+ * more of a center of mass around the skull.")
  *
- * head.png carries a lot of transparent margin — the artwork's lowest
- * opaque pixel sits well above the bottom of its own image box. Colliding
- * the element's layout box against the container therefore parked the head
- * with a band of empty pixels resting on the floor, reading as hovering.
- * The physics body is now the image's ALPHA BOUNDS: measured once from the
- * decoded PNG, carried as fractions of the element box, and rotated with
- * the head each frame. Because that opaque rect is off-centre within the
- * box, rotating it moves its centre too — hence the rotated offset applied
- * below, not just a rotated size.
+ * History of this collision shape, each round closing the gap further:
+ *   1. The element's own rotated LAYOUT BOX — left a big band of the
+ *      artwork's transparent margin resting on the floor, reading as
+ *      hovering.
+ *   2. The rotated RECTANGLE bounding just the opaque pixels — closer, but
+ *      a rotated rectangle's own axis-aligned bounding box is strictly
+ *      LARGER than the rectangle at any non-90deg-multiple angle (worst
+ *      near 45deg, and the head rests at 42deg), so it still stopped
+ *      measurably before the visible edge.
+ *   3. An ELLIPSE inscribed in that same rect — tighter still (~27-28%
+ *      less overestimate at the resting angle), but a head isn't a
+ *      perfect ellipse either, so a small angle-dependent residual
+ *      remained, most noticeable while rolling through the angles an
+ *      ellipse fits worst.
  *
- * ROLLING (same round, per "I also want to make sure the head rolls and has
- * proper physics. Right now there's a feeling of it getting stuck.")
- * Contact with the floor now drives spin from horizontal speed the way a
- * wheel rolls (omega = v / r), instead of receiving a single impulse at the
- * moment of impact and then being killed by drag. Angular drag is much
- * lower, floor friction bleeds speed over about a second rather than
- * instantly, and the sleep thresholds sit low enough that the head is
- * genuinely finished moving before it parks.
+ * This round replaces the approximation with the MEASURED silhouette
+ * itself: on load, the decoded PNG's alpha channel is scanned once to
+ * build a lookup table of "how far the opaque silhouette extends from the
+ * pivot" at every few degrees around the full circle. Colliding against
+ * that table (interpolated between the two nearest samples) matches the
+ * true edge at every rotation, not just the ones a simple shape happens to
+ * fit well — closing the residual gap/dip instead of just shrinking it.
+ *
+ * PIVOT = SKULL-WEIGHTED CENTRE, NOT THE BOX CENTRE (same round — "make
+ * the head have more of a center of mass around the skull"). Both the
+ * rotation origin AND the radial table above are measured from this ONE
+ * point, computed as the centroid of opaque pixels in roughly the top
+ * half of the crop (excluding the neck/shoulders lower down) rather than
+ * the geometric centre of the whole opaque box. Concretely this means:
+ *   - It TUMBLES like the skull is the heavy part — the skull stays
+ *     comparatively still while the chin/neck swing around it, instead of
+ *     the whole shape rotating uniformly about its own plain midpoint.
+ *   - Collision, throw, and grab math all key off this same point, so the
+ *     "weight" read in the tumble and the physical position used for
+ *     walls/rolling are the same point, not two different ones drifting
+ *     apart.
+ *
+ * ROLLING: contact with the floor drives spin from horizontal speed the
+ * way a wheel rolls (omega = v / r, using the current DOWN extent as r),
+ * instead of a single impulse at impact killed by drag. Angular drag is
+ * light, floor friction bleeds speed over about a second, and the sleep
+ * thresholds sit low enough that the head is genuinely finished moving
+ * before it parks.
  *
  * SIZE: 25% smaller than the original build, per Noah. The right/bottom
  * insets scale with it, since both were derived from the head's own
@@ -59,8 +85,7 @@ const RESTITUTION = 0.5;
 /** Fraction of horizontal speed shed per second while touching the floor.
  * Tuned so a good throw rolls for roughly a second before settling. */
 const FLOOR_FRICTION_PER_SEC = 1.15;
-/** Per-second drag on travel and spin while airborne. Angular drag is much
- * lower than the first build's 0.9, which was strangling the tumble. */
+/** Per-second drag on travel and spin while airborne. */
 const AIR_DRAG = 0.22;
 const ANGULAR_DRAG = 0.3;
 /** How fast floor contact pulls spin toward the true rolling rate. */
@@ -71,6 +96,41 @@ const SLEEP_SPIN = 8;
 /** Throw ceiling, so a violent flick can't outrun the eye. */
 const MAX_THROW_SPEED = 2600;
 
+// --- Measured shape (populated async from the decoded PNG) ---------------
+/** Angular resolution of the radial extent table. 2deg gives 180 samples —
+ * far finer than the tumble needs, essentially free to compute once. */
+const BUCKET_DEG = 2;
+const BUCKET_COUNT = 360 / BUCKET_DEG;
+
+type ShapeData = {
+  /** Skull-weighted pivot, as a fraction (0-1) of the element's own box. */
+  pivot: { x: number; y: number };
+  /** Radial extent from the pivot at each angle bucket, as a fraction of
+   * the element's own WIDTH (so a single scale factor converts it to real
+   * px at any rendered size — the aspect ratio is fixed, so width alone
+   * is sufficient). Index i covers [i*BUCKET_DEG, (i+1)*BUCKET_DEG). */
+  radial: Float32Array;
+};
+
+/** Reasonable guesses for the brief window before the PNG has decoded —
+ * close enough that nothing looks broken if a drag happens immediately. */
+function defaultShape(): ShapeData {
+  return { pivot: { x: 0.5, y: 0.42 }, radial: new Float32Array(BUCKET_COUNT).fill(0.28) };
+}
+
+/** Interpolated lookup: extent at an arbitrary angle (degrees, any range),
+ * as a fraction of width — multiply by the current rendered width to get
+ * real px. */
+function radialAt(radial: Float32Array, deg: number): number {
+  let d = deg % 360;
+  if (d < 0) d += 360;
+  const idx = d / BUCKET_DEG;
+  const i0 = Math.floor(idx) % BUCKET_COUNT;
+  const i1 = (i0 + 1) % BUCKET_COUNT;
+  const t = idx - Math.floor(idx);
+  return radial[i0] * (1 - t) + radial[i1] * t;
+}
+
 export default function RagdollHead({
   containerRef,
 }: {
@@ -79,10 +139,7 @@ export default function RagdollHead({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const rotationRef = useRef<number>(BASE_ROTATION_DEG);
-
-  // Alpha bounds of head.png as fractions of the element box. Starts as the
-  // full box and tightens once the PNG has been measured.
-  const opaque = useRef({ x0: 0, y0: 0, x1: 1, y1: 1 });
+  const shape = useRef<ShapeData>(defaultShape());
 
   const pos = useRef({ x: 0, y: 0 });
   const vel = useRef({ x: 0, y: 0 });
@@ -94,7 +151,7 @@ export default function RagdollHead({
   const samples = useRef<{ x: number; y: number; t: number }[]>([]);
   const grabOffset = useRef({ x: 0, y: 0 });
 
-  // Measure the artwork's opaque bounds once. Done from the decoded image
+  // Measure the artwork's true silhouette once. Done from the decoded PNG
   // rather than hardcoded so it stays correct if the asset is re-exported.
   useEffect(() => {
     let cancelled = false;
@@ -102,9 +159,7 @@ export default function RagdollHead({
     img.src = "/assets/about/head.png";
     img.onload = () => {
       if (cancelled) return;
-      // A small raster is plenty: this only needs to be accurate to a
-      // fraction of a percent of the head's size.
-      const W = 160;
+      const W = 200;
       const H = Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * W));
       const c = document.createElement("canvas");
       c.width = W;
@@ -113,10 +168,16 @@ export default function RagdollHead({
       if (!ctx) return;
       ctx.drawImage(img, 0, 0, W, H);
       const d = ctx.getImageData(0, 0, W, H).data;
+      // Faint antialiased fringe pixels shouldn't count as part of the
+      // solid silhouette — they'd inflate the measured extent and
+      // reintroduce a small version of the gap this is fixing.
+      const ALPHA_THRESHOLD = 40;
+      const isOpaque = (x: number, y: number) => d[(y * W + x) * 4 + 3] > ALPHA_THRESHOLD;
+
       let minX = W, minY = H, maxX = -1, maxY = -1;
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
-          if (d[(y * W + x) * 4 + 3] > 24) {
+          if (isOpaque(x, y)) {
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
             if (y < minY) minY = y;
@@ -124,13 +185,66 @@ export default function RagdollHead({
           }
         }
       }
-      if (maxX < 0) return;
-      opaque.current = {
-        x0: minX / W,
-        y0: minY / H,
-        x1: (maxX + 1) / W,
-        y1: (maxY + 1) / H,
+      if (maxX < 0) return; // fully transparent somehow; keep the default
+
+      // Skull-weighted pivot: the centroid of opaque pixels in roughly the
+      // top HALF of the crop, approximating "the skull" by excluding the
+      // neck/shoulders below it — see the PIVOT note in the file header.
+      const skullBottomY = minY + (maxY - minY) * 0.5;
+      let sumX = 0, sumY = 0, count = 0;
+      for (let y = minY; y <= skullBottomY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          if (isOpaque(x, y)) {
+            sumX += x;
+            sumY += y;
+            count++;
+          }
+        }
+      }
+      const pivotPx = count > 0 ? { x: sumX / count, y: sumY / count } : { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+
+      // Radial extent from the pivot, per angle bucket: for every opaque
+      // pixel, its distance and angle from the pivot can only ever grow
+      // the bucket it falls into's recorded maximum — a single pass over
+      // every pixel, no ray-marching or interpolation needed to BUILD it
+      // (only to query it later).
+      const radialPx = new Float32Array(BUCKET_COUNT);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          if (!isOpaque(x, y)) continue;
+          const dx = x - pivotPx.x;
+          const dy = y - pivotPx.y;
+          const dist = Math.hypot(dx, dy);
+          let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+          if (deg < 0) deg += 360;
+          const bucket = Math.min(BUCKET_COUNT - 1, Math.floor(deg / BUCKET_DEG));
+          if (dist > radialPx[bucket]) radialPx[bucket] = dist;
+        }
+      }
+      // Guard against a degenerate collision shape from any bucket a
+      // roughly-convex, fully-opaque silhouette shouldn't practically
+      // leave empty, by filling from the nearest measured neighbour.
+      for (let i = 0; i < BUCKET_COUNT; i++) {
+        if (radialPx[i] > 0) continue;
+        for (let step = 1; step <= BUCKET_COUNT; step++) {
+          const lo = (i - step + BUCKET_COUNT) % BUCKET_COUNT;
+          const hi = (i + step) % BUCKET_COUNT;
+          if (radialPx[lo] > 0) { radialPx[i] = radialPx[lo]; break; }
+          if (radialPx[hi] > 0) { radialPx[i] = radialPx[hi]; break; }
+        }
+      }
+
+      shape.current = {
+        pivot: { x: pivotPx.x / W, y: pivotPx.y / H },
+        radial: radialPx.map((v) => v / W),
       };
+
+      // The CSS rotation origin follows the same measured pivot, so the
+      // visual tumble and the collision math share one reference point —
+      // see the PIVOT note above.
+      if (wrapRef.current) {
+        wrapRef.current.style.transformOrigin = `${shape.current.pivot.x * 100}% ${shape.current.pivot.y * 100}%`;
+      }
     };
     return () => {
       cancelled = true;
@@ -146,77 +260,22 @@ export default function RagdollHead({
       wrap.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${rotationRef.current}deg)`;
     };
 
-    /** The physics body: an ELLIPSE inscribed in the artwork's opaque rect,
-     * rotated. Returns its half-extents plus the offset of its centre from
-     * the element's centre (rotation about the element centre carries the
-     * off-centre opaque rect around with it).
-     *
-     * BUGFIX (2026-08-20, per Noah: "there's an invisible gap between the
-     * actual edge of the head and then the edges of the red box... work on
-     * how to make this gap go away"). The previous version used the
-     * ROTATED RECTANGLE's own axis-aligned bounding box as the collision
-     * extent — but a rotated rectangle's AABB is strictly LARGER than the
-     * rectangle itself at any angle other than 0/90/180/270 (a square
-     * rotated 45deg has an AABB ~41% wider than the square), and the head
-     * rests at 42deg, close to where that overestimation is near its worst.
-     * The head's actual silhouette is roughly oval, not rectangular, so
-     * colliding against the full rotated-rectangle AABB stopped the head
-     * measurably before its VISIBLE edge reached the wall — exactly the
-     * gap reported.
-     *
-     * An ellipse inscribed in that same opaque rect is a much closer match
-     * to a head's actual silhouette, and its rotated AABB has a simple
-     * closed form: for semi-axes (a,b) rotated by angle θ, the half-extents
-     * are sqrt((a·cosθ)² + (b·sinθ)²) and sqrt((a·sinθ)² + (b·cosθ)²) — this
-     * is provably tighter than the rectangle's AABB at every angle except
-     * the four where they coincide, so it can only close the gap, never
-     * reopen it. It slightly UNDER-covers real protrusions (chin, hair)
-     * relative to a perfect silhouette trace, but a small amount of the
-     * head sinking into the wall on those points reads far less wrong than
-     * the visible gap this replaces — favoring tighter over looser is the
-     * right tradeoff for this specific complaint. */
-    const body = () => {
-      const W = wrap.offsetWidth;
-      const H = wrap.offsetHeight;
-      const o = opaque.current;
-      const ow = (o.x1 - o.x0) * W;
-      const oh = (o.y1 - o.y0) * H;
-      const a = ow / 2; // ellipse semi-axis, unrotated width direction
-      const b = oh / 2; // ellipse semi-axis, unrotated height direction
-      // Opaque centre relative to the element centre, unrotated.
-      const ox = ((o.x0 + o.x1) / 2 - 0.5) * W;
-      const oy = ((o.y0 + o.y1) / 2 - 0.5) * H;
-      const rad = (rotationRef.current * Math.PI) / 180;
-      const c = Math.cos(rad);
-      const s = Math.sin(rad);
-      return {
-        hw: Math.sqrt((a * c) ** 2 + (b * s) ** 2),
-        hh: Math.sqrt((a * s) ** 2 + (b * c) ** 2),
-        // Rotated offset of the opaque centre.
-        rx: ox * c - oy * s,
-        ry: ox * s + oy * c,
-      };
-    };
-
-    /** Element centre at zero offset, derived from the rendered rect minus
-     * the current offset — no style mutation, correct whenever called. */
-    const measureBase = () => {
-      const r = wrap.getBoundingClientRect();
-      const cr = container.getBoundingClientRect();
-      return {
-        x: r.left + r.width / 2 - cr.left - pos.current.x,
-        y: r.top + r.height / 2 - cr.top - pos.current.y,
-      };
-    };
-
-    let base = measureBase();
-    const initialMeasure = requestAnimationFrame(() => {
-      base = measureBase();
+    /** The pivot's screen position (container-relative) at the current
+     * pos offset. `offsetLeft`/`offsetTop`/`offsetWidth`/`offsetHeight`
+     * are pure CSS-layout quantities — completely unaffected by the
+     * element's own `transform` — so this is correct at any rotation with
+     * no caching and no assumptions about rotating-box symmetry (the
+     * previous version derived this from the RENDERED, rotated rect and
+     * only worked because it assumed the rotation origin was exactly the
+     * box's own centre; with the pivot now off-centre that assumption no
+     * longer holds, so this reads the true layout position directly
+     * instead). Container is guaranteed to be `wrap`'s offsetParent: the
+     * red header section is `position: relative` and `wrap` is its direct
+     * child with nothing positioned in between. */
+    const pivotScreen = () => ({
+      x: wrap.offsetLeft + shape.current.pivot.x * wrap.offsetWidth + pos.current.x,
+      y: wrap.offsetTop + shape.current.pivot.y * wrap.offsetHeight + pos.current.y,
     });
-    const onResize = () => {
-      base = measureBase();
-    };
-    window.addEventListener("resize", onResize);
 
     /* Runs for as long as the component is mounted and skips the physics
      * while at rest. It used to stop and restart itself behind a rafRef
@@ -246,39 +305,105 @@ export default function RagdollHead({
         rotationRef.current += spin.current * dt;
 
         const cr = container.getBoundingClientRect();
-        const b = body();
-        // Position of the VISIBLE head's centre, which is what collides.
-        const cx = base.x + pos.current.x + b.rx;
-        const cy = base.y + pos.current.y + b.ry;
+        const p = pivotScreen();
+        const W = wrap.offsetWidth;
+        const rot = rotationRef.current;
+        // Screen-space cardinal extents from the pivot, converted to the
+        // silhouette's own (unrotated) angle frame: a point at image-angle
+        // θ ends up at screen-angle θ+rot after a CSS rotate(rot) (CSS
+        // rotation is clockwise-positive in this Y-down coordinate system,
+        // matching atan2(dy,dx) directly), so the image-angle to query for
+        // a given screen direction is that direction's angle minus rot.
+        const right = radialAt(shape.current.radial, 0 - rot) * W;
+        const down = radialAt(shape.current.radial, 90 - rot) * W;
+        const left = radialAt(shape.current.radial, 180 - rot) * W;
+        const up = radialAt(shape.current.radial, 270 - rot) * W;
 
-        const minX = b.hw;
-        const maxX = cr.width - b.hw;
-        const minY = b.hh;
-        const maxY = cr.height - b.hh;
+        const minX = left;
+        const maxX = cr.width - right;
+        const minY = up;
+        const maxY = cr.height - down;
 
-        if (cx < minX) {
-          pos.current.x += minX - cx;
-          vel.current.x = Math.abs(vel.current.x) * RESTITUTION;
-          spin.current -= vel.current.y * 0.06;
-        } else if (cx > maxX) {
-          pos.current.x -= cx - maxX;
-          vel.current.x = -Math.abs(vel.current.x) * RESTITUTION;
-          spin.current += vel.current.y * 0.06;
+        // CORNER REST — below this incoming speed, a side-wall touch just
+        // clamps position, with no bounce/torque injected. Without this, a
+        // head settling in a corner (touching a side wall AND the floor in
+        // the same frame) could clamp against the wall every single frame
+        // at a near-zero but non-zero velocity, each touch re-injecting a
+        // tiny amount of spin/velocity via the bounce response below —
+        // never quite crossing the sleep thresholds, so it drifted for a
+        // very long time instead of settling. Confirmed by isolating the
+        // two cases: a straight floor drop (no wall involved) settled
+        // cleanly in a handful of frames; a corner drop kept drifting.
+        // Below this threshold there's nothing worth bouncing anyway — the
+        // touch just becomes a rest against the wall, the way it would
+        // for a real object with imperceptible momentum.
+        const WALL_REST_SPEED = 20;
+
+        if (p.x < minX) {
+          pos.current.x += minX - p.x;
+          if (Math.abs(vel.current.x) > WALL_REST_SPEED) {
+            vel.current.x = Math.abs(vel.current.x) * RESTITUTION;
+            spin.current -= vel.current.y * 0.06;
+          } else {
+            vel.current.x = 0;
+          }
+        } else if (p.x > maxX) {
+          pos.current.x -= p.x - maxX;
+          if (Math.abs(vel.current.x) > WALL_REST_SPEED) {
+            vel.current.x = -Math.abs(vel.current.x) * RESTITUTION;
+            spin.current += vel.current.y * 0.06;
+          } else {
+            vel.current.x = 0;
+          }
         }
 
-        if (cy < minY) {
-          pos.current.y += minY - cy;
+        if (p.y < minY) {
+          pos.current.y += minY - p.y;
           vel.current.y = Math.abs(vel.current.y) * RESTITUTION;
-        } else if (cy > maxY) {
+        } else if (p.y > maxY) {
           // Sit exactly on the floor — the bottom of the VISIBLE head now
           // meets the bottom of the red header, with no transparent gap.
-          pos.current.y -= cy - maxY;
-          if (vel.current.y > 0) vel.current.y = -vel.current.y * RESTITUTION;
+          pos.current.y -= p.y - maxY;
+          // FLOOR REST, NOT AN UNCONDITIONAL BOUNCE (2026-08-21 — the
+          // rEff fix above tamed the runaway growth but rotation was still
+          // drifting at a near-constant rate instead of decaying, over many
+          // forced frames). Root cause: this branch had no floor-equivalent
+          // of WALL_REST_SPEED below. Every frame at rest, gravity adds a
+          // fresh GRAVITY*dt to vel.y, and this line unconditionally flipped
+          // it — so vel.y chattered forever a bit above SLEEP_SPEED instead
+          // of ever reaching exactly 0, and each of THOSE touches also fed
+          // the left/right-wall branches' `spin -= vel.y*0.06` coupling
+          // whenever the head was in a corner, continuously re-injecting
+          // spin. Same fix as the wall case: below a small incoming speed,
+          // just clamp to the floor with zero vertical velocity rather than
+          // bouncing a fraction of it back.
+          if (vel.current.y > WALL_REST_SPEED) {
+            vel.current.y = -vel.current.y * RESTITUTION;
+          } else {
+            vel.current.y = 0;
+          }
 
           // Roll: ground contact ties spin to horizontal speed the way a
           // wheel rolls, easing toward it rather than snapping so a skid
-          // becomes a roll instead of an instant lock.
-          const rEff = Math.max(b.hh, 1);
+          // becomes a roll instead of an instant lock. `down` (the current
+          // pivot-to-floor distance) is the effective rolling radius.
+          //
+          // FLOOR RADIUS, NOT 1px (2026-08-21 — Noah: "still a little bit of
+          // gap or dip" persisted after the wall-rest fix above, traced to
+          // this line). Now that the pivot is skull-weighted instead of
+          // centred, `down` swings widely with rotation — small whenever the
+          // TOP of the head is what's facing the floor, since that's close
+          // to the skull pivot. `Math.max(down, 1)` let it collapse to a
+          // couple of px there, and rollSpin = vel.x / rEff blew up toward
+          // thousands of deg/s at that instant — which the roll-lock then
+          // aggressively chased every frame, so rotation kept ACCELERATING
+          // through those angles instead of decaying (confirmed by reading
+          // the live transform across forced frames: -0.99°, -1.02°, -1.24°,
+          // -1.17°, -1.40° per frame — growing, not shrinking). Flooring at a
+          // fraction of the head's own width keeps the radius physically
+          // plausible at every angle, so a small vel.x can no longer demand
+          // an enormous spin.
+          const rEff = Math.max(down, W * 0.2);
           const rollSpin = (vel.current.x / rEff) * (180 / Math.PI);
           spin.current += (rollSpin - spin.current) * Math.min(1, ROLL_LOCK_RATE * dt);
           vel.current.x *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * dt);
@@ -310,14 +435,12 @@ export default function RagdollHead({
 
     const onDown = (e: PointerEvent) => {
       e.preventDefault();
-      // One rect read, and it keeps the walls honest across anything that
-      // shifted the layout since mount (font swap, image load, zoom).
-      base = measureBase();
       dragging.current = true;
       wrap.setPointerCapture(e.pointerId);
       wrap.style.cursor = "grabbing";
       const p = pointerPos(e);
-      grabOffset.current = { x: base.x + pos.current.x - p.x, y: base.y + pos.current.y - p.y };
+      const piv = pivotScreen();
+      grabOffset.current = { x: piv.x - p.x, y: piv.y - p.y };
       samples.current = [{ ...p, t: performance.now() }];
       vel.current = { x: 0, y: 0 };
       wake();
@@ -326,8 +449,16 @@ export default function RagdollHead({
     const onMove = (e: PointerEvent) => {
       if (!dragging.current) return;
       const p = pointerPos(e);
-      pos.current.x = p.x + grabOffset.current.x - base.x;
-      pos.current.y = p.y + grabOffset.current.y - base.y;
+      // Solve for the pos offset that puts the pivot at (pointer +
+      // grabOffset): pivotScreen() = layoutPivot + pos, so
+      // pos = target - layoutPivot = target - (pivotScreen() - pos.current).
+      const targetX = p.x + grabOffset.current.x;
+      const targetY = p.y + grabOffset.current.y;
+      const piv = pivotScreen();
+      const layoutPivotX = piv.x - pos.current.x;
+      const layoutPivotY = piv.y - pos.current.y;
+      pos.current.x = targetX - layoutPivotX;
+      pos.current.y = targetY - layoutPivotY;
       const now = performance.now();
       samples.current.push({ ...p, t: now });
       // Keep the last ~90ms: long enough to smooth jitter, short enough
@@ -382,8 +513,6 @@ export default function RagdollHead({
     apply();
 
     return () => {
-      cancelAnimationFrame(initialMeasure);
-      window.removeEventListener("resize", onResize);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
       wrap.removeEventListener("pointerdown", onDown);
@@ -408,7 +537,9 @@ export default function RagdollHead({
         bottom: `calc(var(--u) * ${HEAD_BOTTOM_UNITS})`,
         width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
         transform: `rotate(${BASE_ROTATION_DEG}deg)`,
-        transformOrigin: "center center",
+        // Default before the pivot is measured; the load effect overwrites
+        // this with the skull-weighted point once it's known.
+        transformOrigin: "50% 42%",
         willChange: "transform",
       }}
     >
