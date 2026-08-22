@@ -30,11 +30,35 @@ import { headAsset } from "@/lib/headAssets";
  *  nothing outside the repo depends on it. */
 export const HEAD_ASPECT = "1227/1669";
 
-/** How far (px) a pupil may drift from dead-centre. Kept small and
- * radius-clamped so the socket edges never expose the transparent hole —
- * Noah: "it's important the eyes don't move too much... it will look
- * unnatural and reveal the red background behind." */
-const MAX_EYE_OFFSET_PX = 3.2;
+/* How far a pupil may drift from dead-centre, as a share of the eye disc's
+ * own rendered width.
+ *
+ * This was a flat 3.2px from the day the tracking was written, and that was
+ * always about twice the room actually available. Measured across every
+ * configuration this head has had, the eye disc only ever extended ~0.75% of
+ * the head's width past the socket opening — about 1.5px at the size the
+ * footer head is drawn — so a 3.2px drift slid the pupil ~1.7px CLEAR of the
+ * hole and let the backing disc show. Noah, after two rounds of trying to
+ * revert my way out of it: "the eyes are still moving out of the socket area
+ * too much."
+ *
+ * Reverting could not fix it, which is why the last two attempts didn't: the
+ * overshoot predates every change I made, and the ORIGINAL artwork was
+ * marginally worse (1.79px against today's 1.70px), so going further back
+ * makes it slightly worse rather than better.
+ *
+ * Expressed as a fraction of the disc rather than in pixels because the
+ * margin scales with the head and a pixel constant does not. The footer head
+ * is 200px wide at a 1280 viewport and 300px at 1920; a fixed 3.2px overshoots
+ * at both but by different amounts, and on a narrow phone it would be wildly
+ * out. 6% of the disc keeps the pupil inside the socket at every width — it
+ * spends 0.71% of the head's width against the 0.75% available — which is the
+ * same reason the rest of the site sizes everything in --u.
+ *
+ * The motion is deliberately restrained; it always has been. Noah, when this
+ * was first built: "it's important the eyes don't move too much... it will
+ * look unnatural and reveal the red background behind." */
+const EYE_TRAVEL_FRACTION_OF_DISC = 0.06;
 
 /** One tracked eye: computes its own instantaneous vector to the cursor and
  * translates toward it — no easing, per Noah's "instantaneous" requirement.
@@ -82,9 +106,19 @@ function TrackedEye({
       const cy = rect.top + rect.height / 2;
       const dx = e.clientX - cx;
       const dy = e.clientY - cy;
+      // Scale the drift off the disc's CURRENT rendered size, so the pupil
+      // keeps the same relationship to its socket at every viewport width.
+      //
+      // offsetWidth, NOT rect.width: on the About page the head is rotated,
+      // and getBoundingClientRect returns the axis-aligned box of the rotated
+      // square, which at the ragdoll's 42-degree rest is about 1.41x the real
+      // width. Sizing the travel off that would hand the pupil 41% more room
+      // on exactly the head where it is already hardest to keep in the socket.
+      // offsetWidth is pure layout and ignores the transform.
+      const maxOffset = el.offsetWidth * EYE_TRAVEL_FRACTION_OF_DISC;
       const dist = Math.hypot(dx, dy) || 1;
-      const screenX = (dx / dist) * MAX_EYE_OFFSET_PX;
-      const screenY = (dy / dist) * MAX_EYE_OFFSET_PX;
+      const screenX = (dx / dist) * maxOffset;
+      const screenY = (dy / dist) * maxOffset;
 
       // Counter-rotate into the head's local space: a child's translate
       // happens inside its parent's already-rotated frame, so without this
