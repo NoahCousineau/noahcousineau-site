@@ -34,7 +34,25 @@ RAW = '/Users/noahcousineau/Desktop/portfolio/rotating-head-turntable/01-raw-pho
 DST = '/Users/noahcousineau/Desktop/portfolio/noahcousineau-site/public/assets/about/head-dark.png'
 TARGET_W = 1227          # same rendered width as the light head
 SOCKET = (62.0, 27.0)    # semi-axes, px at source scale
-LENS_KEEP = 0.58         # alpha left over the socket; lower = eyes more visible
+
+# Alpha left over the socket. This was 0.58, which looked right at full
+# resolution and was invisible where it actually matters: the head renders
+# about 212px wide on the About page, so each eye is ~24px, and behind a lens
+# whose own colour is (53,5,6) at 58% opacity there was nothing left to see.
+# Noah: "I don't see any eye tracking on the dark mode."
+#
+# Opening the socket up alone would read as two holes punched in the shades,
+# so the lens tint moves onto the EYE artwork instead (see EYE_TINT): the
+# pupils are drawn already lens-coloured, and the socket only keeps a trace
+# of the real lens over them. Judged at 212px, not at full size.
+LENS_KEEP = 0.10
+
+# Applied to the light-mode eye photographs to make the dark-mode pair.
+# Contrast first so the iris survives being darkened, then a cast toward the
+# lens's own brown-red so the eye still belongs behind the glass.
+EYE_TINT_GAIN = (0.82, 0.44, 0.41)
+EYE_TINT_CONTRAST = 1.55
+EYE_SRC_DIR = '/Users/noahcousineau/Desktop/portfolio/noahcousineau-site/public/assets/about'
 
 
 def find_lenses(alpha, rgb, y0, y1):
@@ -58,7 +76,24 @@ def find_lenses(alpha, rgb, y0, y1):
     return out
 
 
+def build_dark_eyes():
+    """Write the lens-tinted pair the dark head renders behind its sockets."""
+    out = []
+    for side in ('left', 'right'):
+        src = os.path.join(EYE_SRC_DIR, f'eye-{side}.png')
+        a = np.array(Image.open(src).convert('RGBA')).astype(np.float32)
+        rgb = a[..., :3] / 255.0
+        rgb = np.clip((rgb - 0.5) * EYE_TINT_CONTRAST + 0.5, 0, 1) * np.array(EYE_TINT_GAIN)
+        a[..., :3] = np.clip(rgb, 0, 1) * 255
+        dst = os.path.join(EYE_SRC_DIR, f'eye-{side}-dark.png')
+        Image.fromarray(a.astype(np.uint8)).save(dst, optimize=True)
+        out.append(dst)
+    return out
+
+
 def main():
+    for p in build_dark_eyes():
+        print('wrote', os.path.basename(p))
     cut = matte.cutout(RAW)
     a = np.array(cut).astype(np.float32)
     alpha = a[..., 3]

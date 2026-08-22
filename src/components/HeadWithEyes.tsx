@@ -15,15 +15,17 @@ import { headAsset } from "@/lib/headAssets";
  * alpha channel is exactly the kind of thing that drifts, so they live here
  * once.
  *
- * THEME (2026-08-21): which artwork and which socket coordinates to use now
- * come from src/lib/headAssets.ts, because dark mode swaps in a different
- * photograph — Noah in sunglasses. That variant has no eyes to track, so
- * the pupils simply aren't rendered; see the note in headAssets.ts.
+ * THEME (2026-08-21): which artwork, which socket coordinates, which pupil
+ * images and which backing colour all come from src/lib/headAssets.ts,
+ * because dark mode swaps in a different photograph — Noah in sunglasses.
+ * BOTH variants track: the dark one renders lens-tinted pupils behind
+ * near-clear sockets, so the tracking reads at the size the head is actually
+ * drawn. See the note on HEAD_DARK for why the tint lives in the artwork.
  */
 
 /** Light head's intrinsic aspect. Prefer `headAsset(theme).aspect` — this
  *  remains only for callers that size a box before a theme is known. */
-export const HEAD_ASPECT = "1227/1749";
+export const HEAD_ASPECT = "1227/1605";
 
 /** How far (px) a pupil may drift from dead-centre. Kept small and
  * radius-clamped so the socket edges never expose the transparent hole —
@@ -47,12 +49,15 @@ function TrackedEye({
   leftPct,
   topPct,
   widthPct,
+  backing,
   rotationRef,
 }: {
   src: string;
   leftPct: number;
   topPct: number;
   widthPct: number;
+  /** Colour of the disc behind the socket; lens-dark for the shades. */
+  backing: string;
   /** Live rotation of the host head, degrees. Omit for a head that never
    * rotates (the footer's), in which case no counter-rotation is needed. */
   rotationRef?: React.RefObject<number>;
@@ -112,7 +117,7 @@ function TrackedEye({
           aspectRatio: "1/1",
           transform: "translate(-50%, -50%)",
           borderRadius: "50%",
-          background: "#f3ddc9",
+          background: backing,
         }}
       />
       <div
@@ -154,23 +159,25 @@ export default function HeadWithEyes({
           socket holes mask each eye down to the correct narrow almond shape
           (the eyelid skin is painted into the head, on top). Eyes must come
           first in DOM order for that masking to work; with the head behind,
-          each eye would show as a round patch over the face.
-          In dark mode `head.eyes` is null — he's wearing sunglasses, so
-          there are no sockets to look through. */}
+          each eye would show as a round patch over the face. The dark head
+          works the same way; its sockets are cut through the lenses rather
+          than through eyelids. */}
       {head.eyes && (
         <>
           <TrackedEye
-            src="/assets/about/eye-left.png"
+            src={head.eyes.srcLeft}
             leftPct={head.eyes.left.x * 100}
             topPct={head.eyes.left.y * 100}
             widthPct={head.eyes.left.widthPct}
+            backing={head.eyes.backing}
             rotationRef={rotationRef}
           />
           <TrackedEye
-            src="/assets/about/eye-right.png"
+            src={head.eyes.srcRight}
             leftPct={head.eyes.right.x * 100}
             topPct={head.eyes.right.y * 100}
             widthPct={head.eyes.right.widthPct}
+            backing={head.eyes.backing}
             rotationRef={rotationRef}
           />
         </>
