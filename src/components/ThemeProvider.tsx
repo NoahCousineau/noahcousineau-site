@@ -88,6 +88,10 @@ const readThemeAttr = (): Theme =>
 
 const noopSubscribe = () => () => {};
 
+/** Must match --dur-theme in globals.css. */
+export const THEME_FADE_MS = 330;
+let fadeTimer = 0;
+
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore(subscribeToThemeAttr, readThemeAttr, () => "light" as Theme);
   // True only after hydration — server says false, client says true — so
@@ -95,9 +99,20 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   const setTheme = useCallback((t: Theme) => {
+    const root = document.documentElement;
+    // Arm the crossfade for exactly the length of the switch, then disarm it
+    // — the transition rule in globals.css is keyed off this attribute, and
+    // leaving it on would put a 0.33s colour transition on every element on
+    // the site for the rest of the session.
+    root.setAttribute("data-theme-transition", "");
+    window.clearTimeout(fadeTimer);
+    fadeTimer = window.setTimeout(() => {
+      root.removeAttribute("data-theme-transition");
+    }, THEME_FADE_MS);
+
     // Writing the attribute IS the state update; the observer above turns it
     // back into a render.
-    document.documentElement.setAttribute("data-theme", t);
+    root.setAttribute("data-theme", t);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, t);
     } catch {

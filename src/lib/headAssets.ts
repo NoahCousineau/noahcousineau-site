@@ -40,26 +40,43 @@ export type HeadAsset = {
   } | null;
 };
 
-/* Eye socket centres are the centroids of the transparent holes in
- * head-noneck.png, measured off its alpha channel (holes at x298-424/y742-777
- * and x706-836/y730-769 on the 1227x1749 canvas). The rendered pupil is ~1.15x
- * the hole so the socket edge is always covered — the same ratio the previous
- * hand-tuned constants used, carried over rather than re-guessed. */
+/* The light head is Noah's OWN export — design/02-about-me/"AboutMeHead -
+ * Light Mode - No Eyes No Neck.png" — cropped to its opaque bounds, not a
+ * neck cut synthesised here. His clipping is tighter and cleaner than
+ * anything derived automatically, and his neck line (y1665 on the original
+ * 1297x1970 canvas) lands the crop at 0.765 w/h, close enough to the dark
+ * head's 0.786 that swapping between them doesn't lurch — which is exactly
+ * what he asked for: "I like how the neck is treated in dark mode. Please
+ * apply the same cropping to the light mode head."
+ *
+ * Eye socket centres are the centroids of the transparent holes measured off
+ * that file's alpha channel. The rendered pupil is ~1.145x the hole so the
+ * socket edge is always covered — the ratio the original hand-tuned
+ * constants used, carried over rather than re-guessed. */
 export const HEAD_LIGHT: HeadAsset = {
   src: "/assets/about/head-noneck.png",
-  aspect: "1227/1749",
-  aspectVal: 1227 / 1749,
+  aspect: "1227/1605",
+  aspectVal: 1227 / 1605,
   eyes: {
-    left: { x: 0.2937, y: 0.435, widthPct: 11.84 },
-    right: { x: 0.6272, y: 0.4293, widthPct: 12.26 },
+    left: { x: 0.2937, y: 0.474, widthPct: 11.85 },
+    right: { x: 0.6272, y: 0.4679, widthPct: 12.22 },
   },
 };
 
+/* Dark head eye sockets sit BEHIND the sunglass lenses. Rather than punching
+ * them fully transparent — which would read as two holes cut in the shades —
+ * the artwork keeps partial alpha over each socket, so the tracked pupil
+ * behind shows through dimly, tinted by the lens still in front of it. Noah:
+ * "They'll be behind sunglasses, but I still want eyes to track the cursor
+ * like how it is on light mode." */
 export const HEAD_DARK: HeadAsset = {
   src: "/assets/about/head-dark.png",
-  aspect: "1227/1561",
-  aspectVal: 1227 / 1561,
-  eyes: null,
+  aspect: "1227/1665",
+  aspectVal: 1227 / 1665,
+  eyes: {
+    left: { x: 0.2538, y: 0.5046, widthPct: 11.3 },
+    right: { x: 0.6549, y: 0.499, widthPct: 11.3 },
+  },
 };
 
 export function headAsset(theme: Theme): HeadAsset {

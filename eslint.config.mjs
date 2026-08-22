@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Git worktrees Claude Code creates for background tasks carry their own
+    // .next build output. Those are generated bundles, not source, and
+    // linting them buried the real result: 622 errors and 10,233 warnings,
+    // none of them from this project's code. The patterns above only match
+    // at the root, so they don't catch a nested copy.
+    ".claude/**",
+    "**/.next/**",
   ]),
 ]);
 

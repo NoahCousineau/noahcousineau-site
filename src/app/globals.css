@@ -135,11 +135,55 @@
   --color-paper: #0d0d0d;
 }
 
-/* Colour changes shouldn't strobe when the reader flips the switch, but
-   they also shouldn't animate on every navigation, so this is scoped to the
-   properties that actually swap and kept short. */
-:root[data-theme] body {
-  transition: background-color 0.25s var(--ease-out-expo), color 0.25s var(--ease-out-expo);
+/* The footer wordmark is a single #fff fill; in dark mode the footer's own
+   background becomes white, so it would disappear into it. Inverting one
+   flat colour is exact — see the note at its use site in Footer.tsx. */
+:root[data-theme="dark"] .footer-wordmark {
+  filter: invert(1);
+}
+
+/*
+  CROSSFADE BETWEEN MODES (2026-08-21, per Noah: "When we toggle between
+  light and dark mode, let's not have it be an instant transition. Let's
+  have a fade between both modes. Let's have it for about a third of a
+  second.")
+
+  The transition is applied to EVERYTHING, but only for the third of a
+  second the switch actually takes: ThemeProvider stamps
+  data-theme-transition on <html>, flips the theme, and clears the stamp
+  when it's done. A permanent `* { transition: background-color ... }`
+  would be the obvious way to write this and is a trap — it would also
+  animate every hover state, every scroll-driven colour change and every
+  project tile that already runs its own transitions, quietly slowing the
+  whole site down and fighting animations that are meant to be instant.
+  Scoping it to the toggle keeps the rest of the site's timing untouched.
+
+  `fill` and `stroke` are included so inline SVG (the toggle itself, the
+  clock face) crossfades with everything else rather than snapping.
+*/
+:root[data-theme-transition],
+:root[data-theme-transition] *,
+:root[data-theme-transition] *::before,
+:root[data-theme-transition] *::after {
+  transition:
+    background-color var(--dur-theme) var(--ease-out-expo),
+    color var(--dur-theme) var(--ease-out-expo),
+    border-color var(--dur-theme) var(--ease-out-expo),
+    fill var(--dur-theme) var(--ease-out-expo),
+    stroke var(--dur-theme) var(--ease-out-expo),
+    filter var(--dur-theme) var(--ease-out-expo) !important;
+}
+
+:root {
+  --dur-theme: 0.33s;
+}
+
+/* Someone who has asked for less motion gets the colour swap immediately
+   rather than a slow wash across the whole page. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-theme: 0.01ms;
+  }
 }
 
 * {

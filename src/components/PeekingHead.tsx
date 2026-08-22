@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import HeadWithEyes from "./HeadWithEyes";
+import { useTheme } from "./ThemeProvider";
+import { headAsset } from "@/lib/headAssets";
 
 /*
  * The footer's head, peeking up over the bottom edge of the browser window
@@ -35,20 +37,14 @@ import HeadWithEyes from "./HeadWithEyes";
  * Recomputed 2026-08-21 when the neck came off the artwork. The number that
  * matters is where the EYE LINE sits, since the whole point of a tracking
  * head down here is that you can see it tracking. On the old head+neck
- * image the sockets were ~41.6% down the box and 0.52 cleared them; on the
- * neck-less crop the same sockets are ~43.5% down (the box lost height from
- * the bottom, so every feature's fraction grew), and in dark mode the
- * sunglasses sit lower still in a shorter box. 0.60 clears both with room
- * to spare while keeping it a peek rather than a whole head. */
-const REVEAL_FRACTION = 0.6;
+ * image the sockets were ~41.6% down the box; on the neck-less crops they
+ * sit at ~47% (light) and ~50% (dark, behind the shades), because the box
+ * lost height from the bottom so every feature's fraction grew. 0.66
+ * clears both with room to spare while keeping it a peek rather than a
+ * whole head. */
+const REVEAL_FRACTION = 0.66;
 /** Head width in artboard units. */
 const HEAD_WIDTH_UNITS = 300;
-/** Head height in the same units. Uses the LIGHT head's aspect; the dark
- * head is a slightly different shape, and since this box is sized by width
- * with the artwork drawn `object-contain` inside it, the difference shows
- * up as a little extra clearance under the chin rather than as a crop. */
-const HEAD_HEIGHT_UNITS = (HEAD_WIDTH_UNITS * 1749) / 1227;
-const HIDDEN_UNITS = HEAD_HEIGHT_UNITS * (1 - REVEAL_FRACTION);
 
 export default function PeekingHead({
   /** Horizontal centre, in artboard units. Defaults to the page centre; the
@@ -59,12 +55,23 @@ export default function PeekingHead({
 }: {
   centerXUnits?: number;
 }) {
+  /* Sized from the CURRENT theme's own aspect rather than one fixed number.
+   * With a single hardcoded height the shorter dark head was letterboxed
+   * inside a box shaped for the light one, so the same `bottom` offset hid
+   * more of it and it sat visibly lower — Noah: "I would like the dark mode
+   * head to be moved up a bit." Deriving the height per variant means both
+   * heads reveal the same FRACTION OF THEMSELVES, which is what the reveal
+   * was always meant to control. */
+  const { theme } = useTheme();
+  const heightUnits = HEAD_WIDTH_UNITS / headAsset(theme).aspectVal;
+  const hiddenUnits = heightUnits * (1 - REVEAL_FRACTION);
+
   return (
     <div
       className="absolute pointer-events-none select-none"
       style={{
         width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
-        bottom: `calc(var(--u) * -${HIDDEN_UNITS})`,
+        bottom: `calc(var(--u) * -${hiddenUnits})`,
         left: `calc(var(--u) * ${centerXUnits})`,
         transform: "translateX(-50%)",
       }}

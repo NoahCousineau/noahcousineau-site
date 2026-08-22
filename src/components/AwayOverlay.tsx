@@ -5,8 +5,19 @@ import MickeyWatch from "./MickeyWatch";
 import { ArcText, BottomArcText } from "./ArcText";
 
 /*
- * AWAY SCREEN — black full-viewport panel carrying the clock lockup and
+ * AWAY SCREEN — full-viewport ink panel carrying the clock lockup and
  * Noah's contact details.
+ *
+ * THEME (2026-08-21, per Noah: "please make sure the clock screen also fully
+ * changes the colors. The background is now white, which is good, but please
+ * make the text and the circle black."). The panel is --color-ink and every
+ * mark on it is --color-paper, so the whole lockup inverts as one: ink panel
+ * with white type and a white clock disc in light mode, white panel with
+ * black type and a black disc in dark. Previously the panel already followed
+ * the token while the type, the rules under the links and the clock's disc
+ * were hardcoded #fff, so in dark mode they turned invisible against their
+ * own background. The watch artwork inside the disc is photographic and is
+ * deliberately left alone, the same as the two heads.
  *
  * IT APPEARS ON TWO TRIGGERS:
  *
@@ -205,14 +216,14 @@ export default function AwayOverlay() {
   }, [isMediaBusy]);
 
   const linkStyle: React.CSSProperties = {
-    color: "#fff",
+    color: "var(--color-paper)",
     textDecoration: "none",
     display: "block",
     whiteSpace: "nowrap",
     fontFamily: "var(--font-sans)",
     fontSize: "clamp(0.62rem, calc(var(--u) * 21), 1.1rem)",
     letterSpacing: "0.02em",
-    borderBottom: "2px solid #fff",
+    borderBottom: "2px solid var(--color-paper)",
     paddingBottom: "0.32em",
     // The panel is inert so it can never trap a click; the links opt back
     // in, so a click made on the way back to the window still lands.
@@ -268,7 +279,7 @@ export default function AwayOverlay() {
           style={{ width: "min(calc(var(--u) * 520), 52vh)", aspectRatio: "1/1" }}
         >
           {/* White circle backdrop, clipping the oversized watch to a clean edge */}
-          <div className="absolute inset-0 rounded-full bg-white overflow-hidden">
+          <div className="absolute inset-0 rounded-full bg-[color:var(--color-paper)] overflow-hidden">
             <div
               className="absolute"
               style={{ width: "153%", height: "153%", left: "-26.5%", top: "-26.5%" }}
@@ -288,7 +299,7 @@ export default function AwayOverlay() {
               spanDeg={180}
               fontSize={ARC_FONT}
               flip={true}
-              color="#fff"
+              color="var(--color-paper)"
             />
           </div>
           {/* Bottom arc: "CONTACT NOAH" — letters grow inward, so this
@@ -304,7 +315,7 @@ export default function AwayOverlay() {
               centerY={CIRCLE_CENTRE}
               spanDeg={180}
               fontSize={ARC_FONT}
-              color="#fff"
+              color="var(--color-paper)"
             />
           </div>
         </div>

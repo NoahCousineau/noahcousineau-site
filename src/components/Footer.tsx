@@ -193,13 +193,21 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
               a tad"). */}
           <Place x={72.68} y={21.44} w={1774.62}>
             <Link href="/" className="block">
+              {/* The wordmark asset is a single #fff fill, so in dark mode —
+                  where the footer's own background flips to white — it would
+                  vanish into it. Inverting is enough precisely BECAUSE it is
+                  one flat colour: white becomes black and there is nothing
+                  else in the file to disturb. Cheaper and less brittle than
+                  shipping and keeping in sync a second, black copy of the
+                  same artwork. Noah: "What I would like is for the
+                  'Cousineau' logo to be black now when in dark mode." */}
               <Image
                 src="/assets/home/cousineau-logo-white.svg"
                 alt="Cousineau"
                 width={711}
                 height={119}
                 loading="eager"
-                className="w-full h-auto"
+                className="w-full h-auto footer-wordmark"
               />
             </Link>
           </Place>
