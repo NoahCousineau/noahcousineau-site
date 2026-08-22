@@ -140,6 +140,24 @@ body {
   z-index: 10;
   isolation: isolate;
   background: var(--color-paper);
+
+  /* SEAL THE BOTTOM EDGE (2026-08-21 — Noah: "There's still just a slight
+     pixel of white on the top of the footer").
+
+     The curtain's own bottom edge was the culprit. Measured on /about: at
+     full scroll the curtain's bottom lands at -0.34px (its height simply
+     isn't a whole number), and the moment the scroll rests even ONE pixel
+     short of the end — which Lenis's easing does constantly, since it
+     asymptotes toward the target — the curtain's bottom row sits at y=0..1
+     and paints white across the top of the footer.
+
+     A border rather than an absolutely-positioned overlay: a border is in
+     normal flow, so it extends the curtain instead of painting over the
+     last few pixels of real content (the home page's project grid runs
+     flush to the curtain's bottom edge, and an overlay would clip it).
+     It's invisible in every state, because the only thing that can ever
+     sit directly below the curtain is the ink footer it matches. */
+  border-bottom: 12px solid var(--color-ink);
 }
 
 /* Accessibility: kill all motion when the OS asks for it */

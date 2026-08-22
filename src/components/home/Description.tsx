@@ -96,6 +96,51 @@ export default function Description() {
         // gets a beat to land before the page starts moving again.
         tl.to({}, { duration: i === lines.length - 1 ? HOLD * 0.7 : HOLD });
       });
+
+      /* LINE 4 — "His work can be seen below." (2026-08-21, per Noah:
+       * "Let's also have the 'his work can be seen below' on the home page
+       * animate upwards like the rest of the text.")
+       *
+       * Same rise-from-behind-its-rule move as lines 1–3, but on its own
+       * trigger rather than in the pinned timeline: it sits at y1387,
+       * roughly a full screen below the three lines, so while the section
+       * is pinned it is still below the fold. Given a slot in that
+       * sequence it would play its whole reveal unseen and be sitting
+       * there fully revealed by the time the reader scrolled to it.
+       *
+       * Scrubbed against its own approach so it still reads as part of the
+       * same scroll-driven language rather than a canned entrance: it
+       * rises as it comes up the screen, finishing before it reaches the
+       * middle. */
+      const line4 = root.current?.querySelector<HTMLElement>(".js-desc-line-4");
+      if (line4) {
+        gsap.fromTo(
+          line4,
+          { yPercent: 135 },
+          {
+            yPercent: 0,
+            ease: "power3.out",
+            scrollTrigger: {
+              // The mask, not the type: the type is the thing being moved,
+              // so its own box is a moving target to measure against.
+              trigger: line4.parentElement,
+              // REQUIRED, not optional: this line lives INSIDE the section
+              // the timeline above pins. Pinning inserts spacing that
+              // pushes everything after it down the document, so a trigger
+              // inside the pinned subtree resolves to a scroll position
+              // that is wrong by the length of the pin — measured here as
+              // the reveal simply never firing across the entire range
+              // where the line crosses the screen. `pinnedContainer` tells
+              // ScrollTrigger to account for that displacement.
+              pinnedContainer: pinRef.current,
+              start: "top 90%",
+              end: "top 55%",
+              scrub: 0.6,
+              invalidateOnRefresh: true,
+            },
+          }
+        );
+      }
     }, root);
     return () => ctx.revert();
   }, []);
@@ -163,11 +208,29 @@ export default function Description() {
         {/* "His work can be seen below." y1387 (was y1187, moved down 300u).
             "work" set in Quinn Text italic (serif) per spec, matching the
             emphasis treatment used elsewhere ("graphic designer", "visual
-            problems"). Trailing period added per feedback. */}
+            problems"). Trailing period added per feedback.
+
+            Rises out from behind its own rule (y1528) exactly like lines
+            1–3 — same mask, same 135 yPercent, same ease (2026-08-21, per
+            Noah: "Let's also have the 'his work can be seen below' on the
+            home page animate upwards like the rest of the text"). Its rule
+            sits 141u below it, the identical gap lines 1–3 use, so the
+            same masking geometry works unchanged.
+
+            It is deliberately NOT part of the pinned timeline above: at
+            y1387 it is far below the fold for the whole time the section
+            is pinned, so a slot in that sequence would spend its reveal
+            off-screen and the line would already be standing by the time
+            it scrolled into view. It gets its own trigger instead — see
+            the LINE 4 note in the effect. */}
         <Place x={45} y={1387} className="z-10">
-          <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
-            His <span className="italic" style={serif}>work</span> can be seen below.
-          </FitText>
+          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
+            <div className="js-desc-line-4">
+              <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
+                His <span className="italic" style={serif}>work</span> can be seen below.
+              </FitText>
+            </div>
+          </div>
         </Place>
 
         {/* Pointing finger at y1600 — centered closer to text, away from projects grid.
