@@ -6,6 +6,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "@/components/Stage";
 import { RULE_WEIGHT_CSS } from "./ProjectGroup";
+import { lockScroll, releaseScroll } from "@/lib/scrollLock";
 
 /**
  * linkify — auto-links bare domain mentions (e.g. "socalearth.org") and
@@ -391,6 +392,28 @@ export function ProjectStatement({
           start: () => `bottom ${parseFloat(getComputedStyle(handStickyRef.current!).top)}px`,
           once: true,
         },
+        /* HOLD THE PAGE STILL WHILE IT PLAYS (2026-08-22, per Noah: "I would
+         * like it so the user can't scroll until the hand falling animation
+         * is out of the viewport. Let's have it so the interaction plays,
+         * then the user can scroll down.")
+         *
+         * The whole gesture — swing, then fall — is about 1.7s, and the
+         * lock spans exactly that: `onComplete` is the moment the hand has
+         * left the viewport and hidden itself, so scrolling comes back the
+         * instant there is nothing left to watch.
+         *
+         * The lock releases itself on a timer regardless (see scrollLock),
+         * which matters here specifically because this timeline is driven by
+         * gsap's rAF ticker: background the tab mid-fall and the ticker
+         * stops, so `onComplete` would not arrive until the reader came
+         * back. The failsafe means that can't strand anyone.
+         *
+         * Flagged as an experiment by Noah — "We can revert back if this
+         * doesn't feel natural" — so it is one option on this timeline plus
+         * a standalone module, and removing it is deleting these two
+         * callbacks. */
+        onStart: () => lockScroll(),
+        onComplete: releaseScroll,
       });
 
       tl.to(handRef.current, {
@@ -444,7 +467,14 @@ export function ProjectStatement({
         visibility: "hidden",
       });
     });
-    return () => ctx.revert();
+    return () => {
+      // Navigating away mid-fall kills the timeline, so its onComplete —
+      // which is what normally hands scrolling back — never runs. Release
+      // here too, or the next page inherits a frozen scroll until the
+      // failsafe expires.
+      releaseScroll();
+      ctx.revert();
+    };
   }, []);
 
   // Hand image (pre-rotated 90° so the finger points right — see
