@@ -4,6 +4,37 @@ import { useRef } from "react";
 import Link from "next/link";
 import { Stage, Place } from "./Stage";
 import { HOVER_VIDEO } from "@/lib/projects";
+import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimation";
+
+/* CLICK-TO-PLAY OBJECTS IN THE TILES (2026-08-22, per Noah: "Right now we
+ * have videos playing in the grid sections. Nothing's wrong with this, but
+ * I'm looking for a more interesting interaction... I really enjoy how [the
+ * about-me head] is looking and essentially want it to happen on the
+ * homepage.")
+ *
+ * Sprouts is the only one shot and edited so far — the rest of the raws exist
+ * in ~/Desktop/portfolio/Project Page Animations but are not cut out yet, so
+ * every other tile keeps its hover video until its frames arrive. Both paths
+ * live side by side on purpose: a tile shows an object if it has one and
+ * falls back to video if it doesn't, so they can be converted one at a time
+ * without a flag day.
+ *
+ * Frames are registered before export so the object doesn't hop between them
+ * — see tools/project-animations/align_frames.py, which anchors on the apple's
+ * stem because it is the only part that survives being eaten. */
+const OBJECT_ANIMATIONS: Record<string, FrameAnimation> = {
+  "sprouts-farmers-market": {
+    frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/sprouts/${n}.webp`),
+    width: 700,
+    height: 690,
+  },
+};
+
+/* Placement inside the tile, in artboard units, matched to Noah's mockup:
+ * the apple sits low and right, its base landing on the row's bottom rule. */
+const OBJECT_HEIGHT_FRACTION = 0.36; // of the row height
+const OBJECT_RIGHT_UNITS = 34;
+const OBJECT_BOTTOM_UNITS = 0;
 
 /**
  * PROJECTS — master slice y2587–4162. Editorial TABLE grid:
@@ -62,12 +93,19 @@ const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row)
 
 function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: number; heightUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // An object animation replaces the hover video entirely on tiles that have
+  // one; tiles still waiting on their frames keep the video.
+  const objectAnimation = OBJECT_ANIMATIONS[cell.slug];
+
   // Handle video for swapped projects
   // "cultural-olympiad" shows the ArtCenter video (forced perspective video)
   // "other" shows the Cultural Olympiad video
   let vid: string | null = null;
-  
-  if (cell.slug === "cultural-olympiad-poster") {
+
+  if (objectAnimation) {
+    vid = null;
+  } else if (cell.slug === "cultural-olympiad-poster") {
     vid = "/videos/Image_FB_Cousineau_Noah_ArtCenter College of Design.mp4";  // Forced perspective video
   } else if (cell.slug === "other") {
     vid = "/videos/Final Thesis Video.mp4";  // Cultural Olympiad video
@@ -132,6 +170,22 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
           </div>
         </div>
       </div>
+      {/* The object sits ABOVE the white title box so it reads as resting in
+          front of it, and is the last child so it wins the hit test for its
+          own clicks. */}
+      {objectAnimation && (
+        <ProjectFrameAnimation
+          animation={objectAnimation}
+          className="z-10 cursor-pointer"
+          style={{
+            width: `calc(var(--u) * ${
+              (heightUnits * OBJECT_HEIGHT_FRACTION * objectAnimation.width) / objectAnimation.height
+            })`,
+            right: `calc(var(--u) * ${OBJECT_RIGHT_UNITS})`,
+            bottom: `calc(var(--u) * ${OBJECT_BOTTOM_UNITS})`,
+          }}
+        />
+      )}
     </Link>
   );
 }

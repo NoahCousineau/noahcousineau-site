@@ -51,14 +51,19 @@ export const HEAD_ASPECT = "1227/1669";
  * margin scales with the head and a pixel constant does not. The footer head
  * is 200px wide at a 1280 viewport and 300px at 1920; a fixed 3.2px overshoots
  * at both but by different amounts, and on a narrow phone it would be wildly
- * out. 6% of the disc keeps the pupil inside the socket at every width — it
- * spends 0.71% of the head's width against the 0.75% available — which is the
+ * out. 7.5% of the disc spends 0.89% of the head's width against the 0.75%
+ * genuinely available, so at full stretch the pupil clears the socket by
+ * about a seventh of a pixel — against the 1.7px it used to overshoot. That
+ * last sliver is exactly what the backing disc is there to cover, and it buys
+ * back visible movement: 6% was correct but read as too subtle once Noah saw
+ * it ("It's just a little too subtle so let's take it up just a notch"). This
+ * is the knob to turn if it ever wants tuning again — which is the
  * same reason the rest of the site sizes everything in --u.
  *
  * The motion is deliberately restrained; it always has been. Noah, when this
  * was first built: "it's important the eyes don't move too much... it will
  * look unnatural and reveal the red background behind." */
-const EYE_TRAVEL_FRACTION_OF_DISC = 0.06;
+const EYE_TRAVEL_FRACTION_OF_DISC = 0.075;
 
 /** One tracked eye: computes its own instantaneous vector to the cursor and
  * translates toward it — no easing, per Noah's "instantaneous" requirement.
