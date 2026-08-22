@@ -27,11 +27,31 @@ import { headAsset } from "@/lib/headAssets";
  *  remains only for callers that size a box before a theme is known. */
 export const HEAD_ASPECT = "1227/1605";
 
-/** How far (px) a pupil may drift from dead-centre. Kept small and
- * radius-clamped so the socket edges never expose the transparent hole —
- * Noah: "it's important the eyes don't move too much... it will look
- * unnatural and reveal the red background behind." */
-const MAX_EYE_OFFSET_PX = 3.2;
+/* How far (px) a pupil may drift from dead-centre — SEPARATELY per axis,
+ * because the socket is not round.
+ *
+ * 2026-08-22, Noah: "the eyes are moving too far, they were better before",
+ * with a screenshot of the footer head looking straight UP. The travel had
+ * in fact never changed — 3.2px since the tracking was written — but it was
+ * being applied equally in x and y, and the socket is a flat almond. At the
+ * footer head's rendered size the hole measures about 23.7px across and only
+ * 5.7px tall, so the same 3.2px is 13% of the width but 56% of the HEIGHT:
+ * sideways it reads as a glance, upwards it rolls the pupil to the top of
+ * the socket. Looking straight up is the pure-vertical worst case, which is
+ * exactly the screenshot.
+ *
+ * Y is set to hold roughly the same proportion of the socket that X does, so
+ * a glance costs the same share of the available room in either direction.
+ * X is untouched: left/right always read correctly and that is the half of
+ * the behaviour Noah liked.
+ *
+ * These stay in absolute px, as they always have been. That means the travel
+ * does NOT scale with the head, so on a wide viewport where the head is drawn
+ * larger the glance is proportionally smaller. Worth revisiting — the rest of
+ * the site sizes everything in --u for exactly this reason — but it predates
+ * this fix and changing it would alter the feel at every width at once. */
+const MAX_EYE_OFFSET_X_PX = 3.2;
+const MAX_EYE_OFFSET_Y_PX = 1.0;
 
 /** One tracked eye: computes its own instantaneous vector to the cursor and
  * translates toward it — no easing, per Noah's "instantaneous" requirement.
@@ -79,9 +99,13 @@ function TrackedEye({
       const cy = rect.top + rect.height / 2;
       const dx = e.clientX - cx;
       const dy = e.clientY - cy;
+      // Normalise the direction first, THEN scale each axis by its own limit.
+      // That traces an ellipse matched to the socket rather than a circle, so
+      // the pupil reaches the edge of its available room at the same rate
+      // whichever way it happens to be looking.
       const dist = Math.hypot(dx, dy) || 1;
-      const screenX = (dx / dist) * MAX_EYE_OFFSET_PX;
-      const screenY = (dy / dist) * MAX_EYE_OFFSET_PX;
+      const screenX = (dx / dist) * MAX_EYE_OFFSET_X_PX;
+      const screenY = (dy / dist) * MAX_EYE_OFFSET_Y_PX;
 
       // Counter-rotate into the head's local space: a child's translate
       // happens inside its parent's already-rotated frame, so without this
