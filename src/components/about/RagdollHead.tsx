@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import HeadWithEyes from "@/components/HeadWithEyes";
+import { useTheme } from "@/components/ThemeProvider";
+import { headAsset } from "@/lib/headAssets";
 
 /*
  * RAGDOLL HEAD — grab it, drag it, throw it. On release it keeps the
@@ -10,10 +12,10 @@ import HeadWithEyes from "@/components/HeadWithEyes";
  * settles — and then STAYS WHERE IT LANDS (Noah's explicit choice over
  * springing back to its designed spot).
  *
- * COLLISION SHAPE: A RADIAL EXTENT MAP, NOT A SIMPLE SHAPE (2026-08-20,
- * third pass — Noah: "there's still a little bit of gap or dip that
- * happens on the border" after an earlier fix, plus "make the head have
- * more of a center of mass around the skull.")
+ * COLLISION SHAPE: THE SILHOUETTE'S SUPPORT FUNCTION (2026-08-21, fourth
+ * pass — Noah: "The head roll is better, but it's still going below the red
+ * border. Try moving the head horizontally. You'll see that the top of the
+ * head and the neck are pretty good. the sides of the head can dip a bit.")
  *
  * History of this collision shape, each round closing the gap further:
  *   1. The element's own rotated LAYOUT BOX — left a big band of the
@@ -24,33 +26,34 @@ import HeadWithEyes from "@/components/HeadWithEyes";
  *      LARGER than the rectangle at any non-90deg-multiple angle (worst
  *      near 45deg, and the head rests at 42deg), so it still stopped
  *      measurably before the visible edge.
- *   3. An ELLIPSE inscribed in that same rect — tighter still (~27-28%
- *      less overestimate at the resting angle), but a head isn't a
- *      perfect ellipse either, so a small angle-dependent residual
- *      remained, most noticeable while rolling through the angles an
- *      ellipse fits worst.
+ *   3. An ELLIPSE inscribed in that same rect — tighter still, but a head
+ *      isn't a perfect ellipse either, so an angle-dependent residual
+ *      remained.
+ *   4. A RADIAL EXTENT MAP measured off the real alpha channel — the right
+ *      data, asked the wrong question. It stored the distance to the edge
+ *      ALONG each ray, so "how far down does the shape reach?" returned the
+ *      distance to the point directly BELOW the pivot. For anything longer
+ *      than it is wide, the actual lowest point is off to one side and sits
+ *      lower than that, so the head settled short by the difference and sank
+ *      through the border. The error vanishes at the ends of the long axis
+ *      and peaks across it — which is exactly why Noah saw the top of the
+ *      head and the neck behaving while "the sides of the head can dip".
  *
- * This round replaces the approximation with the MEASURED silhouette
- * itself: on load, the decoded PNG's alpha channel is scanned once to
- * build a lookup table of "how far the opaque silhouette extends from the
- * pivot" at every few degrees around the full circle. Colliding against
- * that table (interpolated between the two nearest samples) matches the
- * true edge at every rotation, not just the ones a simple shape happens to
- * fit well — closing the residual gap/dip instead of just shrinking it.
+ * This round asks the right question: the SUPPORT FUNCTION, the furthest
+ * the shape reaches in a given direction taken over the whole shape rather
+ * than along one ray. Resting against a flat floor or wall IS a support
+ * query, so this is exact for those contacts, not a closer approximation.
+ * See the measurement effect for how it's built (per-row extremes only,
+ * which is provably sufficient) and `supportAt` for why lookups round up.
  *
- * PIVOT = SKULL-WEIGHTED CENTRE, NOT THE BOX CENTRE (same round — "make
- * the head have more of a center of mass around the skull"). Both the
- * rotation origin AND the radial table above are measured from this ONE
- * point, computed as the centroid of opaque pixels in roughly the top
- * half of the crop (excluding the neck/shoulders lower down) rather than
- * the geometric centre of the whole opaque box. Concretely this means:
- *   - It TUMBLES like the skull is the heavy part — the skull stays
- *     comparatively still while the chin/neck swing around it, instead of
- *     the whole shape rotating uniformly about its own plain midpoint.
- *   - Collision, throw, and grab math all key off this same point, so the
- *     "weight" read in the tumble and the physical position used for
- *     walls/rolling are the same point, not two different ones drifting
- *     apart.
+ * PIVOT = CENTRE OF AREA. Noah, same round: "You can disregard the center
+ * of mass issue when using this" — the skull-weighting added in the
+ * previous pass existed to make a head-plus-neck shape tumble as though the
+ * skull were the heavy end, and with the neck gone the silhouette is close
+ * enough to a plain oval that its own centre of area is both the honest
+ * centre of mass and the better pivot to roll about. Rotation origin and
+ * collision share this one point, so the visual tumble and the physics
+ * can't drift apart.
  *
  * ROLLING: contact with the floor drives spin from horizontal speed the
  * way a wheel rolls (omega = v / r, using the current DOWN extent as r),
@@ -71,12 +74,16 @@ import HeadWithEyes from "@/components/HeadWithEyes";
 // Head's designed resting angle in the header.
 const BASE_ROTATION_DEG = 42;
 
-// Designed resting geometry, in artboard units. All three scaled by 0.75
-// together (from 424.94 / 42.98 / -40.31) so the smaller head still sits
-// flush to the header's right edge with its neck meeting the bottom.
+// Designed resting geometry, in artboard units. Width and the right inset
+// were scaled by 0.75 together (from 424.94 / 42.98) so the smaller head
+// still sits flush to the header's right edge.
 const HEAD_WIDTH_UNITS = 318.705;
 const HEAD_RIGHT_UNITS = 32.235;
-const HEAD_BOTTOM_UNITS = -30.2325;
+/** Only a starting guess now. The loop solves the true resting offset from
+ * the measured silhouette on the first frame (see the SEAT THE DESIGNED
+ * REST POSE note), because the right number differs between the light and
+ * dark heads — they're different photographs with different proportions. */
+const HEAD_BOTTOM_UNITS = 0;
 
 // --- Physics constants (px/s, px/s^2) -------------------------------------
 const GRAVITY = 2600;
@@ -97,38 +104,40 @@ const SLEEP_SPIN = 8;
 const MAX_THROW_SPEED = 2600;
 
 // --- Measured shape (populated async from the decoded PNG) ---------------
-/** Angular resolution of the radial extent table. 2deg gives 180 samples —
- * far finer than the tumble needs, essentially free to compute once. */
-const BUCKET_DEG = 2;
-const BUCKET_COUNT = 360 / BUCKET_DEG;
+/** One sample per degree. The whole table is a few hundred multiply-adds to
+ * build, once, so there's no reason to be coarser. */
+const BUCKET_COUNT = 360;
 
 type ShapeData = {
-  /** Skull-weighted pivot, as a fraction (0-1) of the element's own box. */
+  /** Centre of area of the silhouette, as a fraction (0-1) of the box. */
   pivot: { x: number; y: number };
-  /** Radial extent from the pivot at each angle bucket, as a fraction of
-   * the element's own WIDTH (so a single scale factor converts it to real
-   * px at any rendered size — the aspect ratio is fixed, so width alone
-   * is sufficient). Index i covers [i*BUCKET_DEG, (i+1)*BUCKET_DEG). */
-  radial: Float32Array;
+  /** SUPPORT function: for each direction, how far the silhouette reaches
+   * from the pivot ALONG that direction — i.e. max over the shape of
+   * (p - pivot) · d. Stored as a fraction of the element's own WIDTH, so
+   * one multiply converts it to px at any rendered size. Index i is the
+   * direction i degrees clockwise from screen-right. */
+  support: Float32Array;
 };
 
 /** Reasonable guesses for the brief window before the PNG has decoded —
  * close enough that nothing looks broken if a drag happens immediately. */
 function defaultShape(): ShapeData {
-  return { pivot: { x: 0.5, y: 0.42 }, radial: new Float32Array(BUCKET_COUNT).fill(0.28) };
+  return { pivot: { x: 0.5, y: 0.45 }, support: new Float32Array(BUCKET_COUNT).fill(0.35) };
 }
 
-/** Interpolated lookup: extent at an arbitrary angle (degrees, any range),
- * as a fraction of width — multiply by the current rendered width to get
- * real px. */
-function radialAt(radial: Float32Array, deg: number): number {
+/** Support in an arbitrary direction (degrees, any range), as a fraction of
+ * width. Takes the LARGER of the two neighbouring samples rather than
+ * interpolating between them: interpolation of a support function always
+ * errs low, and erring low here means the head sinks through the floor,
+ * which is the exact bug this table was introduced to fix. At 1-degree
+ * spacing the resulting overestimate is bounded by 1/cos(0.5deg) — about
+ * 4 hundredths of a pixel on this head. */
+function supportAt(support: Float32Array, deg: number): number {
   let d = deg % 360;
   if (d < 0) d += 360;
-  const idx = d / BUCKET_DEG;
-  const i0 = Math.floor(idx) % BUCKET_COUNT;
+  const i0 = Math.floor(d) % BUCKET_COUNT;
   const i1 = (i0 + 1) % BUCKET_COUNT;
-  const t = idx - Math.floor(idx);
-  return radial[i0] * (1 - t) + radial[i1] * t;
+  return Math.max(support[i0], support[i1]);
 }
 
 export default function RagdollHead({
@@ -150,13 +159,26 @@ export default function RagdollHead({
   const lastTs = useRef<number | null>(null);
   const samples = useRef<{ x: number; y: number; t: number }[]>([]);
   const grabOffset = useRef({ x: 0, y: 0 });
+  /** True once the reader has actually grabbed the head. Before that it owns
+   * its designed rest pose; after, wherever they left it is the truth. */
+  const interacted = useRef(false);
+  /** Ask the loop to seat the head exactly on the floor next frame. */
+  const needsSnap = useRef(true);
 
-  // Measure the artwork's true silhouette once. Done from the decoded PNG
-  // rather than hardcoded so it stays correct if the asset is re-exported.
+  // Which head is on screen — the light cut-out, or the sunglasses one in
+  // dark mode. The silhouettes differ, so this drives a re-measure.
+  const { theme } = useTheme();
+  const headSrc = headAsset(theme).src;
+
+  // Measure the artwork's true silhouette. Done from the decoded PNG rather
+  // than hardcoded so it stays correct if the asset is re-exported — and so
+  // that swapping themes re-derives the collision shape for the head that's
+  // actually being drawn, instead of colliding the new artwork against the
+  // old one's outline.
   useEffect(() => {
     let cancelled = false;
     const img = new window.Image();
-    img.src = "/assets/about/head.png";
+    img.src = headSrc;
     img.onload = () => {
       if (cancelled) return;
       const W = 200;
@@ -174,69 +196,71 @@ export default function RagdollHead({
       const ALPHA_THRESHOLD = 40;
       const isOpaque = (x: number, y: number) => d[(y * W + x) * 4 + 3] > ALPHA_THRESHOLD;
 
-      let minX = W, minY = H, maxX = -1, maxY = -1;
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          if (isOpaque(x, y)) {
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-          }
-        }
-      }
-      if (maxX < 0) return; // fully transparent somehow; keep the default
-
-      // Skull-weighted pivot: the centroid of opaque pixels in roughly the
-      // top HALF of the crop, approximating "the skull" by excluding the
-      // neck/shoulders below it — see the PIVOT note in the file header.
-      const skullBottomY = minY + (maxY - minY) * 0.5;
+      // Centre of area, and the silhouette's per-row horizontal extremes.
+      // Those extremes are all the support function needs and it is EXACT
+      // from them, not an approximation: for a fixed row, (p - pivot) · d
+      // is linear in x, so its maximum over that row is always attained at
+      // the row's leftmost or rightmost opaque pixel. Every interior pixel
+      // is therefore irrelevant, which turns the table below from a
+      // per-pixel job into a per-row one.
       let sumX = 0, sumY = 0, count = 0;
-      for (let y = minY; y <= skullBottomY; y++) {
-        for (let x = minX; x <= maxX; x++) {
-          if (isOpaque(x, y)) {
-            sumX += x;
-            sumY += y;
-            count++;
-          }
-        }
-      }
-      const pivotPx = count > 0 ? { x: sumX / count, y: sumY / count } : { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-
-      // Radial extent from the pivot, per angle bucket: for every opaque
-      // pixel, its distance and angle from the pivot can only ever grow
-      // the bucket it falls into's recorded maximum — a single pass over
-      // every pixel, no ray-marching or interpolation needed to BUILD it
-      // (only to query it later).
-      const radialPx = new Float32Array(BUCKET_COUNT);
+      const edgeX: number[] = [];
+      const edgeY: number[] = [];
       for (let y = 0; y < H; y++) {
+        let rowMin = -1, rowMax = -1;
         for (let x = 0; x < W; x++) {
           if (!isOpaque(x, y)) continue;
-          const dx = x - pivotPx.x;
-          const dy = y - pivotPx.y;
-          const dist = Math.hypot(dx, dy);
-          let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
-          if (deg < 0) deg += 360;
-          const bucket = Math.min(BUCKET_COUNT - 1, Math.floor(deg / BUCKET_DEG));
-          if (dist > radialPx[bucket]) radialPx[bucket] = dist;
+          if (rowMin < 0) rowMin = x;
+          rowMax = x;
+          sumX += x;
+          sumY += y;
+          count++;
+        }
+        if (rowMin >= 0) {
+          edgeX.push(rowMin, rowMax);
+          edgeY.push(y, y);
         }
       }
-      // Guard against a degenerate collision shape from any bucket a
-      // roughly-convex, fully-opaque silhouette shouldn't practically
-      // leave empty, by filling from the nearest measured neighbour.
-      for (let i = 0; i < BUCKET_COUNT; i++) {
-        if (radialPx[i] > 0) continue;
-        for (let step = 1; step <= BUCKET_COUNT; step++) {
-          const lo = (i - step + BUCKET_COUNT) % BUCKET_COUNT;
-          const hi = (i + step) % BUCKET_COUNT;
-          if (radialPx[lo] > 0) { radialPx[i] = radialPx[lo]; break; }
-          if (radialPx[hi] > 0) { radialPx[i] = radialPx[hi]; break; }
+      if (count === 0) return; // fully transparent somehow; keep the default
+      const pivotPx = { x: sumX / count, y: sumY / count };
+
+      // SUPPORT FUNCTION, not a ray cast (2026-08-21 — Noah: "it's still
+      // going below the red border... the sides of the head can dip a bit").
+      //
+      // The previous table stored, for each angle, the distance to the
+      // silhouette edge ALONG that ray. Collision then asked "how far does
+      // the shape reach straight down?" and got the distance to the single
+      // point directly beneath the pivot. But the lowest point of a rotated
+      // shape is generally NOT the point directly beneath its pivot — for
+      // anything longer than it is wide, the true lowest point sits off to
+      // one side, and the ray answer is short by the difference. The head
+      // therefore settled that much too low, worst at the rotations where
+      // the shape is most elongated across the vertical — which is exactly
+      // "the sides dip" and exactly why the top of the head and the neck
+      // (the ends of the long axis, where ray and support agree) looked
+      // fine.
+      //
+      // The support function asks the right question directly: the furthest
+      // the shape reaches in a direction, over the whole shape. Resting on
+      // a flat floor or wall is precisely a support query, so this is exact
+      // rather than merely closer.
+      const supportPx = new Float32Array(BUCKET_COUNT);
+      const n = edgeX.length;
+      for (let b = 0; b < BUCKET_COUNT; b++) {
+        const th = (b * Math.PI) / 180;
+        const dx = Math.cos(th);
+        const dy = Math.sin(th);
+        let best = -Infinity;
+        for (let i = 0; i < n; i++) {
+          const v = (edgeX[i] - pivotPx.x) * dx + (edgeY[i] - pivotPx.y) * dy;
+          if (v > best) best = v;
         }
+        supportPx[b] = best;
       }
 
       shape.current = {
         pivot: { x: pivotPx.x / W, y: pivotPx.y / H },
-        radial: radialPx.map((v) => v / W),
+        support: supportPx.map((v) => v / W),
       };
 
       // The CSS rotation origin follows the same measured pivot, so the
@@ -245,11 +269,19 @@ export default function RagdollHead({
       if (wrapRef.current) {
         wrapRef.current.style.transformOrigin = `${shape.current.pivot.x * 100}% ${shape.current.pivot.y * 100}%`;
       }
+      // A theme swap changes the silhouette AND the box's aspect ratio under
+      // a head that may be parked mid-scene. If the reader has thrown it
+      // somewhere, wake the loop so it falls the last few pixels and
+      // re-settles against its new outline rather than freezing in a pose
+      // that no longer fits. If they haven't touched it, it still owns its
+      // designed rest pose, so re-seat it there exactly instead.
+      if (interacted.current) asleep.current = false;
+      else needsSnap.current = true;
     };
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [headSrc]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -291,6 +323,23 @@ export default function RagdollHead({
       const dt = Math.min((ts - lastTs.current) / 1000, 1 / 30);
       lastTs.current = ts;
 
+      /* SEAT THE DESIGNED REST POSE FROM THE MEASURED SHAPE, rather than
+       * from a hand-tuned CSS inset. The old inset was dialled in against a
+       * head that had a neck hanging past the header's bottom edge; with the
+       * neck gone — and with a second, differently-proportioned head in dark
+       * mode — any single hardcoded number is wrong for at least one of
+       * them. Solving for it puts the chin exactly on the border in both,
+       * and keeps doing so if either artwork is ever re-exported. */
+      if (needsSnap.current && !dragging.current) {
+        const cr0 = container.getBoundingClientRect();
+        if (cr0.height > 0 && wrap.offsetWidth > 0) {
+          const drop = supportAt(shape.current.support, 90 - rotationRef.current) * wrap.offsetWidth;
+          pos.current.y += cr0.height - drop - pivotScreen().y;
+          needsSnap.current = false;
+          apply();
+        }
+      }
+
       if (asleep.current && !dragging.current) return;
 
       if (!dragging.current) {
@@ -314,10 +363,10 @@ export default function RagdollHead({
         // rotation is clockwise-positive in this Y-down coordinate system,
         // matching atan2(dy,dx) directly), so the image-angle to query for
         // a given screen direction is that direction's angle minus rot.
-        const right = radialAt(shape.current.radial, 0 - rot) * W;
-        const down = radialAt(shape.current.radial, 90 - rot) * W;
-        const left = radialAt(shape.current.radial, 180 - rot) * W;
-        const up = radialAt(shape.current.radial, 270 - rot) * W;
+        const right = supportAt(shape.current.support, 0 - rot) * W;
+        const down = supportAt(shape.current.support, 90 - rot) * W;
+        const left = supportAt(shape.current.support, 180 - rot) * W;
+        const up = supportAt(shape.current.support, 270 - rot) * W;
 
         const minX = left;
         const maxX = cr.width - right;
@@ -435,6 +484,7 @@ export default function RagdollHead({
 
     const onDown = (e: PointerEvent) => {
       e.preventDefault();
+      interacted.current = true;
       dragging.current = true;
       wrap.setPointerCapture(e.pointerId);
       wrap.style.cursor = "grabbing";
@@ -538,8 +588,8 @@ export default function RagdollHead({
         width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
         transform: `rotate(${BASE_ROTATION_DEG}deg)`,
         // Default before the pivot is measured; the load effect overwrites
-        // this with the skull-weighted point once it's known.
-        transformOrigin: "50% 42%",
+        // this with the measured centre of area once it's known.
+        transformOrigin: "50% 45%",
         willChange: "transform",
       }}
     >

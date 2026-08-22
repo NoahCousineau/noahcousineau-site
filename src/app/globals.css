@@ -106,6 +106,42 @@
   --font-body: var(--font-sans);
 }
 
+/*
+  DARK MODE (2026-08-21, per Noah: "When this is turned on, all the white
+  parts of the site turn black and all the black parts turn white.")
+
+  Literally that, and nothing more: the two tokens the entire site is built
+  on trade places. Every surface already reads --color-ink or --color-paper
+  rather than a hex, so this one block flips the whole site — type, rules,
+  the project grid, the footer, the page-load curtain — with no component
+  needing to know a theme exists.
+
+  The names stay put on purpose. --color-ink still means "whatever type and
+  rules are drawn in" and --color-paper still means "whatever they sit on";
+  in dark mode those happen to be white and near-black. Renaming them to
+  --color-fg/--color-bg would have been tidier in the abstract and would
+  have touched every file in the project, which is not a trade worth making
+  while the site is still moving this fast.
+
+  The accent colours (red, yellow, orange, blue) deliberately do NOT flip —
+  they're brand, not value, and Noah asked only for the black/white swap.
+
+  Set on :root[data-theme="dark"] rather than a bare media query so an
+  explicit choice always wins over the OS setting; the pre-paint script in
+  layout.tsx seeds the attribute from localStorage, falling back to the OS.
+*/
+:root[data-theme="dark"] {
+  --color-ink: #ffffff;
+  --color-paper: #0d0d0d;
+}
+
+/* Colour changes shouldn't strobe when the reader flips the switch, but
+   they also shouldn't animate on every navigation, so this is scoped to the
+   properties that actually swap and kept short. */
+:root[data-theme] body {
+  transition: background-color 0.25s var(--ease-out-expo), color 0.25s var(--ease-out-expo);
+}
+
 * {
   box-sizing: border-box;
 }

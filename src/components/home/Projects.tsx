@@ -119,7 +119,7 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
       {/* Title + disciplines — centered inside white box, centered in grid cell.
           Box is 50% width × 70% height of the grid cell. */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 30)` }}>
+        <div className="bg-[color:var(--color-paper)] flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 30)` }}>
           {/* Title: fixed 75u font, no variation */}
           <div className="lowercase leading-[1.1] text-left" style={{ fontFamily: "var(--font-sans)", fontSize: `calc(var(--u) * 75)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
             {cell.line1}

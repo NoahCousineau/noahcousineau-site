@@ -30,12 +30,24 @@ import HeadWithEyes from "./HeadWithEyes";
  * empty space around it.
  */
 
-/** Share of the head's height left visible above the bottom edge. */
-const REVEAL_FRACTION = 0.52;
+/** Share of the head's height left visible above the bottom edge.
+ *
+ * Recomputed 2026-08-21 when the neck came off the artwork. The number that
+ * matters is where the EYE LINE sits, since the whole point of a tracking
+ * head down here is that you can see it tracking. On the old head+neck
+ * image the sockets were ~41.6% down the box and 0.52 cleared them; on the
+ * neck-less crop the same sockets are ~43.5% down (the box lost height from
+ * the bottom, so every feature's fraction grew), and in dark mode the
+ * sunglasses sit lower still in a shorter box. 0.60 clears both with room
+ * to spare while keeping it a peek rather than a whole head. */
+const REVEAL_FRACTION = 0.6;
 /** Head width in artboard units. */
 const HEAD_WIDTH_UNITS = 300;
-/** Head height in the same units, from the artwork's 1297x1970 aspect. */
-const HEAD_HEIGHT_UNITS = (HEAD_WIDTH_UNITS * 1970) / 1297;
+/** Head height in the same units. Uses the LIGHT head's aspect; the dark
+ * head is a slightly different shape, and since this box is sized by width
+ * with the artwork drawn `object-contain` inside it, the difference shows
+ * up as a little extra clearance under the chin rather than as a crop. */
+const HEAD_HEIGHT_UNITS = (HEAD_WIDTH_UNITS * 1749) / 1227;
 const HIDDEN_UNITS = HEAD_HEIGHT_UNITS * (1 - REVEAL_FRACTION);
 
 export default function PeekingHead({

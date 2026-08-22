@@ -362,7 +362,7 @@ export default function About() {
           }}
         >
           <span
-            className="text-black text-center leading-tight"
+            className="text-[color:var(--color-ink)] text-center leading-tight"
             style={{ fontFamily: "var(--font-sans)", fontSize: "calc(var(--u) * 44)", fontWeight: 700 }}
           >
             Big

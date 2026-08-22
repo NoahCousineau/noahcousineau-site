@@ -6,6 +6,7 @@ import { gsap } from "gsap";
 import { Stage, Place } from "./Stage";
 import HeroLockup from "./HeroLockup";
 import RotatingHead from "../RotatingHead";
+import { useTheme } from "../ThemeProvider";
 
 const STARBURST =
   "M50.00,0.00 L54.44,16.29 L62.94,1.70 L63.01,18.59 L75.00,6.70 L70.70,23.03 L85.36,14.64 L76.97,29.30 L93.30,25.00 L81.41,36.99 L98.30,37.06 L83.71,45.56 L100.00,50.00 L83.71,54.44 L98.30,62.94 L81.41,63.01 L93.30,75.00 L76.97,70.70 L85.36,85.36 L70.70,76.97 L75.00,93.30 L63.01,81.41 L62.94,98.30 L54.44,83.71 L50.00,100.00 L45.56,83.71 L37.06,98.30 L36.99,81.41 L25.00,93.30 L29.30,76.97 L14.64,85.36 L23.03,70.70 L6.70,75.00 L18.59,63.01 L1.70,62.94 L16.29,54.44 L0.00,50.00 L16.29,45.56 L1.70,37.06 L18.59,36.99 L6.70,25.00 L23.03,29.30 L14.64,14.64 L29.30,23.03 L25.00,6.70 L36.99,18.59 L37.06,1.70 L45.56,16.29 Z";
@@ -22,6 +23,7 @@ const STARBURST =
  */
 export default function Hero() {
   const burstRef = useRef<SVGSVGElement>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -69,8 +71,13 @@ export default function Hero() {
 
       {/* Rotating head animation — interactive drag-to-spin */}
       <Place x={150} y={50} w={650} h={950} className="z-10 flex items-center justify-center overflow-hidden">
-        <RotatingHead 
-          isDarkMode={false}
+        {/* isDarkMode now follows the site theme rather than being pinned
+            off — in dark mode this loads the sunglasses turntable
+            (sprite-sheet-dark-staggered.webp), which is registered frame by
+            frame against the light one, so the rotation doesn't jump when
+            the theme is switched mid-spin. */}
+        <RotatingHead
+          isDarkMode={theme === "dark"}
           variant="staggered"
           autoRotateSpeed={130}
           containerClassName="w-auto h-auto"

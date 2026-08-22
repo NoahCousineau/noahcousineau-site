@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Image from "next/image";
+import { useTheme } from "./ThemeProvider";
+import { headAsset } from "@/lib/headAssets";
 
 /*
  * The cut-out head with cursor-tracking eyes, shared by the About page's
@@ -12,19 +14,16 @@ import Image from "next/image";
  * head can't be moved." Two copies of socket coordinates measured off an
  * alpha channel is exactly the kind of thing that drifts, so they live here
  * once.
+ *
+ * THEME (2026-08-21): which artwork and which socket coordinates to use now
+ * come from src/lib/headAssets.ts, because dark mode swaps in a different
+ * photograph — Noah in sunglasses. That variant has no eyes to track, so
+ * the pupils simply aren't rendered; see the note in headAssets.ts.
  */
 
-/** Head image's intrinsic aspect, used by every wrapper that hosts it. */
-export const HEAD_ASPECT = "1297/1970";
-
-/* Eye socket centres as a fraction (0-1) of the head image's own box,
- * measured directly from head.png's alpha-channel hole positions
- * (connected-component analysis on the 1297x1970 canvas): left hole
- * x:325-451/y:803-838, right hole x:733-863/y:791-831. */
-const LEFT_EYE_CENTER = { x: 0.2992, y: 0.4165 };
-const RIGHT_EYE_CENTER = { x: 0.6153, y: 0.4117 };
-const LEFT_EYE_WIDTH_PCT = 11.2;
-const RIGHT_EYE_WIDTH_PCT = 11.6;
+/** Light head's intrinsic aspect. Prefer `headAsset(theme).aspect` — this
+ *  remains only for callers that size a box before a theme is known. */
+export const HEAD_ASPECT = "1227/1749";
 
 /** How far (px) a pupil may drift from dead-centre. Kept small and
  * radius-clamped so the socket edges never expose the transparent hole —
@@ -146,29 +145,38 @@ export default function HeadWithEyes({
   priority?: boolean;
   alt?: string;
 }) {
+  const { theme } = useTheme();
+  const head = headAsset(theme);
+
   return (
-    <div className="relative w-full" style={{ aspectRatio: HEAD_ASPECT }}>
-      {/* Eyes render BEHIND the head image — head.png's transparent socket
-          holes mask each eye down to the correct narrow almond shape (the
-          eyelid skin is painted into head.png, on top). Eyes must come
+    <div className="relative w-full" style={{ aspectRatio: head.aspect }}>
+      {/* Eyes render BEHIND the head image — the artwork's transparent
+          socket holes mask each eye down to the correct narrow almond shape
+          (the eyelid skin is painted into the head, on top). Eyes must come
           first in DOM order for that masking to work; with the head behind,
-          each eye would show as a round patch over the face. */}
-      <TrackedEye
-        src="/assets/about/eye-left.png"
-        leftPct={LEFT_EYE_CENTER.x * 100}
-        topPct={LEFT_EYE_CENTER.y * 100}
-        widthPct={LEFT_EYE_WIDTH_PCT}
-        rotationRef={rotationRef}
-      />
-      <TrackedEye
-        src="/assets/about/eye-right.png"
-        leftPct={RIGHT_EYE_CENTER.x * 100}
-        topPct={RIGHT_EYE_CENTER.y * 100}
-        widthPct={RIGHT_EYE_WIDTH_PCT}
-        rotationRef={rotationRef}
-      />
+          each eye would show as a round patch over the face.
+          In dark mode `head.eyes` is null — he's wearing sunglasses, so
+          there are no sockets to look through. */}
+      {head.eyes && (
+        <>
+          <TrackedEye
+            src="/assets/about/eye-left.png"
+            leftPct={head.eyes.left.x * 100}
+            topPct={head.eyes.left.y * 100}
+            widthPct={head.eyes.left.widthPct}
+            rotationRef={rotationRef}
+          />
+          <TrackedEye
+            src="/assets/about/eye-right.png"
+            leftPct={head.eyes.right.x * 100}
+            topPct={head.eyes.right.y * 100}
+            widthPct={head.eyes.right.widthPct}
+            rotationRef={rotationRef}
+          />
+        </>
+      )}
       <Image
-        src="/assets/about/head.png"
+        src={head.src}
         alt={alt}
         fill
         className="object-contain relative z-10 pointer-events-none"
