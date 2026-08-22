@@ -12,27 +12,47 @@ import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimat
  * about-me head] is looking and essentially want it to happen on the
  * homepage.")
  *
- * Sprouts is the only one shot and edited so far — the rest of the raws exist
- * in ~/Desktop/portfolio/Project Page Animations but are not cut out yet, so
- * every other tile keeps its hover video until its frames arrive. Both paths
- * live side by side on purpose: a tile shows an object if it has one and
- * falls back to video if it doesn't, so they can be converted one at a time
- * without a flag day.
+ * Sprouts, Corita and the Cultural Olympiad are edited; SoCal Earth, Valley
+ * Strong and More Work still have raws only, so those tiles keep their hover
+ * video until frames arrive. Both paths live side by side on purpose — a tile
+ * shows an object if it has one and falls back to video if it doesn't — so
+ * they convert one at a time rather than in a flag day.
  *
- * Frames are registered before export so the object doesn't hop between them
- * — see tools/project-animations/align_frames.py, which anchors on the apple's
- * stem because it is the only part that survives being eaten. */
-const OBJECT_ANIMATIONS: Record<string, FrameAnimation> = {
+ * Frames are registered before export so the subject doesn't hop between
+ * them, each with its own anchor: the apple holds its STEM (the only part
+ * that survives being eaten), the heart its CENTRE ("Have the heart grow from
+ * the center") and the flame its BASE ("Have the flame growing from the
+ * base"). See tools/project-animations/align_frames.py. */
+const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: number }> = {
   "sprouts-farmers-market": {
     frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/sprouts/${n}.webp`),
     width: 700,
-    height: 690,
+    height: 689,
+    heightFraction: 0.36,
+  },
+  "corita-art-center": {
+    frames: [1, 2, 3, 4].map((n) => `/assets/home/project-animations/cac/${n}.webp`),
+    width: 700,
+    height: 714,
+    heightFraction: 0.367,
+  },
+  "cultural-olympiad-poster": {
+    frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/olympics/${n}.webp`),
+    width: 700,
+    height: 931,
+    heightFraction: 0.428,
   },
 };
 
 /* Placement inside the tile, in artboard units, matched to Noah's mockup:
- * the apple sits low and right, its base landing on the row's bottom rule. */
-const OBJECT_HEIGHT_FRACTION = 0.36; // of the row height
+ * the object sits low and right, its base landing on the row's bottom rule.
+ *
+ * heightFraction above is NOT eyeballed per object. Every animation is built
+ * so its final frame matches the apple's size (see
+ * tools/project-animations/align_frames.py), and the fraction is then derived
+ * from each set's canvas height relative to the apple's. That is what makes a
+ * tall flame and a round heart read as "about the size of the apple" — Noah's
+ * words — instead of one axis agreeing while the other runs away. */
 const OBJECT_RIGHT_UNITS = 34;
 const OBJECT_BOTTOM_UNITS = 0;
 
@@ -93,6 +113,9 @@ const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row)
 
 function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: number; heightUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The object is thrown around inside the tile. The <Link> is absolutely
+  // positioned, so it is the offsetParent the physics measures against.
+  const tileRef = useRef<HTMLAnchorElement>(null);
 
   // An object animation replaces the hover video entirely on tiles that have
   // one; tiles still waiting on their frames keep the video.
@@ -136,6 +159,7 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
 
   return (
     <Link
+      ref={tileRef}
       href={href}
       className="group absolute inset-0 block w-full h-full"
       onMouseEnter={play}
@@ -176,10 +200,12 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
       {objectAnimation && (
         <ProjectFrameAnimation
           animation={objectAnimation}
-          className="z-10 cursor-pointer"
+          containerRef={tileRef}
+          className="z-10 cursor-grab active:cursor-grabbing"
           style={{
             width: `calc(var(--u) * ${
-              (heightUnits * OBJECT_HEIGHT_FRACTION * objectAnimation.width) / objectAnimation.height
+              (heightUnits * objectAnimation.heightFraction * objectAnimation.width) /
+              objectAnimation.height
             })`,
             right: `calc(var(--u) * ${OBJECT_RIGHT_UNITS})`,
             bottom: `calc(var(--u) * ${OBJECT_BOTTOM_UNITS})`,
