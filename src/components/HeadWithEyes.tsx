@@ -99,28 +99,35 @@ function TrackedEye({
       const cy = rect.top + rect.height / 2;
       const dx = e.clientX - cx;
       const dy = e.clientY - cy;
-      // Normalise the direction first, THEN scale each axis by its own limit.
-      // That traces an ellipse matched to the socket rather than a circle, so
-      // the pupil reaches the edge of its available room at the same rate
-      // whichever way it happens to be looking.
       const dist = Math.hypot(dx, dy) || 1;
-      const screenX = (dx / dist) * MAX_EYE_OFFSET_X_PX;
-      const screenY = (dy / dist) * MAX_EYE_OFFSET_Y_PX;
 
-      // Counter-rotate into the head's local space: a child's translate
-      // happens inside its parent's already-rotated frame, so without this
-      // the pupils track a direction offset by the head's tilt.
-      const deg = rotationRef?.current ?? 0;
-      if (deg === 0) {
-        el.style.transform = `translate(-50%, -50%) translate(${screenX}px, ${screenY}px)`;
-        return;
-      }
-      const rad = (-deg * Math.PI) / 180;
+      // ROTATE FIRST, THEN CLAMP — the order matters, and getting it backwards
+      // is a real bug this had briefly. A child's translate happens inside its
+      // parent's already-rotated frame, so counter-rotating the direction is
+      // what makes the pupils track the cursor rather than a direction offset
+      // by the head's tilt. But the two limits below are not interchangeable:
+      // they describe the SOCKET, which tilts with the head. Clamping in
+      // screen space and rotating the result afterwards would align the
+      // ellipse to the screen instead of to the eye, so on the About page —
+      // where the head rests at 42 degrees — a purely sideways cursor put
+      // 2.14px of travel along the socket's SHORT axis, twice the 1.0px it
+      // allows, and rolled the pupil exactly the way it was meant to stop.
+      // The footer head never rotates, so it hid the mistake entirely.
+      //
+      // Taking the direction into the head's own frame first and applying the
+      // limits there keeps the ellipse locked to the socket at every angle,
+      // including while the ragdoll is mid-tumble.
+      const rad = (-(rotationRef?.current ?? 0) * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const localX = ux * cos - uy * sin;
+      const localY = ux * sin + uy * cos;
+
       el.style.transform = `translate(-50%, -50%) translate(${
-        screenX * cos - screenY * sin
-      }px, ${screenX * sin + screenY * cos}px)`;
+        localX * MAX_EYE_OFFSET_X_PX
+      }px, ${localY * MAX_EYE_OFFSET_Y_PX}px)`;
     }
     window.addEventListener("mousemove", handleMove);
     return () => window.removeEventListener("mousemove", handleMove);
