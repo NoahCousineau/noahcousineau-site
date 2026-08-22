@@ -12,9 +12,8 @@ import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimat
  * about-me head] is looking and essentially want it to happen on the
  * homepage.")
  *
- * Sprouts, Corita, SoCal Earth and the Cultural Olympiad are edited; Valley
- * Strong and More Work still have raws only, so those tiles keep their hover
- * video until frames arrive. Both paths live side by side on purpose — a tile
+ * Five of the six are edited; only More Work still has raws, so that tile
+ * keeps its hover video until frames arrive. Both paths live side by side on purpose — a tile
  * shows an object if it has one and falls back to video if it doesn't — so
  * they convert one at a time rather than in a flag day.
  *
@@ -22,8 +21,19 @@ import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimat
  * them, each with its own anchor: the apple holds its STEM (the only part
  * that survives being eaten), the heart and the sun their CENTRE ("Have the
  * heart grow from the center"; the sun "starting as a dot") and the flame its
- * BASE ("Have the flame growing from the base"). See tools/project-animations/align_frames.py. */
+ * BASE ("Have the flame growing from the base"). Valley Strong is matched by
+ * TEMPLATE — a house is drawn around a person, and the person is only
+ * isolatable in frame 1, so frame 1 is located inside each later frame. See tools/project-animations/align_frames.py. */
 const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: number }> = {
+  "valley-strong-credit-union": {
+    frames: [1, 2, 3, 4, 5, 6, 7].map(
+      (n) => `/assets/home/project-animations/valley-strong/${n}.webp`
+    ),
+    width: 700,
+    height: 496,
+    heightFraction: 0.315,
+    style: "draw",
+  },
   "sprouts-farmers-market": {
     frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/sprouts/${n}.webp`),
     width: 700,
@@ -37,10 +47,10 @@ const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: numbe
     heightFraction: 0.367,
   },
   "socal-earth": {
-    frames: [1, 2, 3].map((n) => `/assets/home/project-animations/socal-earth/${n}.webp`),
+    frames: [1, 2, 3, 4].map((n) => `/assets/home/project-animations/socal-earth/${n}.webp`),
     width: 700,
-    height: 709,
-    heightFraction: 0.365,
+    height: 724,
+    heightFraction: 0.37,
   },
   "cultural-olympiad-poster": {
     frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/olympics/${n}.webp`),

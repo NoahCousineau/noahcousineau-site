@@ -162,12 +162,25 @@ export function useThrowable({
       if (lastTs.current == null) lastTs.current = ts;
       const dt = Math.min((ts - lastTs.current) / 1000, 1 / 30);
       lastTs.current = ts;
-      if (asleep.current && !dragging.current) return;
+
+      /* The containment test runs even while the object is ASLEEP, and that
+       * is not defensive tidiness — it is a real bug fix. The outline changes
+       * under the physics as the animation plays, and these animations mostly
+       * GROW: throw the CAC heart so it settles against a border, then play
+       * it, and the heart swells past the edge it was resting on. Noah:
+       * "if the heart is thrown THEN the animation starts, the heart will go
+       * outside the bounds of the grid area." Skipping collision whenever the
+       * object was at rest meant nothing ever pushed the newly larger shape
+       * back in. Clamping unconditionally guarantees the promise he actually
+       * wants — "the icons never go outside the bounds of the grid square" —
+       * no matter what changes the shape while it sits still. */
+      const idle = asleep.current && !dragging.current;
+      const before = { x: pos.current.x, y: pos.current.y };
 
       const cr = container.getBoundingClientRect();
       const W = el.offsetWidth;
 
-      if (!dragging.current) {
+      if (!idle && !dragging.current) {
         vel.current.y += cr.height * GRAVITY_PER_HEIGHT * dt;
         const drag = Math.max(0, 1 - AIR_DRAG * dt);
         vel.current.x *= drag;
@@ -187,13 +200,13 @@ export function useThrowable({
 
       if (p.x < left) {
         pos.current.x += left - p.x;
-        if (Math.abs(vel.current.x) > WALL_REST_SPEED) {
+        if (!idle && Math.abs(vel.current.x) > WALL_REST_SPEED) {
           vel.current.x = Math.abs(vel.current.x) * RESTITUTION;
           spin.current -= vel.current.y * 0.05;
         } else vel.current.x = 0;
       } else if (p.x > cr.width - right) {
         pos.current.x -= p.x - (cr.width - right);
-        if (Math.abs(vel.current.x) > WALL_REST_SPEED) {
+        if (!idle && Math.abs(vel.current.x) > WALL_REST_SPEED) {
           vel.current.x = -Math.abs(vel.current.x) * RESTITUTION;
           spin.current += vel.current.y * 0.05;
         } else vel.current.x = 0;
@@ -208,10 +221,10 @@ export function useThrowable({
         // Without this, gravity's per-frame kick against an unconditional
         // bounce keeps the object chattering just above the sleep threshold
         // and it never settles.
-        if (vel.current.y > WALL_REST_SPEED) vel.current.y = -vel.current.y * RESTITUTION;
+        if (!idle && vel.current.y > WALL_REST_SPEED) vel.current.y = -vel.current.y * RESTITUTION;
         else vel.current.y = 0;
 
-        if (!dragging.current) {
+        if (!idle && !dragging.current) {
           // Ground contact ties spin to horizontal speed the way a wheel
           // rolls. `down` is the effective rolling radius, floored at a
           // fraction of the width so a small vel.x can't demand an enormous
@@ -232,7 +245,7 @@ export function useThrowable({
         }
       }
 
-      apply();
+      if (!idle || before.x !== pos.current.x || before.y !== pos.current.y) apply();
     };
 
     const pointerPos = (e: PointerEvent) => {
@@ -241,15 +254,27 @@ export function useThrowable({
     };
 
     const onDown = (e: PointerEvent) => {
+      // Record the grab BEFORE asking for capture. setPointerCapture throws
+      // NotFoundError if the pointer is no longer active — a fast flick, or a
+      // pointer that has already left the window — and doing it first meant
+      // that throw aborted the handler with `dragging` already true and no
+      // grab offset or samples recorded, leaving the object wedged in a
+      // half-drag it could never complete. Capture is an enhancement (it keeps
+      // the drag alive outside the element's bounds), so it must not be able
+      // to take the drag down with it.
       dragging.current = true;
       movedEnough.current = false;
-      el.setPointerCapture(e.pointerId);
       const p = pointerPos(e);
       const piv = pivotPos();
       grabOffset.current = { x: piv.x - p.x, y: piv.y - p.y };
       samples.current = [{ ...p, t: performance.now() }];
       vel.current = { x: 0, y: 0 };
       asleep.current = false;
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* pointer already gone; the window-level pointerup still ends it */
+      }
     };
 
     const onMove = (e: PointerEvent) => {
@@ -347,5 +372,12 @@ export function useThrowable({
     };
   }, [elementRef, containerRef, enabled, shapeNow]);
 
-  return { reset, rotationRef: rot };
+  /** Let gravity take over again — used when the artwork changes shape, so a
+   *  newly grown object settles back onto a border instead of hanging where
+   *  its smaller self happened to rest. */
+  const wake = useCallback(() => {
+    asleep.current = false;
+  }, []);
+
+  return { reset, wake, rotationRef: rot };
 }

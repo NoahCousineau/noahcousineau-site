@@ -5,6 +5,17 @@ frame of the animation to look like the apple is consistent." Each animation
 needs a different treatment, because each is doing a different thing:
 
   ANCHOR — the point that must hold still between frames.
+    "template"  match frame 1's own silhouette into every later frame
+                (Valley Strong). A house is drawn around a person, so the
+                PERSON is what must not move — but he is only isolatable in
+                frame 1, where he is the entire drawing. Every later frame
+                buries him in walls and a roof, so no landmark test finds him.
+                Instead frame 1 is slid and scaled over each later frame until
+                the most of it is covered, which locates the same drawing
+                inside the bigger one. Measured before doing this, frame 1
+                overlapped the later frames only 21-35%, so the shots really
+                do wander; these are photographs of a drawing being added to,
+                not layers on one canvas.
     "stem"   the top of the shape (Sprouts). The apple is eaten from the
              sides, so the stem is the only landmark that survives; aligning
              on the centroid or the bbox would drag the apple sideways as the
@@ -72,9 +83,79 @@ def anchor_of(im, m, mode):
     raise ValueError(f"unknown anchor {mode!r}")
 
 
+def _mask(im, alpha=ALPHA):
+    return np.array(im)[..., 3] > alpha
+
+
+def _template_offsets(images):
+    """Locate frame 1's drawing inside every later frame.
+
+    Scores the share of the REFERENCE's pixels that the candidate covers, not
+    IoU: later frames legitimately contain far more ink, so intersection over
+    union would punish them for the house and pull the fit off the person.
+    """
+    import cv2
+
+    DS = 4
+    small = [cv2.resize(_mask(im).astype(np.uint8), None, fx=1 / DS, fy=1 / DS,
+                        interpolation=cv2.INTER_AREA) > 0 for im in images]
+    ref_s = small[0]
+    ry, rx = np.where(ref_s)
+    ref_pts = np.stack([rx, ry], 1)
+    total = max(len(ref_pts), 1)
+
+    def cover(m, scale, dx, dy):
+        H, W = m.shape
+        pts = (ref_pts * scale).astype(int)
+        xs = pts[:, 0] + dx
+        ys = pts[:, 1] + dy
+        ok = (xs >= 0) & (xs < W) & (ys >= 0) & (ys < H)
+        if not ok.any():
+            return -1.0
+        return m[ys[ok], xs[ok]].sum() / total
+
+    out = [(1.0, 0.0, 0.0)]
+    for m in small[1:]:
+        best = (-1.0, 1.0, 0, 0)
+        for scale in np.arange(0.86, 1.15, 0.02):
+            for dy in range(-40, 41, 4):
+                for dx in range(-40, 41, 4):
+                    c = cover(m, scale, dx, dy)
+                    if c > best[0]:
+                        best = (c, scale, dx, dy)
+        _, s0, dx0, dy0 = best
+        for scale in np.arange(s0 - 0.02, s0 + 0.021, 0.005):
+            for dy in range(dy0 - 4, dy0 + 5):
+                for dx in range(dx0 - 4, dx0 + 5):
+                    c = cover(m, scale, dx, dy)
+                    if c > best[0]:
+                        best = (c, scale, dx, dy)
+        _, scale, dx, dy = best
+        out.append((scale, dx * DS, dy * DS))
+    return out
+
+
 def align(paths, anchor="stem", scale_mode="normalise", pad=PAD,
           reference_size=REFERENCE_SIZE):
     frames = [shape(p) for p in paths]
+
+    if anchor == "template":
+        images = [im for im, _ in frames]
+        offs = _template_offsets(images)
+        _ref_im, ref_m = frames[0]
+        ax0 = (ref_m["x0"] + ref_m["x1"]) / 2.0
+        ay0 = (ref_m["y0"] + ref_m["y1"]) / 2.0
+        placed = []
+        for (im, _m), (sc, dx, dy) in zip(frames, offs):
+            # a frame-1 point p appears at p*sc + (dx,dy) here, so undo that
+            inv = 1.0 / sc
+            w, h = im.size
+            im2 = im.resize((max(1, round(w * inv)), max(1, round(h * inv))), Image.LANCZOS)
+            placed.append((im2, (ax0 * sc + dx) * inv, (ay0 * sc + dy) * inv))
+        # Template matching fixes the frames RELATIVE to each other but says
+        # nothing about how big the result should be, so the set still has to
+        # be brought to the shared reference like the others.
+        return _rescale_to_reference(_compose(placed, pad), reference_size)
 
     if scale_mode == "normalise":
         target_h = float(np.median([m["h"] for _, m in frames]))
@@ -95,6 +176,21 @@ def align(paths, anchor="stem", scale_mode="normalise", pad=PAD,
         ax, ay = anchor_of(im, m, anchor)
         placed.append((im2, ax * s, ay * s))
 
+    return _compose(placed, pad)
+
+
+def _rescale_to_reference(frames, reference_size):
+    """Scale a composed set so its LAST frame matches the shared size."""
+    a = np.array(frames[-1])
+    ys, xs = np.where(a[..., 3] > ALPHA)
+    geo = float(np.sqrt((xs.max() - xs.min() + 1) * (ys.max() - ys.min() + 1)))
+    k = reference_size / geo
+    W, H = frames[0].size
+    size = (max(1, round(W * k)), max(1, round(H * k)))
+    return [f.resize(size, Image.LANCZOS) for f in frames]
+
+
+def _compose(placed, pad):
     lefts, rights, tops, bottoms = [], [], [], []
     for im2, ax, ay in placed:
         a = np.array(im2)

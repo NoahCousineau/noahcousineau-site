@@ -43,12 +43,28 @@ export type FrameAnimation = {
   /** Intrinsic size of every (registered, identically sized) frame. */
   width: number;
   height: number;
+  /**
+   * How the object reacts as it plays.
+   *
+   * "rock" (default) kicks it a few degrees per frame, as though absorbing a
+   * bite. "draw" is for Valley Strong, where a house is drawn around a person
+   * — Noah: "I don't need each of the lines to shake like the others, but I
+   * do want some sense that the line is being drawn on." So it holds still and
+   * CROSSFADES between frames instead. That works because consecutive frames
+   * are identical except for the line just added: fading between them leaves
+   * everything already drawn rock steady and washes in only the new stroke,
+   * which is exactly the impression of ink being laid down.
+   */
+  style?: "rock" | "draw";
 };
 
 /** Per-frame hold. Nudged up from 150 — Noah: "just a tad slower". */
 const FRAME_MS = 210;
 /** Peak rock, in degrees. Small: it should read as recoil, not a spin. */
 const ROCK_DEG = 7;
+/** Crossfade length for "draw" animations — long enough to see the stroke
+ *  arrive, short enough that the drawing never looks blurry. */
+const DRAW_FADE_MS = 150;
 
 export default function ProjectFrameAnimation({
   animation,
@@ -62,7 +78,7 @@ export default function ProjectFrameAnimation({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const { frames, width, height } = animation;
+  const { frames, width, height, style: motion = "rock" } = animation;
   const [index, setIndex] = useState(0);
   /* Mirrors `index` for the physics, which reads it inside a rAF loop and must
    * not be re-subscribed on every frame change. */
@@ -83,6 +99,7 @@ export default function ProjectFrameAnimation({
    * so it reads as the object absorbing a bite rather than swinging. Written
    * straight to the style so it costs no React render inside the loop. */
   const rock = useCallback((step: number) => {
+    if (motion === "draw") return; // holds still; the crossfade carries it
     const el = rockRef.current;
     if (!el) return;
     const decay = Math.pow(0.62, step);
@@ -94,7 +111,7 @@ export default function ProjectFrameAnimation({
       el.style.transition = `transform ${FRAME_MS * 0.85}ms cubic-bezier(.2,.7,.3,1)`;
       el.style.transform = "rotate(0deg)";
     });
-  }, []);
+  }, [motion]);
 
   const play = useCallback(() => {
     if (spent.current) return; // plays once; see the note above
@@ -115,17 +132,22 @@ export default function ProjectFrameAnimation({
     }, FRAME_MS);
   }, [clearTimer, frames.length, rock]);
 
-  useEffect(() => {
-    frameRef.current = index;
-  }, [index]);
-
-  const { reset: resetThrow } = useThrowable({
+  const { reset: resetThrow, wake } = useThrowable({
     elementRef: hostRef,
     containerRef,
     imageSrcs: frames,
     frameRef,
     onClick: play,
   });
+
+  useEffect(() => {
+    frameRef.current = index;
+    // The outline just changed, and these shapes mostly grow. Hand control
+    // back to gravity so a bigger object settles onto a border rather than
+    // hanging where its smaller self came to rest.
+    wake();
+  }, [index, wake]);
+
 
   /** Whole again: frame 1, upright, back where it started. */
   const restore = useCallback(() => {
@@ -198,7 +220,10 @@ export default function ProjectFrameAnimation({
               priority={i === 0}
               draggable={false}
               className="object-contain pointer-events-none"
-              style={{ opacity: i === index ? 1 : 0 }}
+              style={{
+                opacity: i === index ? 1 : 0,
+                transition: motion === "draw" ? `opacity ${DRAW_FADE_MS}ms linear` : undefined,
+              }}
             />
           ))}
         </div>
