@@ -71,11 +71,11 @@ export const HEAD_LIGHT: HeadAsset = {
  * like how it is on light mode." */
 export const HEAD_DARK: HeadAsset = {
   src: "/assets/about/head-dark.png",
-  aspect: "1227/1665",
-  aspectVal: 1227 / 1665,
+  aspect: "1227/1630",
+  aspectVal: 1227 / 1630,
   eyes: {
-    left: { x: 0.2538, y: 0.5046, widthPct: 11.3 },
-    right: { x: 0.6549, y: 0.499, widthPct: 11.3 },
+    left: { x: 0.2572, y: 0.5044, widthPct: 11.46 },
+    right: { x: 0.6602, y: 0.4895, widthPct: 11.46 },
   },
 };
 
