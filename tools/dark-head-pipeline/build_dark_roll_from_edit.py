@@ -34,9 +34,15 @@ from psd_tools import PSDImage
 
 SRC = '/Users/noahcousineau/Desktop/portfolio/rotating-head-turntable/01-raw-photos/DarkModeNoEyes.psd'
 SITE = '/Users/noahcousineau/Desktop/portfolio/noahcousineau-site'
-DST = f'{SITE}/public/assets/about/head-dark.png'
 EYE_DIR = f'{SITE}/public/assets/about'
 TARGET_W = 1227  # same rendered width as the light head
+
+# CACHE-BUSTED BY FILENAME, not by query string (2026-08-22) — a `?v=`
+# attempt 500'd every other image on the site, see the note on this constant
+# in src/lib/headAssets.ts. Bump this and headAssets.ts's HEAD_DARK.src /
+# srcLeft / srcRight together whenever this script runs again for real.
+VERSION = 2
+DST = f'{SITE}/public/assets/about/head-dark.v{VERSION}.png'
 
 # How far the pupil is pulled toward the lens colour, 0 = untouched.
 EYE_TINT_MIX = 0.55
@@ -105,7 +111,7 @@ def build_dark_eyes(tint):
         rgb = np.clip((rgb - 0.5) * EYE_TINT_CONTRAST + 0.5, 0, 1)
         rgb = rgb * (1 - EYE_TINT_MIX) + rgb * (tint / 255.0) * EYE_TINT_MIX * 2.0
         a[..., :3] = np.clip(rgb, 0, 1) * 255
-        Image.fromarray(a.astype(np.uint8)).save(f'{EYE_DIR}/eye-{side}-dark.png', optimize=True)
+        Image.fromarray(a.astype(np.uint8)).save(f'{EYE_DIR}/eye-{side}-dark.v{VERSION}.png', optimize=True)
 
 
 def main():

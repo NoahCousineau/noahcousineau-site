@@ -9,7 +9,7 @@ or the treatment change, then commit the outputs.
 | Output | Built by |
 | --- | --- |
 | `public/images/rotating-head/sprite-sheet-dark-staggered.webp` | `build_dark_frames_from_edit.py` → `assemble_sheet.py` |
-| `public/assets/about/head-dark.png`, `eye-*-dark.png` | `build_dark_roll_from_edit.py` |
+| `public/assets/about/head-dark.vN.png`, `eye-*-dark.vN.png` | `build_dark_roll_from_edit.py` |
 | `public/assets/about/head-noneck.png` | see "Light head" below — **not** generated here |
 
 ## 2026-08-22: Noah cut the dark heads himself
@@ -36,6 +36,24 @@ the neck's end wanders less than the old automatic set did (σ 80px against
 and his silhouette ships untouched.
 
 The old notes on matting, exposure and sheen follow.
+
+### Why the rolling-head output is versioned by filename
+
+`build_dark_roll_from_edit.py` writes `head-dark.vN.png` and
+`eye-{left,right}-dark.vN.png`, not the plain names — Noah kept seeing an
+old render after this file changed ("It looks like an old version of the
+head is being used"), and every check on my end (composited pixels, a real
+Chrome screenshot of the live page) matched the current file, pointing at a
+stale browser/image-optimizer cache for a URL that never changed. A `?v=`
+query string was the obvious fix and had to be reverted fast: Next 16's
+`next/image` 400s any local `src` with a query string unless the path is
+allowlisted in `next.config.ts`'s `images.localPatterns` — and that option
+is an ALLOWLIST for every local image, not an addition to an open default,
+so turning it on for `/assets/about/` alone 500'd every other image on the
+site. The filename carries the version instead: bump `VERSION` in the
+script and the three paths in `src/lib/headAssets.ts`'s `HEAD_DARK` together
+whenever this runs for real, and the old files can be deleted once nothing
+points at them.
 
 Sources live outside this repo, in `~/Desktop/portfolio/rotating-head-turntable/`.
 

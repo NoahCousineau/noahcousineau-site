@@ -88,15 +88,35 @@ export const HEAD_LIGHT: HeadAsset = {
  * artwork behind an open hole read as two dark smudges. The backing disc is
  * the lens's own colour sampled from the ring around each socket, so at full
  * pupil travel the sliver it covers is indistinguishable from the lens. */
+/* CACHE-BUSTED BY FILENAME (2026-08-22). Noah, after this file changed
+ * twice in one evening: "It looks like an old version of the head is being
+ * used." Every verification I could run — the composited pixels, a real
+ * Chrome screenshot of the live page — matched the current file, so the
+ * likely explanation is the browser (or Next's own image-optimizer cache)
+ * holding onto the PREVIOUS response for this exact URL, since nothing
+ * about the path changes when only the file's bytes do.
+ *
+ * A `?v=` query string was the first attempt and had to be reverted — Next
+ * 16's `next/image` 400s any LOCAL src with a query string unless it is
+ * allowlisted in next.config's `images.localPatterns`, and that option is
+ * an allowlist for ALL local images, not an addition to some default-open
+ * set: turning it on for this one path 500'd every other image on the site
+ * (the home page's pointing hand, the about page's parallax photos, all of
+ * it) because none of THEM were listed either. Reverted immediately.
+ *
+ * The filename itself is the version instead — plain, and it's what
+ * cache-busting means for a static asset absent a build pipeline that
+ * fingerprints content hashes. Suffix bumps each time the pipeline
+ * (build_dark_roll_from_edit.py) rewrites these three files. */
 export const HEAD_DARK: HeadAsset = {
-  src: "/assets/about/head-dark.png",
+  src: "/assets/about/head-dark.v2.png",
   aspect: "1227/1627",
   aspectVal: 1227 / 1627,
   eyes: {
     left: { x: 0.2929, y: 0.4979, widthPct: 13.21 },
     right: { x: 0.6094, y: 0.4918, widthPct: 13.4 },
-    srcLeft: "/assets/about/eye-left-dark.png",
-    srcRight: "/assets/about/eye-right-dark.png",
+    srcLeft: "/assets/about/eye-left-dark.v2.png",
+    srcRight: "/assets/about/eye-right-dark.v2.png",
     backing: "#2c1812",
   },
 };
