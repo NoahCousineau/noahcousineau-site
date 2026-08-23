@@ -389,7 +389,40 @@ export function ProjectStatement({
           // every ScrollTrigger refresh (resize, font load, etc.), the same
           // way the rest of this codebase keeps --u-derived pixel values
           // live rather than snapshotting them once.
-          start: () => `bottom ${parseFloat(getComputedStyle(handStickyRef.current!).top)}px`,
+          //
+          // GUARD THE REF (2026-08-23, Noah: "the hand on the project pages
+          // also doesn't stop and fall down like it did before"). This ran
+          // as `getComputedStyle(handStickyRef.current!)` — the `!` was a
+          // lie. `start` is a function specifically so ScrollTrigger can
+          // re-call it on ANY refresh anywhere on the page, and StackedSection
+          // triggers exactly that: its ResizeObserver fires
+          // `ScrollTrigger.refresh()` — GLOBAL, every registered trigger,
+          // not just its own — on every section resize, which happens
+          // constantly while a page's images decode in. Navigate away
+          // mid-decode (prev/next project, or straight back to one already
+          // visited) and this component unmounts, `ctx.revert()` kills ITS
+          // trigger, and `handStickyRef.current` goes back to null — but if
+          // a resize on the page you landed on fires its global refresh
+          // before that revert lands, this callback still gets invoked with
+          // the now-null ref, and `getComputedStyle(null)` throws. Uncaught,
+          // inside a ResizeObserver callback, that aborts ScrollTrigger's
+          // refresh pass partway through — leaving OTHER triggers, on the
+          // page you're actually looking at (this same hand-fall one very
+          // much included), holding stale start positions from before
+          // whatever just resized. The fall doesn't "break" so much as
+          // never get a correct trigger point to fire from again. Bailing
+          // to a start position that can never be crossed, rather than
+          // throwing, means a torn-down trigger is inert instead of
+          // poisoning every other trigger's next refresh.
+          start: () => {
+            const el = handStickyRef.current;
+            // A trigger position past any real document height — a torn-
+            // down component's dead trigger sits here forever rather than
+            // crashing the refresh that every OTHER trigger on the page
+            // depends on completing.
+            if (!el) return 1e9;
+            return `bottom ${parseFloat(getComputedStyle(el).top)}px`;
+          },
           once: true,
         },
         /* HOLD THE PAGE STILL WHILE IT PLAYS (2026-08-22, per Noah: "I would

@@ -62,10 +62,20 @@ export function ProjectIdBox({
           two-stacked-line lockup ("sprouts" / "farmers market"). Tighter
           leading so the two lines fill more of the card's height, like
           the sketch. `shrink-0`: its own intrinsic width, never squeezed by
-          the credits column next to it. */}
+          the credits column next to it. Letter-spacing (2026-08-23, Noah:
+          "increase the tracking just slightly... keep it optical"): dropped
+          Tailwind's `tracking-tight` (-0.025em, a flat value meant for body
+          copy) for an explicit -0.01em — still snug at this size, just not
+          as clenched, and set as its own value rather than a step up the
+          Tailwind scale (next stop is `tracking-normal` at 0em, a bigger
+          jump than "slightly" asked for). */}
       <h1
-        className="lowercase leading-[1.02] tracking-tight m-0 shrink-0"
-        style={{ fontSize: "var(--text-project-title)", fontFamily: "var(--font-sans)" }}
+        className="lowercase leading-[1.02] m-0 shrink-0"
+        style={{
+          fontSize: "var(--text-project-title)",
+          fontFamily: "var(--font-sans)",
+          letterSpacing: "-0.01em",
+        }}
       >
         {title.map((line, i) => (
           <span key={i} className="block">
@@ -74,23 +84,33 @@ export function ProjectIdBox({
         ))}
       </h1>
 
-      {/* Credits — N columns, each: role label (sans, underlined) +
-          names stacked beneath (Quinn Text italic, per the artboard).
-          2026-08-23, Noah, on Sprouts (five credit categories, the most of
-          any project): "have the credit information to the right of the
-          title... If needed, credit categories can be stacked below one
-          another." The OUTER row used to be `flex flex-wrap`, so once title
-          + all five columns together overran the card's width, the wrap hit
-          at the OUTER level and dropped the entire credits block onto its
-          own line under the title. Removing wrap from the outer row and
-          giving this div `min-w-0` (so flex stops treating its intrinsic
-          content width as a hard floor) moves the wrap point INSIDE the
-          credits block instead — individual columns now stack ("photography
-          ... below nasdaq board animation") while the block itself stays
-          pinned to the title's right, at any width. */}
+      {/* Credits — a real 2-column GRID, each cell: role label (sans,
+          underlined) + names stacked beneath (Quinn Text italic, per the
+          artboard). 2026-08-23, Noah, on Sprouts (five credit categories,
+          the most of any project): "have the credit information to the
+          right of the title... credit categories can be stacked below one
+          another." That first pass used `flex flex-wrap`, which packs each
+          column greedily into whatever space is left on its row — for five
+          uneven-width columns that meant the row broke 2-then-3, so column 2
+          of row 2 ("design") did NOT sit under column 2 of row 1
+          ("Storyboards"), it just happened to be second in whatever the
+          wrap left. 2026-08-23, round 2, Noah: "make sure the credits are
+          aligned on a grid... design left aligned to storyboard." A CSS grid
+          with a fixed column count fixes that architecturally: every column
+          is a real track, so item N always lands under item N-2 regardless
+          of label width. Two columns specifically because that is what
+          lines "design" up under "Storyboards" (grid-auto-flow order: NASDAQ
+          / Storyboards / creative directors / design / photography — row 2
+          starts at "creative directors", so "design" falls directly under
+          "Storyboards"). `min-w-0` still lets the grid shrink inside the
+          outer no-wrap flex row instead of forcing the title to squeeze. */}
       <div
-        className="flex flex-wrap min-w-0 justify-end"
-        style={{ columnGap: "calc(var(--u) * 96)", rowGap: "calc(var(--u) * 40)" }}
+        className="grid min-w-0"
+        style={{
+          gridTemplateColumns: "repeat(2, max-content)",
+          columnGap: "calc(var(--u) * 96)",
+          rowGap: "calc(var(--u) * 40)",
+        }}
       >
         {credits.map((c) => (
           <div key={c.role} className="min-w-[7rem]">

@@ -84,7 +84,14 @@ export default function ParallaxPhotos() {
             // Expressed as a share of the element's own height so it stays
             // proportional across viewport widths, matching how the rest
             // of the site scales.
-            y: () => -travel * (root.current!.clientWidth / 1920),
+            // Guarded, not `.current!` — a StackedSection resize on
+            // whatever page the reader has since navigated to calls
+            // `ScrollTrigger.refresh()` globally (see the note on the same
+            // fix in ProjectStatement.tsx), which can re-invoke this after
+            // this component has unmounted and cleared the ref. Throwing
+            // here would abort that refresh partway through and leave
+            // OTHER pages' triggers stale.
+            y: () => (root.current ? -travel * (root.current.clientWidth / 1920) : 0),
             ease: "none",
             scrollTrigger: {
               trigger: root.current,

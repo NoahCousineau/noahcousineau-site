@@ -56,15 +56,30 @@ const ICON_X = 0.807;
  *  every hook keyed off `icons` a brand-new array each render otherwise. */
 const NO_ICONS: HeaderIcon[] = [];
 
-/* Non-hero icons, as a fraction of the arena's width. "Have them alternate
- * in size, but always be smaller than the hero icon" — a discrete tier per
- * icon rather than one fixed size, since "alternate" only reads as
- * alternating if some are visibly bigger than others. Every value here sits
- * below the hero's own footprint at every project (measured: the hero's
- * width in these terms ranges 0.135-0.30 across the six projects, keyed off
- * ICON_SCALE and each object's own aspect; the top tier here tops out at
- * 0.128, safely under the smallest of those). */
-const ICON_SIZE_TIERS = [0.072, 0.098, 0.128];
+/* Per-kind size ceiling, as a fraction of the HERO'S OWN SIZE — not of the
+ * arena. 2026-08-23, Noah, after the first pass ran every icon off one flat
+ * arena-width tier list regardless of kind or aspect: "the clay icons can
+ * get up to 75% the size of the hero icon. The paper icons can get up to
+ * 50%... the pencil icons can get up to 30%." "Size" here means the icon's
+ * own FOOTPRINT (its larger dimension, width or height, whichever the art
+ * actually reaches further in) rather than its rendered width — a flat
+ * width-fraction was what let more-work's clay-exclamationpoint (146x581,
+ * nearly 1:4) render at nearly the full header's height: every icon got the
+ * same WIDTH slice regardless of aspect, so an extremely tall, narrow image
+ * turned that same slice into an enormous height. Sizing by footprint caps
+ * what you actually SEE regardless of how the source art is proportioned. */
+const KIND_MAX_FRACTION_OF_HERO: Record<HeaderIcon["kind"], number> = {
+  clay: 0.75,
+  paper: 0.5,
+  pencil: 0.3,
+};
+
+/* Three tiers per kind, each a fraction of THAT KIND'S OWN ceiling above —
+ * "have them alternate in size" needs more than one value to alternate
+ * between, and every tier still tops out at the kind's cap (the last tier is
+ * exactly 1.0x the ceiling) rather than a fixed arena-width number that
+ * could land above or below it depending on the hero's own footprint. */
+const SIZE_TIERS_OF_KIND_MAX = [0.55, 0.75, 1.0];
 
 /* Loosely spread starting x's across the arena, leaving the hero's own
  * corner (right of ICON_X) less crowded — these are DROP positions, not
@@ -108,17 +123,34 @@ function buildSpecs(
 ): DropSpec[] {
   const rand = randomize ? Math.random : () => 0.5;
   const xs = spreadX(icons.length, rand);
-  const midTier = ICON_SIZE_TIERS[Math.floor(ICON_SIZE_TIERS.length / 2)];
-  const list: DropSpec[] = icons.map((icon, i) => ({
-    x: xs[i],
-    width: randomize
-      ? ICON_SIZE_TIERS[Math.floor(rand() * ICON_SIZE_TIERS.length)]
-      : midTier,
-    delay: i * DROP_STAGGER_MS,
-    src: icon.src,
-    aspect: icon.width / icon.height,
-    invertOnDark: icon.kind === "pencil",
-  }));
+  const midTierIdx = Math.floor(SIZE_TIERS_OF_KIND_MAX.length / 2);
+
+  /* The hero's own footprint (larger dimension) as a fraction of the arena's
+   * width — everything else is sized as a fraction OF THIS, not of the
+   * arena directly. `iconWidth` is already a width-fraction; when the hero
+   * is taller than it is wide (heroAspect < 1) its footprint is its HEIGHT,
+   * which is `iconWidth / heroAspect` in these same width-fraction units. */
+  const heroAspect = object ? object.width / object.height : 1;
+  const heroFootprint = iconWidth / Math.min(1, heroAspect || 1);
+
+  const list: DropSpec[] = icons.map((icon, i) => {
+    const aspect = icon.width / icon.height;
+    const tier = randomize
+      ? SIZE_TIERS_OF_KIND_MAX[Math.floor(rand() * SIZE_TIERS_OF_KIND_MAX.length)]
+      : SIZE_TIERS_OF_KIND_MAX[midTierIdx];
+    const footprint = heroFootprint * KIND_MAX_FRACTION_OF_HERO[icon.kind] * tier;
+    // footprint is the icon's larger dimension; convert back to a WIDTH
+    // fraction for DropSpec, same inverse as heroFootprint above.
+    const width = aspect >= 1 ? footprint : footprint * aspect;
+    return {
+      x: xs[i],
+      width,
+      delay: i * DROP_STAGGER_MS,
+      src: icon.src,
+      aspect,
+      invertOnDark: icon.kind === "pencil",
+    };
+  });
   if (iconSrc) {
     list.push({
       x: ICON_X,

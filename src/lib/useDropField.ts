@@ -613,8 +613,28 @@ export function useDropField({
           if (g.body.spec.spin !== false) g.body.spin = vx * THROW_SPIN;
         }
       }
-      // Anything it was leaning on has to reconsider its footing.
-      for (const b of bodies.current) b.asleep = false;
+      // Anything it was leaning on has to reconsider its footing — but ONLY
+      // things actually near where it was picked up. This used to wake
+      // EVERY body in the field on any pointerup, including a plain click
+      // that never moved anything: a screen recording (2026-08-23, Noah:
+      // "there's still a bit of jittering") showed an untouched icon on the
+      // far side of the header suddenly sliding across the screen several
+      // seconds after a click elsewhere, settling, and then handing the
+      // same thing off to its own neighbour in turn — a slow domino, one
+      // wake-all re-triggering real (if tiny) residual overlaps that the
+      // sleeping-pair skip in the pairwise loop above exists specifically to
+      // leave alone. Scoping the wake to bodies actually within reach of the
+      // one just let go still covers the real case this existed for —
+      // something resting ON the dragged body needs to reconsider whether
+      // it's still supported — via the same reach-based `bound()` proximity
+      // check the collision pass itself uses, without detonating the whole
+      // settled pile over an unrelated tap on the other side of the header.
+      const d = g.body;
+      for (const b of bodies.current) {
+        if (b === d || !b.released || b.held) continue;
+        const dist = Math.hypot(b.x - d.x, b.y - d.y);
+        if (dist < bound(d) + bound(b) + 4) b.asleep = false;
+      }
     };
 
     const attached = els.current.slice();
