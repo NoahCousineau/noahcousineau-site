@@ -144,6 +144,41 @@ export function useThrowable({
     const container = containerRef.current;
     if (!el || !container || !enabled) return;
 
+    /* Rotate about the SILHOUETTE's centre of area, not the element box's.
+     *
+     * The physics already treats that centroid as the pivot — every support
+     * lookup is measured from it — but CSS `rotate()` spins about the box,
+     * which defaults to 50% 50%. For most of these objects the artwork is
+     * roughly centred in its canvas and the two agree within about 2%, so
+     * nothing looked wrong. The flame is the exception and it is a big one:
+     * its canvas is sized for the fully grown flame, so frame 1's ember sits
+     * right at the bottom with its centroid at y=0.876 against a box centre
+     * of 0.5. It spun around a point far above itself. Noah: "The flame is
+     * acting odd when it's at it's first frame. It looks like the anchor
+     * point that it's spinning around isn't matching its center point."
+     *
+     * Kept in step with the frame, since the centroid moves as these shapes
+     * grow (the flame's offset runs 37.6% down to 8.6% across its five
+     * frames), and only written when it actually changes — this runs every
+     * animation frame and a needless style write is a needless recalc. */
+    let lastOrigin = "";
+    /* Runs EVERY frame, not just when the object moves. The outlines are
+     * measured asynchronously as the frame images decode, so at the moment of
+     * the first paint every shape is still the placeholder with its pivot at
+     * dead centre. Folding this into `apply()` — which is skipped while the
+     * object sits still — meant the real pivot was measured and then never
+     * written, leaving the flame rotating about the box centre exactly as
+     * before. It is guarded on the value, so a settled object costs one string
+     * compare per frame and no style write. */
+    const syncOrigin = () => {
+      const piv = shapeNow().pivot;
+      const origin = `${(piv.x * 100).toFixed(2)}% ${(piv.y * 100).toFixed(2)}%`;
+      if (origin !== lastOrigin) {
+        el.style.transformOrigin = origin;
+        lastOrigin = origin;
+      }
+    };
+
     const apply = () => {
       el.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${rot.current}deg)`;
     };
@@ -174,6 +209,7 @@ export function useThrowable({
        * back in. Clamping unconditionally guarantees the promise he actually
        * wants — "the icons never go outside the bounds of the grid square" —
        * no matter what changes the shape while it sits still. */
+      syncOrigin();
       const idle = asleep.current && !dragging.current;
       const before = { x: pos.current.x, y: pos.current.y };
 

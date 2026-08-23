@@ -33,6 +33,10 @@ const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: numbe
     height: 496,
     heightFraction: 0.315,
     style: "draw",
+    // Measured from the frame differences: floor, left wall, right wall, the
+    // two roof slopes, then the smile. Index 0 is unused (the starting
+    // figure). See tools/project-animations/stroke_directions.py.
+    wipes: ["l2r", "l2r", "b2t", "b2t", "l2r", "l2r", "b2t"],
   },
   "sprouts-farmers-market": {
     frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/sprouts/${n}.webp`),

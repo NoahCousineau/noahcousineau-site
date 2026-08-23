@@ -56,15 +56,36 @@ export type FrameAnimation = {
    * which is exactly the impression of ink being laid down.
    */
   style?: "rock" | "draw";
+  /**
+   * For "draw": which way each stroke is laid down, one entry per frame
+   * (index 0 unused — frame 1 is the starting picture, not a stroke).
+   *
+   * A crossfade alone made each line "just appear", which is not what drawing
+   * looks like — Noah: "There line should feel like it's being drawn from one
+   * end to the other, not just appearing." So the new frame is WIPED in over
+   * the previous one along the stroke's own axis. Because frame N contains
+   * everything in frame N-1 plus the new line, the wipe leaves all the
+   * existing ink unchanged and reveals only the new stroke, progressively,
+   * from one end to the other.
+   *
+   * Directions are measured, not guessed: tools/project-animations picks each
+   * stroke out by subtracting the previous frame (dilated, to absorb the
+   * re-photography jitter) and takes the principal axis of what remains.
+   */
+  wipes?: ("l2r" | "b2t")[];
 };
 
 /** Per-frame hold. Nudged up from 150 — Noah: "just a tad slower". */
 const FRAME_MS = 210;
 /** Peak rock, in degrees. Small: it should read as recoil, not a spin. */
 const ROCK_DEG = 7;
-/** Crossfade length for "draw" animations — long enough to see the stroke
- *  arrive, short enough that the drawing never looks blurry. */
-const DRAW_FADE_MS = 150;
+/** How long a single stroke takes to travel end to end. Kept just under the
+ *  frame hold so each line finishes drawing before the next begins. */
+const DRAW_WIPE_MS = 190;
+
+/** clip-path insets: fully hidden at the stroke's starting end, and revealed. */
+const WIPE_HIDDEN = { l2r: "inset(0 100% 0 0)", b2t: "inset(100% 0 0 0)" };
+const WIPE_SHOWN = "inset(0 0 0 0)";
 
 export default function ProjectFrameAnimation({
   animation,
@@ -78,7 +99,9 @@ export default function ProjectFrameAnimation({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const { frames, width, height, style: motion = "rock" } = animation;
+  const { frames, width, height, style: motion = "rock", wipes } = animation;
+  /** The rendered frame images, so a stroke can be drawn straight to the DOM. */
+  const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
   const [index, setIndex] = useState(0);
   /* Mirrors `index` for the physics, which reads it inside a rAF loop and must
    * not be re-subscribed on every frame change. */
@@ -139,6 +162,32 @@ export default function ProjectFrameAnimation({
     frameRef,
     onClick: play,
   });
+
+  /* Run the stroke.
+   *
+   * Driven straight to the element rather than through React state: the wipe
+   * is a visual detail nothing else renders from, and a state round trip per
+   * stroke would re-render every frame image mid-animation.
+   *
+   * The start state must be committed to the DOM before the transition to the
+   * end state, or the browser coalesces the two and the line simply appears —
+   * the very thing this replaces. A forced reflow does that synchronously.
+   * Nested requestAnimationFrames are the more common way to write this and
+   * were what I reached for first, but they make the reveal depend on frames
+   * actually being produced: with the tab backgrounded the second callback
+   * never ran and the stroke sat permanently hidden, so the drawing lost a
+   * line. Reading offsetWidth cannot be deferred, so the wipe always starts. */
+  useEffect(() => {
+    if (motion !== "draw" || index === 0) return;
+    const el = imgRefs.current[index];
+    if (!el) return;
+    const dir = wipes?.[index] ?? "l2r";
+    el.style.transition = "none";
+    el.style.clipPath = WIPE_HIDDEN[dir];
+    void el.offsetWidth; // flush, so the browser has a start state to move from
+    el.style.transition = `clip-path ${DRAW_WIPE_MS}ms linear`;
+    el.style.clipPath = WIPE_SHOWN;
+  }, [index, motion, wipes]);
 
   useEffect(() => {
     frameRef.current = index;
@@ -210,22 +259,29 @@ export default function ProjectFrameAnimation({
     >
       <div ref={rockRef} className="w-full">
         <div className="relative w-full" style={{ aspectRatio: `${width}/${height}` }}>
-          {frames.map((src, i) => (
-            <Image
-              key={src}
-              src={src}
-              alt=""
-              fill
-              sizes="25vw"
-              priority={i === 0}
-              draggable={false}
-              className="object-contain pointer-events-none"
-              style={{
-                opacity: i === index ? 1 : 0,
-                transition: motion === "draw" ? `opacity ${DRAW_FADE_MS}ms linear` : undefined,
-              }}
-            />
-          ))}
+          {frames.map((src, i) => {
+            // While a stroke is being drawn the PREVIOUS frame stays fully
+            // visible underneath, so the picture drawn so far never flickers;
+            // only the incoming frame is clipped, and the sole difference
+            // between the two is the line arriving.
+            const isUnderneath = motion === "draw" && i === index - 1;
+            return (
+              <Image
+                key={src}
+                ref={(el) => {
+                  imgRefs.current[i] = el;
+                }}
+                src={src}
+                alt=""
+                fill
+                sizes="25vw"
+                priority={i === 0}
+                draggable={false}
+                className="object-contain pointer-events-none"
+                style={{ opacity: i === index || isUnderneath ? 1 : 0 }}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
