@@ -54,7 +54,24 @@ import StackedSection from "./StackedSection";
  * rest, instead of being forced to fill 100% of the box via object-cover.
  */
 export type MediaCell =
-  | { type: "image"; file: string; alt?: string; w?: number; h?: number; scale?: number; colWidth?: number; fit?: boolean; cropAspect?: string; objectFit?: "cover" | "contain"; shadow?: boolean }
+  | {
+      type: "image";
+      file: string;
+      alt?: string;
+      w?: number;
+      h?: number;
+      scale?: number;
+      colWidth?: number;
+      fit?: boolean;
+      cropAspect?: string;
+      objectFit?: "cover" | "contain";
+      shadow?: boolean;
+      /** Flip pure-black artwork to white in dark mode — see the
+       *  `.invert-on-dark` note in globals.css. Only for flat black-on-
+       *  transparent marks (a logo, a wordmark); real photography has its
+       *  own background and would invert into something broken. */
+      invertOnDark?: boolean;
+    }
   | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean; objectFit?: "cover" | "contain" }
   | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number };
 
@@ -287,7 +304,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           <img
             src={`/assets/${slug}/${cell.file}`}
             alt={cell.alt || ""}
-            className="w-full h-full object-cover object-top"
+            className={`w-full h-full object-cover object-top${cell.invertOnDark ? " invert-on-dark" : ""}`}
             style={{ display: "block", lineHeight: 0 }}
           />
         ) : (
@@ -301,7 +318,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           <img
             src={`/assets/${slug}/${cell.file}`}
             alt={cell.alt || ""}
-            className="w-full h-auto"
+            className={`w-full h-auto${cell.invertOnDark ? " invert-on-dark" : ""}`}
             style={{ display: "block", lineHeight: 0, boxShadow: cell.shadow ? "0 6px 18px rgba(0,0,0,0.25)" : undefined }}
           />
         )
@@ -324,9 +341,9 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
             // portrait/odd-aspect media in a landscape cell that must
             // show the whole frame rather than crop it).
             className={
-              cell.objectFit === "contain" || (cell.scale && cell.scale !== 100)
+              (cell.objectFit === "contain" || (cell.scale && cell.scale !== 100)
                 ? "w-full h-full object-contain"
-                : "w-full h-full object-cover"
+                : "w-full h-full object-cover") + (cell.invertOnDark ? " invert-on-dark" : "")
             }
             style={{ display: "block", lineHeight: 0 }}
           />

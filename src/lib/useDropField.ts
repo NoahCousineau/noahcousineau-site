@@ -48,6 +48,16 @@ const WALL_REST_SPEED = 18;
 const MAX_THROW_SPEED = 2400;
 const THROW_SPIN = 0.42;
 const DRAG_THRESHOLD_PX = 3;
+/** How far a dragged object leans into the direction it's being hauled,
+ *  matching useThrowable's feel — Noah, on these objects specifically:
+ *  "please make sure these can rotate." They already tumble on release (see
+ *  THROW_SPIN below) and roll on the floor; what was missing was that a
+ *  drag itself never fed any rotation in, so an object mid-carry looked like
+ *  a sticker sliding around rather than a thing with weight. Skipped for a
+ *  spin:false body (the header's static hero icon), which must stay upright
+ *  even while it's being moved. */
+const DRAG_LEAN_DEG_PER_SPEED = 0.016;
+const MAX_DRAG_LEAN_DEG = 22;
 
 /** Bounce between two objects. Lower than against a wall: a pile should
  *  settle, and every bit of restitution here is energy fed back into a stack
@@ -430,6 +440,19 @@ export function useDropField({
       const now = performance.now();
       g.samples.push({ ...p, t: now });
       while (g.samples.length > 2 && now - g.samples[0].t > 90) g.samples.shift();
+
+      if (g.body.spec.spin !== false) {
+        const prev = g.samples[g.samples.length - 2];
+        if (prev) {
+          const dtS = Math.max((now - prev.t) / 1000, 1 / 240);
+          const vx = (p.x - prev.x) / dtS;
+          const lean = Math.max(
+            -MAX_DRAG_LEAN_DEG,
+            Math.min(MAX_DRAG_LEAN_DEG, vx * DRAG_LEAN_DEG_PER_SPEED)
+          );
+          g.body.rot += (lean - g.body.rot) * 0.25;
+        }
+      }
     };
 
     const onUp = (e: PointerEvent) => {

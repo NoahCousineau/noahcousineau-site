@@ -25,6 +25,35 @@ about alignment. Scale is locked to the median across all frames and only
 translation is fitted per frame: the turntable was shot at a fixed camera
 distance and his crops don't rescale, so a per-frame scale would only pulse
 the head's size through the loop.
+
+2026-08-23, Noah: "my photoshop work was better, but not perfect... I noticed
+that my hair can cause some issues and there's a little bit of white or gray
+background where my hair gets thin." His mask is otherwise right — this is
+DEFRINGE, not re-cutting. A soft-edged hand-cut mask like his leaves colour
+contamination in the thin/semi-transparent strands: those pixels were shot
+against his real backdrop, so their stored RGB is already a blend of hair and
+background, and simple alpha masking never removes that. Photoshop's own
+Defringe/Decontaminate tools solve exactly this — `estimate_foreground_ml`
+(pymatting) is the same idea: given the observed colour and his alpha, it
+solves for the pure foreground colour the alpha implies. His shape is left
+untouched; only colour moves, only within a band close to the edge (a
+dilation of wherever alpha is already partial) — never in the solid interior,
+where the SAME colour rule mis-fired once in testing and left a brown smudge
+on a lit patch of cheek. See `defringe()`.
+
+Noah also flagged one extra frame: "there's a few frames where I'm looking
+forward... because there's an additional frame, it feels like the rotation
+gets stuck." Measured (mean abs colour diff, face band, frame-to-frame) the
+step sizes around the wrap are 30->31: 48.8, 31->32: 34.1, 32->1: 38.6,
+1->2: 48.2 — an uneven little stutter, both real steps smaller than the
+~40-50 typical elsewhere in the loop. Dropping ORIGINAL PHOTO 32 alone (not
+adjacent frames — it's genuinely the odd one out, closest to both of its
+neighbours) turns that into 30->31: 48.8, 31->1: 41.6, 1->2: 48.2, back in
+line with the rest of the loop. Handled entirely by leaving 32 out of
+FRAMES; nothing else moves, so `lightModeStaggeredAdjustments` still applies
+to dark position-for-position for every frame that survives (see
+RotatingHead.tsx for how the two variants' now-different frame counts are
+kept independent).
 """
 import os
 import sys
@@ -34,6 +63,7 @@ import numpy as np
 import cv2
 from PIL import Image
 from psd_tools import PSDImage
+from pymatting import estimate_foreground_ml
 
 BASE = '/Users/noahcousineau/Desktop/portfolio/rotating-head-turntable'
 EDIT = f'{BASE}/02-edited-frames/dark-mode_NoahEdit'
@@ -42,7 +72,10 @@ W, H = 2400, 3600
 DS = 8
 # Frame 28 is missing from the light set, and the two must stay index-aligned
 # because the sheet is addressed by index. He edited a 28; it goes unused.
-FRAMES = [n for n in range(1, 33) if n != 28]
+# Frame 32 is the near-duplicate "stuck looking forward" frame — see the
+# module docstring — and is dropped from the DARK sequence only; the light
+# sequence is untouched and keeps all 31.
+FRAMES = [n for n in range(1, 33) if n not in (28, 32)]
 
 
 def light_geom(n):
@@ -55,15 +88,54 @@ def light_geom(n):
     return m, top, bot, jaw, float(xs[sel].mean())
 
 
+def defringe(rgba):
+    """Pull the background out of Noah's semi-transparent hair edge pixels.
+
+    `estimate_foreground_ml` wants the OBSERVED colour (already what a flat
+    composite gives us, since there's nothing behind his cutout to have
+    blended it further) plus his own alpha, and solves for the true
+    foreground colour implied by that alpha — this is what recovers hair
+    colour instead of the pale/grey the backdrop left behind.
+
+    Restricted to a band around wherever alpha is already partial (dilated
+    9px, so it also catches the odd fully-opaque-but-pale pixel just inside
+    a real edge): tested unrestricted, the SAME colour rule this leans on
+    (desheen's neutral+bright pull) also caught a lit, slightly-neutral
+    patch of cheek in the solid interior and left a visible brown smudge on
+    skin. The band can never reach that — it is bounded by distance from an
+    actual alpha edge, and the interior of a cheek is nowhere near one.
+    """
+    rgb = rgba[..., :3].astype(np.float64) / 255.0
+    alpha = rgba[..., 3].astype(np.float64) / 255.0
+    F = np.clip(estimate_foreground_ml(rgb, alpha), 0, 1)
+
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import matte  # noqa: E402  (reuses desheen's neutral+bright hair recolour)
+
+    partial = ((alpha > 0.02) & (alpha < 0.98)).astype(np.uint8)
+    band = cv2.dilate(partial, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) > 0
+    F_warm = matte.desheen(F, strength=1.8)
+    F_out = np.where(band[..., None], F_warm, F)
+
+    out = np.dstack([F_out, alpha])
+    return np.clip(out * 255, 0, 255).astype(np.uint8)
+
+
 def dark_rgba(n):
-    """Noah's edit, flattened. Cached as PNG — psd_tools is slow."""
+    """Noah's edit, flattened and defringed. Cached — both steps are slow."""
     cache = f'{EDIT}/.flattened'
     os.makedirs(cache, exist_ok=True)
     src = f'{EDIT}/DarkMode{n}.psd'
-    dst = f'{cache}/DarkMode{n}.png'
-    if not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src):
-        PSDImage.open(src).composite().convert('RGBA').save(dst)
-    return np.array(Image.open(dst).convert('RGBA'))
+    flat = f'{cache}/DarkMode{n}.png'
+    if not os.path.exists(flat) or os.path.getmtime(flat) < os.path.getmtime(src):
+        PSDImage.open(src).composite().convert('RGBA').save(flat)
+
+    fringed = f'{cache}/DarkMode{n}.defringed.png'
+    if not os.path.exists(fringed) or os.path.getmtime(fringed) < os.path.getmtime(flat):
+        raw = np.array(Image.open(flat).convert('RGBA'))
+        Image.fromarray(defringe(raw)).save(fringed)
+    return np.array(Image.open(fringed).convert('RGBA'))
 
 
 def skull_ref(mask, frac=0.55):

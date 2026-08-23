@@ -40,7 +40,19 @@ export default function RotatingHead({
   const [velocity, setVelocity] = useState(0);
 
   // Constants - web-optimized (0.4x scale)
-  const TOTAL_FRAMES = variant === 'smooth' ? 59 : 31;
+  //
+  // DARK IS ONE FRAME SHORTER THAN LIGHT (2026-08-23). Noah, on the
+  // turntable: "there's a few frames where I'm looking forward... because
+  // there's an additional frame, it feels like the rotation gets stuck."
+  // The dark shoot genuinely captured a near-duplicate angle the light shoot
+  // didn't; tools/dark-head-pipeline/build_dark_frames_from_edit.py drops
+  // that one photo when it builds the dark sheet, so dark has 30 staggered
+  // frames against light's 31. They can disagree because
+  // `lightModeStaggeredAdjustments` is keyed by POSITION IN THE SEQUENCE,
+  // not by original photo number, and the dropped photo was the LAST one —
+  // so dark's positions 1-30 still line up with light's positions 1-30
+  // exactly; nothing needed remapping, dark just stops one short.
+  const TOTAL_FRAMES = variant === 'smooth' ? 59 : isDarkMode ? 30 : 31;
   const GRID_COLS = variant === 'smooth' ? 8 : 6;
   const FRAME_WIDTH = 960;
   const FRAME_HEIGHT = 1440;

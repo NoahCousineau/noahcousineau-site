@@ -142,6 +142,19 @@
   filter: invert(1);
 }
 
+/* Same problem, general form: a project-grid image that is pure black art on
+   a transparent ground. Its CELL sits on --color-paper, which is the thing
+   that flips dark — the artwork itself never does, so a black logo silently
+   merges into the now-black cell behind it. 2026-08-23, Noah, on the
+   California State Parks wordmark specifically: "it looks like it gets lost
+   in dark mode. Can you make sure this turns white when in dark mode?" Opt
+   in per cell via `invertOnDark` (see MediaCell in ProjectGroup.tsx) rather
+   than applying this to every image, since most project photography has its
+   own real background and inverting THAT would look broken. */
+:root[data-theme="dark"] .invert-on-dark {
+  filter: invert(1);
+}
+
 /*
   CROSSFADE BETWEEN MODES (2026-08-21, per Noah: "When we toggle between
   light and dark mode, let's not have it be an instant transition. Let's

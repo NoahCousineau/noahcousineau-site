@@ -2162,7 +2162,8 @@
                 {
                   "type": "image",
                   "file": "california-state-parks/california-state-parks_02_week-11-logo-01.png",
-                  "scale": 90
+                  "scale": 90,
+                  "invertOnDark": true
                 }
               ]
             },
