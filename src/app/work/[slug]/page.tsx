@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -14,7 +13,7 @@ import {
   MediaFull,
   VideoEmbed,
 } from "@/components/project/ProjectScaffold";
-import { ProjectIdBox } from "@/components/project/ProjectIdBox";
+import ProjectHeader from "@/components/project/ProjectHeader";
 import { ProjectStatement } from "@/components/project/ProjectStatement";
 import { ProjectGroup } from "@/components/project/ProjectGroup";
 
@@ -81,7 +80,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
   // repeating content groups -> nav -> shared global footer (rendered
   // once in layout.tsx, identical on every page, untouched here).
   if (project.pageData) {
-    const { heroImage, credits, statement, paragraph, groups } = project.pageData;
+    const { credits, statement, paragraph, groups } = project.pageData;
     const titleLines = project.title.toLowerCase().split(" ");
     // Sprouts: ["sprouts", "farmers", "market"] -> ["sprouts", "farmers market"]
     const title =
@@ -92,37 +91,19 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
         className="mx-auto w-full max-w-[1920px]"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
-        {/* Hero image reaches the very top of the browser window (Noah:
-            "Make sure the top of the header image reaches the top of the
-            browser window"). The ID card floats ON TOP of it, absolutely
-            positioned, inset from the top/sides by --gutter — so the hero
-            itself has zero top offset while the card still reads with a
-            gap around it, per the earlier requirement that the card not
-            sit flush like it does in the raw artboard. */}
-        <div className="relative w-full overflow-hidden">
-          <Image
-            src={`/assets/${project.slug}/${heroImage}`}
-            alt={project.title}
-            width={3000}
-            height={1965}
-            sizes="100vw"
-            className="w-full h-auto"
-            priority
-          />
-          {/* ID card inset by 40u on top/left/right (round 9, was 65u) —
-              tightened gap to browser edges while keeping card internally
-              generous, per Noah's "hug the box closer to the edge" request. */}
-          <div
-            className="absolute z-20"
-            style={{
-              top: "calc(var(--u) * 40)",
-              left: "calc(var(--u) * 40)",
-              right: "calc(var(--u) * 40)",
-            }}
-          >
-            <ProjectIdBox title={title} credits={credits} />
-          </div>
-        </div>
+        {/* HEADER (2026-08-22). The hero photograph that used to fill this
+            space is gone — Noah: "I want the background images at the top of
+            the pages gone. These will be empty space." What replaces it is
+            empty page, a full-width rule near the foot of it, and a handful
+            of objects that fall in and settle on that rule a few seconds
+            after the page loads. The previous hero-image header is at commit
+            a2bef06, per "Let's remember how the header was previously in case
+            we want to revert to it."
+
+            `heroImage` is still in projects.json and still on disk — nothing
+            was deleted — so reverting is a matter of putting this block back
+            rather than re-entering data. */}
+        <ProjectHeader slug={project.slug} title={title} credits={credits} />
 
         <ProjectStatement
           lead={statement.lead}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useThrowable } from "@/lib/useThrowable";
 import { AWAY_SCREEN_SHOWN } from "@/components/AwayOverlay";
+import type { FrameAnimation } from "@/lib/projectObjects";
 
 /**
  * A hand-shot object sitting in a project tile: click it and it animates,
@@ -36,44 +37,6 @@ import { AWAY_SCREEN_SHOWN } from "@/components/AwayOverlay";
  * click, and an animation that stalls on its second frame reads as broken
  * rather than as a bite.
  */
-
-export type FrameAnimation = {
-  /** Frame image paths, in order, starting at frame 1. */
-  frames: string[];
-  /** Intrinsic size of every (registered, identically sized) frame. */
-  width: number;
-  height: number;
-  /**
-   * How the object reacts as it plays.
-   *
-   * "rock" (default) kicks it a few degrees per frame, as though absorbing a
-   * bite. "draw" is for Valley Strong, where a house is drawn around a person
-   * — Noah: "I don't need each of the lines to shake like the others, but I
-   * do want some sense that the line is being drawn on." So it holds still and
-   * CROSSFADES between frames instead. That works because consecutive frames
-   * are identical except for the line just added: fading between them leaves
-   * everything already drawn rock steady and washes in only the new stroke,
-   * which is exactly the impression of ink being laid down.
-   */
-  style?: "rock" | "draw";
-  /**
-   * For "draw": which way each stroke is laid down, one entry per frame
-   * (index 0 unused — frame 1 is the starting picture, not a stroke).
-   *
-   * A crossfade alone made each line "just appear", which is not what drawing
-   * looks like — Noah: "There line should feel like it's being drawn from one
-   * end to the other, not just appearing." So the new frame is WIPED in over
-   * the previous one along the stroke's own axis. Because frame N contains
-   * everything in frame N-1 plus the new line, the wipe leaves all the
-   * existing ink unchanged and reveals only the new stroke, progressively,
-   * from one end to the other.
-   *
-   * Directions are measured, not guessed: tools/project-animations picks each
-   * stroke out by subtracting the previous frame (dilated, to absorb the
-   * re-photography jitter) and takes the principal axis of what remains.
-   */
-  wipes?: ("l2r" | "b2t")[];
-};
 
 /** Per-frame hold. Nudged up from 150 — Noah: "just a tad slower". */
 const FRAME_MS = 210;

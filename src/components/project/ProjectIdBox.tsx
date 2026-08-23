@@ -35,14 +35,24 @@ export type Credit = { role: string; names: string[] };
 export function ProjectIdBox({
   title,
   credits,
+  bare = false,
 }: {
   /** Two-line title, e.g. ["sprouts", "farmers market"]. Pass 1 or 2 lines. */
   title: string[];
   credits: Credit[];
+  /**
+   * Drop the paper fill (2026-08-22). The card existed to hold the type off a
+   * photograph; with the hero images gone — Noah: "I want the background
+   * images at the top of the pages gone. These will be empty space." — a
+   * white card on a white page is just an invisible rectangle, and one that
+   * would block the falling objects from passing behind the type. The
+   * padding stays, so nothing moves: "The header text will stay here it is."
+   */
+  bare?: boolean;
 }) {
   return (
     <div
-      className="bg-[color:var(--color-paper)] flex flex-wrap items-start justify-between"
+      className={`${bare ? "" : "bg-[color:var(--color-paper)]"} flex flex-wrap items-start justify-between`}
       style={{
         columnGap: "calc(var(--u) * 120)",
         rowGap: "calc(var(--u) * 60)",
@@ -66,8 +76,13 @@ export function ProjectIdBox({
 
       {/* Credits — N columns, each: role label (sans, underlined) +
           names stacked beneath (Quinn Text italic, per the artboard). */}
+      {/* `ml-auto` and not just the row's `justify-between`: once the two
+          halves wrap onto separate lines (a long title, a narrow viewport)
+          justify-between has nothing left to space apart and the credits fall
+          back to the left. Noah: "make sure that the team credit information
+          is to the right." */}
       <div
-        className="flex flex-wrap"
+        className="flex flex-wrap ml-auto justify-end"
         style={{ columnGap: "calc(var(--u) * 96)", rowGap: "calc(var(--u) * 40)" }}
       >
         {credits.map((c) => (

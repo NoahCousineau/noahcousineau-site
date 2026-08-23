@@ -4,80 +4,8 @@ import { useRef } from "react";
 import Link from "next/link";
 import { Stage, Place } from "./Stage";
 import { HOVER_VIDEO } from "@/lib/projects";
-import ProjectFrameAnimation, { type FrameAnimation } from "./ProjectFrameAnimation";
-
-/* CLICK-TO-PLAY OBJECTS IN THE TILES (2026-08-22, per Noah: "Right now we
- * have videos playing in the grid sections. Nothing's wrong with this, but
- * I'm looking for a more interesting interaction... I really enjoy how [the
- * about-me head] is looking and essentially want it to happen on the
- * homepage.")
- *
- * Five of the six are edited; only More Work still has raws, so that tile
- * keeps its hover video until frames arrive. Both paths live side by side on purpose — a tile
- * shows an object if it has one and falls back to video if it doesn't — so
- * they convert one at a time rather than in a flag day.
- *
- * Frames are registered before export so the subject doesn't hop between
- * them, each with its own anchor: the apple holds its STEM (the only part
- * that survives being eaten), the heart and the sun their CENTRE ("Have the
- * heart grow from the center"; the sun "starting as a dot") and the flame its
- * BASE ("Have the flame growing from the base"). Valley Strong is matched by
- * TEMPLATE — a house is drawn around a person, and the person is only
- * isolatable in frame 1, so frame 1 is located inside each later frame. See tools/project-animations/align_frames.py. */
-const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: number }> = {
-  "valley-strong-credit-union": {
-    frames: [1, 2, 3, 4, 5, 6, 7].map(
-      (n) => `/assets/home/project-animations/valley-strong/${n}.webp`
-    ),
-    width: 700,
-    height: 496,
-    heightFraction: 0.315,
-    style: "draw",
-    // Measured from the frame differences: floor, left wall, right wall, the
-    // two roof slopes, then the smile. Index 0 is unused (the starting
-    // figure). See tools/project-animations/stroke_directions.py.
-    wipes: ["l2r", "l2r", "b2t", "b2t", "l2r", "l2r", "b2t"],
-  },
-  "sprouts-farmers-market": {
-    frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/sprouts/${n}.webp`),
-    width: 700,
-    height: 689,
-    heightFraction: 0.36,
-  },
-  "corita-art-center": {
-    frames: [1, 2, 3, 4].map((n) => `/assets/home/project-animations/cac/${n}.webp`),
-    width: 700,
-    height: 714,
-    heightFraction: 0.367,
-  },
-  "socal-earth": {
-    frames: [1, 2, 3, 4].map((n) => `/assets/home/project-animations/socal-earth/${n}.webp`),
-    width: 700,
-    height: 724,
-    heightFraction: 0.37,
-  },
-  "cultural-olympiad-poster": {
-    frames: [1, 2, 3, 4, 5].map((n) => `/assets/home/project-animations/olympics/${n}.webp`),
-    width: 700,
-    height: 931,
-    heightFraction: 0.428,
-  },
-  // The "more work" tile. A length of blue tube laid out by hand into an
-  // ampersand, growing from its free end — Noah: "It starts from the bottom
-  // right corner and then traces out the '&'." Seven stop-motion stages, so
-  // it cuts rather than crossfades: the tube is physically re-laid between
-  // shots and the part already down shifts, which a crossfade would smear
-  // into a double image. The rock carries the energy of it being flopped
-  // into place.
-  other: {
-    frames: [1, 2, 3, 4, 5, 6, 7].map(
-      (n) => `/assets/home/project-animations/ampersand/${n}.webp`
-    ),
-    width: 700,
-    height: 760,
-    heightFraction: 0.395,
-  },
-};
+import ProjectFrameAnimation from "./ProjectFrameAnimation";
+import { PROJECT_OBJECTS } from "@/lib/projectObjects";
 
 /* Placement inside the tile, in artboard units, matched to Noah's mockup:
  * the object sits low and right, its base landing on the row's bottom rule.
@@ -154,7 +82,9 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
 
   // An object animation replaces the hover video entirely on tiles that have
   // one; tiles still waiting on their frames keep the video.
-  const objectAnimation = OBJECT_ANIMATIONS[cell.slug];
+  // "other" is the more-work tile's display id, not its route; the shared
+  // map is keyed by real slug so a project page can find its own object.
+  const objectAnimation = PROJECT_OBJECTS[cell.slug === "other" ? "more-work" : cell.slug];
 
   // Handle video for swapped projects
   // "cultural-olympiad" shows the ArtCenter video (forced perspective video)

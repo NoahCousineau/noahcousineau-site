@@ -6,6 +6,12 @@ import { ArcText } from "@/components/ArcText";
 import RagdollHead from "@/components/about/RagdollHead";
 import ParallaxPhotos from "@/components/about/ParallaxPhotos";
 import ApproachOnScroll from "@/components/about/ApproachOnScroll";
+import {
+  HEADER_HEIGHT_CSS,
+  HEADER_RULE_PCT,
+  HEADER_RULE_UNITS,
+  HEADER_INSET_UNITS,
+} from "@/components/project/headerLayout";
 
 /*
  * About Me page — built from Noah's design file
@@ -281,10 +287,11 @@ function DraggableResumeCard({
 }
 
 export default function About() {
-  // The red header doubles as the ragdoll head's physics arena — it's the
-  // "red space" the head is thrown around inside, so RagdollHead measures
-  // its walls from this ref.
-  const headerRef = useRef<HTMLElement>(null);
+  // The header doubles as the ragdoll head's physics arena. That arena is
+  // NOT the whole section: it is the box above the rule, which is what makes
+  // the head come to rest exactly on the line rather than at the foot of the
+  // page. See components/project/headerLayout.ts.
+  const arenaRef = useRef<HTMLDivElement>(null);
 
   return (
     <main
@@ -292,29 +299,52 @@ export default function About() {
       style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
     >
       {/* ================= HEADER ================= */}
+      {/* 2026-08-22, Noah: "On the about me page, I would like to get rid of
+          the red background and apply the same horizontal line. I don't want
+          extra objects on the about me, these will only have the head."
+
+          So this is the project pages' header with the drop field left out —
+          same height, same rule at the same 90%, same inset for the type. The
+          red version is at commit a2bef06 if it wants coming back. */}
       <section
-        ref={headerRef}
         className="relative w-full overflow-hidden"
-        style={{ background: "var(--color-red)", height: "calc(var(--u) * 1080)" }}
+        style={{ height: HEADER_HEIGHT_CSS }}
       >
-        {/* White "about me" label — reuses the exact ProjectIdBox card
-            treatment (bg-paper, same padding scale, same font) but
-            STRETCHED to span the majority of the header width — matching
-            Noah's reference screenshot, where the white bar spans ~93% of
-            the frame (measured: 1785u of 1920u, 70u/63u side insets) —
-            and matching how ProjectIdBox itself spans nearly the full
-            hero-image width on every project page (inset only by --gutter
-            on each side), not a small inline-sized pill. */}
+        {/* The head's box, ending at the rule. */}
         <div
-          className="absolute z-20"
+          ref={arenaRef}
+          className="absolute inset-x-0 top-0"
+          style={{ height: HEADER_RULE_PCT }}
+        >
+          {/* Head — grabbable and throwable, confined to the space above the
+              rule. Its designed resting position and the eye-tracking both
+              live in RagdollHead; see that file for the position math and the
+              physics. */}
+          <RagdollHead containerRef={arenaRef} />
+        </div>
+
+        <div
+          className="absolute inset-x-0 z-10"
           style={{
-            top: "calc(var(--u) * 40)",
-            left: "calc(var(--u) * 40)",
-            right: "calc(var(--u) * 40)",
+            top: HEADER_RULE_PCT,
+            height: `calc(var(--u) * ${HEADER_RULE_UNITS})`,
+            background: "var(--color-ink)",
+          }}
+        />
+
+        {/* "about me", in the place the white card used to put it. The card
+            itself is gone for the same reason it went on the project pages:
+            with the red away it is a white rectangle on a white page. */}
+        <div
+          className="absolute z-20 pointer-events-none"
+          style={{
+            top: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
+            left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
+            right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           }}
         >
           <div
-            className="bg-[color:var(--color-paper)] lowercase w-full"
+            className="lowercase w-full"
             style={{
               padding: "calc(var(--u) * 20) calc(var(--u) * 56)",
               fontFamily: "var(--font-sans)",
@@ -325,13 +355,6 @@ export default function About() {
             about me
           </div>
         </div>
-
-        {/* Head — grabbable and throwable, confined to this red header.
-            Its designed resting position (right edge flush with the header,
-            neck meeting the header's bottom, 42deg tilt) and the
-            eye-tracking both moved intact into RagdollHead; see that file
-            for the position math and the physics. */}
-        <RagdollHead containerRef={headerRef} />
       </section>
 
       {/* ================= ABOUT ME (statement + paragraph) ================= */}
