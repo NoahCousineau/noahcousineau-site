@@ -25,6 +25,17 @@ needs a different treatment, because each is doing a different thing:
              center."
     "base"   the bottom edge (Olympics). "Have the flame growing from the
              base."
+    "tip"    the far end in the down-right direction (the ampersand). Noah:
+             "It starts from the bottom right corner and then traces out the
+             '&'." This is a length of blue tube laid out by hand and
+             re-photographed at each stage, so the part already down SHIFTS
+             between shots — pairwise template matching pins the scale against
+             whichever bound it is given and still only covers 72-80% of the
+             previous frame, because the previous frame is genuinely no longer
+             in the same place. What IS stable is the free end the tube was
+             started from: its centroid wanders about 4% of the canvas across
+             all seven frames. Holding that still is what makes the growth
+             read as a trace leaving one fixed origin.
 
   SCALE — whether the subject's size is meaningful.
     "normalise"  every frame forced to one height (Sprouts). The apple's real
@@ -48,6 +59,9 @@ from PIL import Image
 ALPHA = 40
 STEM_BAND = 0.09
 PAD = 0.06
+# How many of the most extreme pixels define a "tip". Enough to average out
+# the fuzz of a matte edge, few enough to stay on the end of the tube.
+TIP_PIXELS = 400
 
 # Every animation is scaled so its final frame has this geometric-mean size,
 # in the shared pixel space the canvases are built in. It is the Sprouts
@@ -80,6 +94,10 @@ def anchor_of(im, m, mode):
         return (m["x0"] + m["x1"]) / 2.0, (m["y0"] + m["y1"]) / 2.0
     if mode == "base":
         return (m["x0"] + m["x1"]) / 2.0, float(m["y1"])
+    if mode == "tip":
+        ys, xs = np.where(_mask(im))
+        far = np.argsort(xs.astype(np.int64) + ys)[-TIP_PIXELS:]
+        return float(xs[far].mean()), float(ys[far].mean())
     raise ValueError(f"unknown anchor {mode!r}")
 
 

@@ -66,31 +66,38 @@ export const HEAD_LIGHT: HeadAsset = {
   },
 };
 
-/* Dark head eye sockets sit BEHIND the sunglass lenses.
+/* Dark head — Noah's own cut-out, with the eyes cut clean through the
+ * sunglass lenses. 2026-08-22: "I also included a version of the head to use
+ * for the eye tracking in dark mode. I removed the eyes from this."
  *
- * The first attempt kept the socket at 58% alpha and reused the light-mode
- * pupils, reasoning that the real lens should do the tinting. It was
- * invisible in practice — the head renders about 212px wide, so each eye is
- * ~24px, and behind a lens whose own colour is (53,5,6) there was nothing
- * left to see. Noah: "I don't see any eye tracking on the dark mode."
+ * The socket centres and widths below are MEASURED off the two transparent
+ * holes in that file (tools/dark-head-pipeline/build_dark_roll_from_edit.py
+ * prints them), not estimated from where the dark lens blobs appeared to be.
+ * They move the pupils noticeably inward from the previous guess — the right
+ * eye by 5% of the head's width.
  *
- * So the tint moved onto the ARTWORK: eye-*-dark.png are the same
- * photographs pushed for contrast and cast toward the lens's brown-red, and
- * the socket now keeps only a trace of the real lens over them. The pupils
- * read at render size while still looking like they are behind glass rather
- * than like two holes punched in the shades. The backing disc is lens-dark
- * for the same reason — the light head's skin-tone disc would have glowed
- * through as a pale ring. */
+ * The holes are almonds, 144x43 and 146x50 source px. The pupil artwork is a
+ * round disc rendered BEHIND the head, so the hole is what shapes it; the
+ * width is the hole's own, plus the 1.145x oversize every socket on both
+ * heads uses so the pupil's edge is always under the artwork.
+ *
+ * The pupils are lens-tinted, but far more gently than before. The old pair
+ * was pushed hard (contrast 1.55, gain .82/.44/.41) to survive being seen
+ * through a lens LEFT IN PLACE at 90% opacity — that lens is now cut away, so
+ * the tint has to be the glass rather than compensate for it, and the old
+ * artwork behind an open hole read as two dark smudges. The backing disc is
+ * the lens's own colour sampled from the ring around each socket, so at full
+ * pupil travel the sliver it covers is indistinguishable from the lens. */
 export const HEAD_DARK: HeadAsset = {
   src: "/assets/about/head-dark.png",
-  aspect: "1227/1630",
-  aspectVal: 1227 / 1630,
+  aspect: "1227/1627",
+  aspectVal: 1227 / 1627,
   eyes: {
-    left: { x: 0.2572, y: 0.5044, widthPct: 11.46 },
-    right: { x: 0.6602, y: 0.4895, widthPct: 11.46 },
+    left: { x: 0.2929, y: 0.4979, widthPct: 13.21 },
+    right: { x: 0.6094, y: 0.4918, widthPct: 13.4 },
     srcLeft: "/assets/about/eye-left-dark.png",
     srcRight: "/assets/about/eye-right-dark.png",
-    backing: "#46121290",
+    backing: "#2c1812",
   },
 };
 

@@ -8,9 +8,34 @@ or the treatment change, then commit the outputs.
 
 | Output | Built by |
 | --- | --- |
-| `public/images/rotating-head/sprite-sheet-dark-staggered.webp` | `build_dark_frames.py` → then assemble (see below) |
-| `public/assets/about/head-dark.png` | `build_dark_roll.py` |
+| `public/images/rotating-head/sprite-sheet-dark-staggered.webp` | `build_dark_frames_from_edit.py` → `assemble_sheet.py` |
+| `public/assets/about/head-dark.png`, `eye-*-dark.png` | `build_dark_roll_from_edit.py` |
 | `public/assets/about/head-noneck.png` | see "Light head" below — **not** generated here |
+
+## 2026-08-22: Noah cut the dark heads himself
+
+> "I also took the time to manually edit the images used for the dark mode
+> head. I'm sharing a folder that has the darkmode silhouetted and color
+> corrected heads. I also included a version of the head to use for the eye
+> tracking in dark mode. I removed the eyes from this."
+
+That retires everything below this heading that MAKES a cut-out — the
+closed-form matting, the R−B shirt test, the exposure transfer, the sheen
+repair. `matte.py`, `build_dark_frames.py` and `build_dark_roll.py` are kept
+for the record; the `*_from_edit.py` pair is what runs. His sources:
+
+- `02-edited-frames/dark-mode_NoahEdit/DarkMode{1..32}.psd` — turntable
+- `01-raw-photos/DarkModeNoEyes.psd` — the rolling head, eye holes cut
+
+What still has to happen is REGISTRATION, for the reason given under
+"Running it": his crops are each tight to their own silhouette at a different
+pixel size, so each is fitted back into the shared 2400×3600 frame over its
+light counterpart. Measured over the skull, that lands at IoU 0.90–0.97, and
+the neck's end wanders less than the old automatic set did (σ 80px against
+147px, against the light set's own 69px) — so no collar trimming is applied
+and his silhouette ships untouched.
+
+The old notes on matting, exposure and sheen follow.
 
 Sources live outside this repo, in `~/Desktop/portfolio/rotating-head-turntable/`.
 
@@ -46,9 +71,12 @@ warmth of ~12, which defeats the R−B test that identifies it.
 ## Running it
 
 ```bash
-cd ~/Desktop/portfolio/noahcousineau-site/tools/dark-head-pipeline
-python3 build_dark_frames.py          # all 31 turntable frames
-python3 build_dark_roll.py            # the rolling head
+cd ~/Desktop/portfolio/noahcousineau-site
+python3 tools/dark-head-pipeline/build_dark_frames_from_edit.py   # 31 turntable frames
+python3 tools/dark-head-pipeline/assemble_sheet.py \
+  ~/Desktop/portfolio/rotating-head-turntable/02-edited-frames/dark-mode-noah \
+  public/images/rotating-head/sprite-sheet-dark-staggered.webp DarkMode
+python3 tools/dark-head-pipeline/build_dark_roll_from_edit.py     # the rolling head
 ```
 
 `build_dark_frames.py` writes PNGs to

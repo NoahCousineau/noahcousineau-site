@@ -62,6 +62,21 @@ const OBJECT_ANIMATIONS: Record<string, FrameAnimation & { heightFraction: numbe
     height: 931,
     heightFraction: 0.428,
   },
+  // The "more work" tile. A length of blue tube laid out by hand into an
+  // ampersand, growing from its free end — Noah: "It starts from the bottom
+  // right corner and then traces out the '&'." Seven stop-motion stages, so
+  // it cuts rather than crossfades: the tube is physically re-laid between
+  // shots and the part already down shifts, which a crossfade would smear
+  // into a double image. The rock carries the energy of it being flopped
+  // into place.
+  other: {
+    frames: [1, 2, 3, 4, 5, 6, 7].map(
+      (n) => `/assets/home/project-animations/ampersand/${n}.webp`
+    ),
+    width: 700,
+    height: 760,
+    heightFraction: 0.395,
+  },
 };
 
 /* Placement inside the tile, in artboard units, matched to Noah's mockup:
@@ -247,9 +262,16 @@ export default function Projects() {
     <Stage heightUnits={GRID_LOCAL_HEIGHT} className="overflow-hidden">
       {/* red-note annotation is a NOTE and intentionally NOT rendered */}
 
-      {/* Horizontal rules spanning left column to divider to right column edge */}
+      {/* Horizontal rules, FULL BLEED. Noah: "extend the horizontal grid
+          lines to the edges of the browser window. This will make it feel as
+          if the items are fully encased within each grid cell." They used to
+          stop at the columns (38u..1880u), leaving the page's side gutters
+          open and the rows reading as floating bands rather than as a table.
+          The cells themselves are unchanged — only the rules run out to the
+          artboard edge, which IS the window edge at every width up to the
+          1920 cap the whole page shares. */}
       {RULES.map((y) => (
-        <Place key={y} x={LEFT_X} y={y} w={LEFT_W + 6 + RIGHT_W} className="z-20">
+        <Place key={y} x={0} y={y} w={1920} className="z-20">
           <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
         </Place>
       ))}
