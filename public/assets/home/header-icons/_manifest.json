@@ -39,8 +39,8 @@
    "kind": "paper",
    "name": "stop-sign",
    "file": "paper-stop-sign.webp",
-   "width": 604,
-   "height": 637
+   "width": 602,
+   "height": 636
   },
   {
    "kind": "pencil",
@@ -76,8 +76,8 @@
    "kind": "clay",
    "name": "palmtree",
    "file": "clay-palmtree.webp",
-   "width": 672,
-   "height": 709
+   "width": 671,
+   "height": 707
   },
   {
    "kind": "clay",
@@ -148,8 +148,8 @@
    "kind": "clay",
    "name": "square",
    "file": "clay-square.webp",
-   "width": 388,
-   "height": 368
+   "width": 386,
+   "height": 365
   },
   {
    "kind": "paper",
@@ -221,7 +221,7 @@
    "name": "fish",
    "file": "paper-fish.webp",
    "width": 337,
-   "height": 203
+   "height": 202
   },
   {
    "kind": "paper",
@@ -299,7 +299,7 @@
    "kind": "paper",
    "name": "mushroom",
    "file": "paper-mushroom.webp",
-   "width": 527,
+   "width": 501,
    "height": 383
   },
   {
@@ -343,8 +343,8 @@
    "kind": "clay",
    "name": "table",
    "file": "clay-table.webp",
-   "width": 523,
-   "height": 303
+   "width": 521,
+   "height": 301
   },
   {
    "kind": "paper",

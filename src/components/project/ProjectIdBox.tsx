@@ -32,6 +32,36 @@
  */
 export type Credit = { role: string; names: string[] };
 
+/** Credit columns per row. Three since 2026-08-23, when Noah laid out
+ *  Sprouts' five categories as a 3-wide block (see the grid note below). */
+const CREDIT_COLUMNS = 3;
+
+/**
+ * Lays credits into the grid with any SHORT FINAL ROW flushed right,
+ * returning the cell sequence with `null` for the blanks.
+ *
+ * Grid auto-flow fills left to right, so five credits in three columns
+ * would naturally leave the gap at the END of row two. Noah wants it at the
+ * start — "bottom left: nothing, bottom middle: nasdaq board animation,
+ * bottom right: storyboards" — so the blanks are spliced in AHEAD of the
+ * final row's items rather than appended. Note they go at `length - rem`,
+ * not at the front: blanks at the front would push the FIRST row right and
+ * leave the last row hanging off the left instead, which is the same bug
+ * mirrored.
+ *
+ * A full final row (or a count that divides evenly) inserts nothing.
+ */
+function layoutCredits(credits: Credit[]): (Credit | null)[] {
+  const rem = credits.length % CREDIT_COLUMNS;
+  if (rem === 0) return credits;
+  const split = credits.length - rem;
+  return [
+    ...credits.slice(0, split),
+    ...Array.from({ length: CREDIT_COLUMNS - rem }, () => null),
+    ...credits.slice(split),
+  ];
+}
+
 export function ProjectIdBox({
   title,
   credits,
@@ -84,35 +114,47 @@ export function ProjectIdBox({
         ))}
       </h1>
 
-      {/* Credits — a real 2-column GRID, each cell: role label (sans,
-          underlined) + names stacked beneath (Quinn Text italic, per the
-          artboard). 2026-08-23, Noah, on Sprouts (five credit categories,
-          the most of any project): "have the credit information to the
-          right of the title... credit categories can be stacked below one
-          another." That first pass used `flex flex-wrap`, which packs each
-          column greedily into whatever space is left on its row — for five
-          uneven-width columns that meant the row broke 2-then-3, so column 2
-          of row 2 ("design") did NOT sit under column 2 of row 1
-          ("Storyboards"), it just happened to be second in whatever the
-          wrap left. 2026-08-23, round 2, Noah: "make sure the credits are
-          aligned on a grid... design left aligned to storyboard." A CSS grid
-          with a fixed column count fixes that architecturally: every column
-          is a real track, so item N always lands under item N-2 regardless
-          of label width. Two columns specifically because that is what
-          lines "design" up under "Storyboards" (grid-auto-flow order: NASDAQ
-          / Storyboards / creative directors / design / photography — row 2
-          starts at "creative directors", so "design" falls directly under
-          "Storyboards"). `min-w-0` still lets the grid shrink inside the
-          outer no-wrap flex row instead of forcing the title to squeeze. */}
+      {/* Credits — a real GRID, each cell: role label (sans, underlined) +
+          names stacked beneath (Quinn Text italic, per the artboard).
+          2026-08-23, Noah, on Sprouts (five credit categories, the most of
+          any project): "have the credit information to the right of the
+          title... credit categories can be stacked below one another." The
+          first pass used `flex flex-wrap`, which packs each column greedily
+          into whatever space is left on its row, so no column ever lined up
+          with the one above it. A grid with a fixed column COUNT fixes that
+          architecturally: every column is a real track, so item N always
+          lands under item N-CREDIT_COLUMNS regardless of label width.
+
+          THE LAST ROW IS FLUSHED RIGHT (round 3, 2026-08-23). Noah laid the
+          five out explicitly: "Top left: design, top middle: creative
+          directors, top right: photography, bottom left: nothing, bottom
+          middle: nasdaq board animation, bottom right: storyboards." Grid
+          auto-flow fills left-to-right, so a 5-item grid would naturally
+          leave the hole at the END of row 2, not the start. Padding the
+          short final row with blanks AHEAD of its items moves the hole to
+          the front, which is what puts "nothing" bottom-left. Expressed as
+          a general rule — a short last row is right-aligned — rather than
+          hard-coding Sprouts: it also keeps the single-credit projects
+          (socal-earth, valley-strong, cultural-olympiad) sitting flush
+          right against the card's edge, exactly where the previous
+          `justify-end` put them. The credits' READING order is the data's
+          own order (see projects.json, reordered to match Noah's layout),
+          not something this component rearranges.
+
+          `min-w-0` still lets the grid shrink inside the outer no-wrap flex
+          row instead of forcing the title to squeeze. */}
       <div
         className="grid min-w-0"
         style={{
-          gridTemplateColumns: "repeat(2, max-content)",
+          gridTemplateColumns: `repeat(${CREDIT_COLUMNS}, max-content)`,
           columnGap: "calc(var(--u) * 96)",
           rowGap: "calc(var(--u) * 40)",
         }}
       >
-        {credits.map((c) => (
+        {layoutCredits(credits).map((c, i) =>
+          c === null ? (
+            <div key={`blank-${i}`} aria-hidden />
+          ) : (
           <div key={c.role} className="min-w-[7rem]">
             <div
               className="lowercase pb-1 border-b border-[color:var(--color-ink)]"
@@ -132,7 +174,8 @@ export function ProjectIdBox({
               ))}
             </ul>
           </div>
-        ))}
+          )
+        )}
       </div>
     </div>
   );

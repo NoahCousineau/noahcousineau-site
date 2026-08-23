@@ -1,5 +1,13 @@
 """Darken the Valley Strong "house being drawn" animation's ink colour.
 
+SUPERSEDED 2026-08-23 — DO NOT RUN. Noah re-exported the Valley Strong hero
+frames himself, already darker than this script's output (his sources measure
+median luminance 39-47 against the 56-61 this produced), and the shipped
+WEBPs are now built straight from those by
+tools/project-animations/build_objects.py. Running this again would darken
+an already-dark source a second time. Kept only as the record of what the
+one-off fix did, since the note below explains the gamma choice.
+
 2026-08-23, Noah: "Please make the hero icon for Valley strong darker. Right
 now it's a bit grayish." Measured: the drawn line sits around luminance 126
 of 255 (neutral R=G=B — genuinely grey, not a dark colour reading light from

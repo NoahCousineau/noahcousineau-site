@@ -26,7 +26,12 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from align_frames import build  # noqa: E402
 
-SRC = "/Users/noahcousineau/Desktop/portfolio/Project Page Animations/Edited"
+# 2026-08-23: was ".../Project Page Animations/Edited". Noah reorganised the
+# folder into Heroes/ and Header Icons/ when he started cutting the header
+# icons, which left this pointing at a directory that no longer exists — the
+# script died on the first `source()` lookup rather than quietly building
+# something stale, but it did mean a re-export couldn't be picked up at all.
+SRC = "/Users/noahcousineau/Desktop/portfolio/Project Page Animations/Heroes/Edited"
 DST = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "public/assets/home/project-animations",

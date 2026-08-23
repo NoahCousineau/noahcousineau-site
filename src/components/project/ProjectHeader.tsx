@@ -7,6 +7,11 @@ import { PROJECT_OBJECTS } from "@/lib/projectObjects";
 import { HEADER_ICONS, type HeaderIcon } from "@/lib/headerIcons";
 import { useDropField, type DropSpec } from "@/lib/useDropField";
 import {
+  isPageReady,
+  pageReadyServerSnapshot,
+  subscribePageReady,
+} from "@/lib/pageReady";
+import {
   HEADER_HEIGHT_CSS,
   HEADER_RULE_PCT,
   HEADER_RULE_UNITS,
@@ -37,8 +42,15 @@ import {
  * last one released, arriving after the others have mostly settled.
  */
 
-/** How long the page sits still before the first object is let go. */
-const DROP_DELAY_MS = 2400;
+/** How long the page sits still before the first object is let go, measured
+ *  from the moment the loading overlay lifts (see `revealed` below) rather
+ *  than from mount. 2400 -> 1600 with that change: the original figure was
+ *  chosen back when mount and reveal were the same instant, and re-anchoring
+ *  it to the reveal would otherwise stack a full 2.4s of empty header on top
+ *  of however long the loader took. Still a clear beat of stillness first —
+ *  Noah's original brief was "a few seconds after the page loads, several
+ *  graphics will fall from above" — just not a dead stare. */
+const DROP_DELAY_MS = 1600;
 /** Gap between one object being released and the next. */
 const DROP_STAGGER_MS = 130;
 
@@ -60,14 +72,18 @@ const NO_ICONS: HeaderIcon[] = [];
  * arena. 2026-08-23, Noah, after the first pass ran every icon off one flat
  * arena-width tier list regardless of kind or aspect: "the clay icons can
  * get up to 75% the size of the hero icon. The paper icons can get up to
- * 50%... the pencil icons can get up to 30%." "Size" here means the icon's
- * own FOOTPRINT (its larger dimension, width or height, whichever the art
- * actually reaches further in) rather than its rendered width — a flat
- * width-fraction was what let more-work's clay-exclamationpoint (146x581,
- * nearly 1:4) render at nearly the full header's height: every icon got the
- * same WIDTH slice regardless of aspect, so an extremely tall, narrow image
- * turned that same slice into an enormous height. Sizing by footprint caps
- * what you actually SEE regardless of how the source art is proportioned. */
+ * 50%... the pencil icons can get up to 30%."
+ *
+ * Applied to WIDTH AND HEIGHT INDEPENDENTLY (see buildSpecs): the fraction
+ * caps how much of the hero's width an icon may span AND how much of its
+ * height, which is the only reading under which "smaller than the hero"
+ * holds for two shapes of different proportions. Sizing by a single
+ * dimension is what the first two attempts did, and both let a
+ * differently-proportioned icon out-measure the hero on the other axis —
+ * first by rendered width (more-work's 146x581 exclamation mark, nearly
+ * 1:4, filled the header's height off an ordinary width allowance), then by
+ * larger-dimension footprint (a tall clay piece out-topping Valley Strong's
+ * wide hero). */
 const KIND_MAX_FRACTION_OF_HERO: Record<HeaderIcon["kind"], number> = {
   clay: 0.75,
   paper: 0.5,
@@ -125,23 +141,38 @@ function buildSpecs(
   const xs = spreadX(icons.length, rand);
   const midTierIdx = Math.floor(SIZE_TIERS_OF_KIND_MAX.length / 2);
 
-  /* The hero's own footprint (larger dimension) as a fraction of the arena's
-   * width — everything else is sized as a fraction OF THIS, not of the
-   * arena directly. `iconWidth` is already a width-fraction; when the hero
-   * is taller than it is wide (heroAspect < 1) its footprint is its HEIGHT,
-   * which is `iconWidth / heroAspect` in these same width-fraction units. */
+  /* The hero's own width and height, both in "fraction of the arena's WIDTH"
+   * units so everything below compares like with like. `iconWidth` is
+   * already a width-fraction; the height is that over the hero's aspect. */
   const heroAspect = object ? object.width / object.height : 1;
-  const heroFootprint = iconWidth / Math.min(1, heroAspect || 1);
+  const heroW = iconWidth;
+  const heroH = iconWidth / (heroAspect || 1);
 
   const list: DropSpec[] = icons.map((icon, i) => {
     const aspect = icon.width / icon.height;
     const tier = randomize
       ? SIZE_TIERS_OF_KIND_MAX[Math.floor(rand() * SIZE_TIERS_OF_KIND_MAX.length)]
       : SIZE_TIERS_OF_KIND_MAX[midTierIdx];
-    const footprint = heroFootprint * KIND_MAX_FRACTION_OF_HERO[icon.kind] * tier;
-    // footprint is the icon's larger dimension; convert back to a WIDTH
-    // fraction for DropSpec, same inverse as heroFootprint above.
-    const width = aspect >= 1 ? footprint : footprint * aspect;
+    const kindMax = KIND_MAX_FRACTION_OF_HERO[icon.kind];
+
+    /* CAPPED ON BOTH AXES, not on the larger dimension (2026-08-23, Noah:
+     * "I still noticed that sometimes clay icons get as large or tall as the
+     * hero icons. Please make sure this doesn't occur.")
+     *
+     * The previous version compared each icon's LARGER dimension against the
+     * hero's larger dimension, and that is genuinely not the same as being
+     * smaller than the hero. Valley Strong's hero is wide — 0.320 of the
+     * arena across, but only 0.227 tall. A clay icon allowed 75% of the
+     * hero's larger dimension gets a footprint of 0.240; if that icon is a
+     * TALL one, 0.240 is its HEIGHT, which overtops the hero's own 0.227.
+     * Exactly the "as tall as the hero" Noah saw, and only on the tall clay
+     * pieces, which is why it looked intermittent.
+     *
+     * Capping width and height separately makes the rule mean what it says:
+     * no icon exceeds `kindMax` of the hero in EITHER direction, whatever
+     * the two aspect ratios happen to be. */
+    const widthCap = Math.min(kindMax * heroW, kindMax * heroH * aspect);
+    const width = widthCap * tier;
     return {
       x: xs[i],
       width,
@@ -238,11 +269,26 @@ export default function ProjectHeader({
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+  /* WAIT FOR THE CURTAIN (2026-08-23, Noah: "Please also make sure we see the
+   * dropping down animation each time"). The field used to arm itself the
+   * moment this component mounted, which on a project page is roughly eight
+   * seconds before anyone can see it: PageLoader holds an opaque sheet over
+   * the viewport until every full-resolution image has decoded. Measured on
+   * /work/more-work — overlay lifted at 8443ms, first object visible at 4ms,
+   * so the whole fall happened behind it and the reader only ever met the
+   * settled pile. See lib/pageReady.ts. */
+  const revealed = useSyncExternalStore(
+    subscribePageReady,
+    isPageReady,
+    pageReadyServerSnapshot
+  );
+
   const { register } = useDropField({
     arenaRef,
     specs: liveSpecs,
     armDelay: reduced ? 0 : DROP_DELAY_MS,
     dropFrom: reduced ? 0.02 : 0.45,
+    enabled: revealed,
   });
 
   return (

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getLenis } from "./SmoothScroll";
+import { markPageLoading, markPageReady } from "@/lib/pageReady";
 
 /**
  * PageLoader — full-viewport loading overlay that covers the screen while
@@ -65,6 +66,16 @@ function PageLoaderInner() {
   const [fading, setFading] = useState(false);
   const [progress, setProgress] = useState(0);
   const startTimeRef = useRef<number>(0);
+
+  /* Announce that a page is behind the curtain again, before anything paints.
+   * A layout effect rather than the main effect below because this has to
+   * beat the page's own components to the store — see lib/pageReady.ts for
+   * why the header's falling objects wait on it. This component is keyed by
+   * pathname (see PageLoader above) and so remounts per navigation, which is
+   * what makes a plain mount-time call correct here. */
+  useLayoutEffect(() => {
+    markPageLoading();
+  }, []);
 
   useEffect(() => {
     // Every mount of this component (one per route, thanks to the
@@ -138,6 +149,12 @@ function PageLoaderInner() {
       if (pollId) clearInterval(pollId);
       if (observer) observer.disconnect();
       setProgress(100);
+      // The curtain is going up: anything that has been holding an entrance
+      // back until it can actually be seen may start now. Signalled at the
+      // START of the fade rather than after it, so a 400ms cross-fade reveals
+      // a page that is already in motion instead of one that begins moving
+      // once the fade has finished.
+      markPageReady();
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduced) {
         setVisible(false);

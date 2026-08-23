@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { defaultSilhouette, measureSilhouette, supportAt, type Silhouette } from "./silhouette";
+import {
+  discSilhouette,
+  measureSilhouette,
+  radiusAt,
+  supportAt,
+  type Silhouette,
+} from "./silhouette";
 
 /**
  * Several objects falling into a box, piling up, and staying draggable.
@@ -94,6 +100,63 @@ const PASSES = 3;
 /** Physics substeps per animation frame. Two keeps a fast-falling object from
  *  tunnelling past a thin neighbour between frames. */
 const SUBSTEPS = 2;
+
+/* --- balance and toppling; see topple() for the whole argument --- */
+/** How close to the lowest hull point still counts as touching the floor, in
+ *  WIDTH FRACTIONS (every hull measurement here is). Small enough that a
+ *  corner-stand is read as a corner-stand, big enough that a flat edge a
+ *  fraction of a degree off level still reads as flat. */
+const CONTACT_BAND = 0.012;
+/** Moment arm below which a body is treated as balanced and given no torque
+ *  at all. THE ANTI-JITTER TERM: without a deadband a settled pile keeps
+ *  being nudged by an imperceptible imbalance forever, which is precisely
+ *  the "still trying to move or adjust slightly" Noah reported. */
+const TOPPLE_DEADBAND = 0.02;
+/** Angular acceleration per unit moment arm, deg/s².
+ *
+ *  Scaled from the real thing rather than dialled in by eye: for a flat body
+ *  of width w, alpha = g*d/k^2 with d the moment arm and k ~= 0.4w the radius
+ *  of gyration. At this arena's gravity (~2500 px/s^2) and a typical icon
+ *  around 100px wide that comes out near 900 deg/s^2 per unit of moment arm,
+ *  where the arm is measured — as everything hull-derived here is — as a
+ *  fraction of the body's own width.
+ *
+ *  The first attempt used 2600 with a lever ceiling of 6, i.e. up to 16x
+ *  this, and it did not merely topple things: bodies span continuously,
+ *  turning 160+ degrees between samples five seconds apart and never
+ *  settling, because each frame added far more angular velocity than the
+ *  drag could take out and the body sailed straight past the flat pose it
+ *  was supposed to fall into. */
+const TOPPLE_GAIN = 900;
+/** Ceiling on the narrow-base amplification, so a body standing on a true
+ *  point (where the foot's half-width tends to zero) gets a strong shove
+ *  rather than an unbounded one. */
+const MAX_TOPPLE_LEVER = 3;
+/** Topple torque stops adding once the body is already turning this fast
+ *  (deg/s). Gravity tipping something over is a release of stored height, not
+ *  an engine — without a ceiling the torque kept accelerating a body that was
+ *  already rotating freely, which is what turned a topple into a spin. */
+const TOPPLE_MAX_SPIN = 80;
+/** How close to the floor still counts as standing on it, in px. The wall
+ *  pass clamps a resting body to exactly the floor, so this only has to
+ *  absorb the sub-pixel drift between that clamp and this check. */
+const CONTACT_EPS = 0.75;
+/** Slack on the "is a neighbour holding me up?" test, in px — a body leaning
+ *  on another rests a hair short of touching (SEPARATION never closes an
+ *  overlap completely, and OVERLAP_SLOP deliberately leaves a little more).
+ *  See propped(). */
+const PROP_TOLERANCE = 3;
+
+/** Penetration ignored outright, in px — the standard "linear slop". Contacts
+ *  are never resolved to exactly zero overlap (SEPARATION is under 1 by
+ *  design, so each pass only removes part of what is left), which means a
+ *  settled pile always carries a sub-pixel residue. Correcting that residue
+ *  every frame forever is motion with no visible cause: 2026-08-23, Noah:
+ *  "usually this is when the items settle and it looks like some of the items
+ *  are still trying to move or adjust slightly." Below this, a contact is
+ *  simply considered resolved and left alone. Under half a device pixel, so
+ *  nothing that is ignored here can be seen. */
+const OVERLAP_SLOP = 0.4;
 
 export type DropSpec = {
   /** Rendered width, as a fraction of the ARENA's width. */
@@ -225,8 +288,17 @@ export function useDropField({
       left: supportAt(b.shape.support, 180 - b.rot) * b.w,
     });
 
-    /** How far the body reaches in a screen-space direction, in px. */
-    const reach = (b: Body, deg: number) => supportAt(b.shape.support, deg - b.rot) * b.w;
+    /* How far the body reaches toward ANOTHER BODY in a screen-space
+     * direction, in px. This is the OUTLINE distance (radius), not the
+     * support function — 2026-08-23, Noah: "it would be good if the bounding
+     * area for each shape was closer to its actual perimeter." Support is
+     * the convex hull's reach, so the empty middle of the ampersand and the
+     * notch under the hammer's head both behaved as solid, holding every
+     * neighbour off at arm's length. Deliberately NOT used against the floor
+     * or the walls, which still ask `extents()` for the support function:
+     * there, the extreme point is the whole question, and erring short would
+     * drop an object through the rule. */
+    const reach = (b: Body, deg: number) => radiusAt(b.shape.radius, deg - b.rot) * b.w;
 
     /** The circle that encloses the body. Used only to weigh one body against
      *  another, where all that matters is that a big thing outranks a small
@@ -237,6 +309,138 @@ export function useDropField({
         if (b.shape.support[i] > m) m = b.shape.support[i];
       }
       return m * b.w;
+    };
+
+    /**
+     * GRAVITY ACTUALLY PULLS ON THE SHAPE NOW, not just on its position.
+     *
+     * 2026-08-23, Noah: "there isn't a proper sense of gravity or balance.
+     * For example, some objects can stand straight up when real life physics
+     * would dictate them to roll on their side."
+     *
+     * He was describing a real gap rather than a tuning problem: nothing in
+     * this solver ever applied TORQUE. `rot` only ever integrated `spin`,
+     * and `spin` only came from the random kick at release and whatever the
+     * angular drag had not yet removed. So however a body happened to be
+     * oriented when its downward motion stopped was simply how it stayed —
+     * balanced on one corner of a hammer head, an exclamation mark stood on
+     * end. Landing upright was as likely as landing any other way, which is
+     * exactly what "no sense of gravity or balance" looks like.
+     *
+     * The physics of it is the support-polygon test, and it needs the
+     * contact to be a REGION, not a distance — which is what the hull is
+     * carried for (see silhouette.ts). Rotate the hull into screen space,
+     * take the points sitting on the floor, and their horizontal span is
+     * what the body is standing on. The centre of mass is the pivot, i.e.
+     * the origin of this frame. If the CoM's x falls inside that span the
+     * body is genuinely stable and gets NO torque — a hammer lying on its
+     * side stays lying on its side. If it falls outside, gravity has a
+     * moment arm about the nearest contact and the body tips that way,
+     * which is the whole "roll onto its side" behaviour.
+     *
+     * `-nearest` is the signed moment arm: with the screen's y pointing down
+     * a positive `rot` is clockwise, and a CoM to the LEFT of its support
+     * (nearest > 0) has to fall counter-clockwise, hence the negation.
+     *
+     * NARROW BASES GIVE WAY FASTER (the `lever` term). A tall thing balanced
+     * on a small foot is only technically stable — any disturbance at all
+     * topples it, and a reader expects it to have fallen already. Scaling
+     * the torque by how tall the CoM stands relative to the width of the
+     * foot reproduces that without special-casing anything: a wide, flat
+     * object barely responds, a tall one on a point goes over decisively.
+     *
+     * TOPPLE_DEADBAND is what keeps this from becoming the next source of
+     * "some of the items are still trying to move or adjust slightly": below
+     * a moment arm of a couple of percent of the body's width, the body is
+     * balanced as far as anyone can see and the torque is simply not
+     * applied, so a settled pile has nothing left driving it.
+     */
+    /**
+     * Is something holding this body up on the side it wants to fall toward?
+     *
+     * `dirX` is where the TOP of the body is heading: -1 for a fall to the
+     * left, +1 to the right. A neighbour it is already touching on that side
+     * — or the arena wall — is carrying part of its weight, and the body is
+     * genuinely stable leaning on it, exactly as a plank propped against a
+     * crate is.
+     *
+     * This has to exist because topple() reads the support span off the
+     * FLOOR contact alone, which is only the whole story for a body standing
+     * by itself. Without it, anything resting against a neighbour has a
+     * centre of mass sitting outside its own little footprint — correctly,
+     * because the neighbour is holding the rest — and the torque drove it
+     * into the thing propping it, forever: the contact pushed back, the
+     * torque re-applied next frame, and the body could never sleep because
+     * applying torque un-sleeps it. Measured on valley-strong before this
+     * check existed: one body oscillated 2-5px and up to 2.9deg indefinitely,
+     * still going at 46 seconds, while every other page had settled to
+     * 0.00px. That is precisely Noah's "items are still trying to move or
+     * adjust slightly."
+     */
+    const propped = (b: Body, dirX: number, list: Body[]) => {
+      for (const c of list) {
+        if (c === b || !c.released) continue;
+        const dx = c.x - b.x;
+        const dy = c.y - b.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 1e-4) continue;
+        if (Math.sign(dx) !== dirX) continue; // not on the side it's falling
+        if (dy < -b.h * 0.25) continue; // hanging above: not holding anything up
+        const towards = (Math.atan2(dy, dx) * 180) / Math.PI;
+        if (d <= reach(b, towards) + reach(c, towards + 180) + PROP_TOLERANCE) return true;
+      }
+      const { left, right } = extents(b);
+      if (dirX < 0 && b.x - left <= PROP_TOLERANCE) return true;
+      if (dirX > 0 && b.x + right >= arena.current.w - PROP_TOLERANCE) return true;
+      return false;
+    };
+
+    const topple = (b: Body, h: number, list: Body[]) => {
+      if (b.spec.spin === false) return; // the hero icon stays upright
+      const hull = b.shape.hull;
+      if (hull.length < 6) return;
+      const rad = (b.rot * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      let lowest = -Infinity;
+      for (let i = 0; i < hull.length; i += 2) {
+        const sy = hull[i] * sin + hull[i + 1] * cos;
+        if (sy > lowest) lowest = sy;
+      }
+      // Everything within a hair of the lowest point is "on the floor".
+      const band = CONTACT_BAND;
+      let minX = Infinity;
+      let maxX = -Infinity;
+      for (let i = 0; i < hull.length; i += 2) {
+        const sx = hull[i] * cos - hull[i + 1] * sin;
+        const sy = hull[i] * sin + hull[i + 1] * cos;
+        if (sy >= lowest - band) {
+          if (sx < minX) minX = sx;
+          if (sx > maxX) maxX = sx;
+        }
+      }
+      if (!isFinite(minX)) return;
+
+      // Nearest point of the support span to the centre of mass (at x=0).
+      const nearest = minX > 0 ? minX : maxX < 0 ? maxX : 0;
+      if (nearest === 0) return; // balanced: nothing to do
+      if (Math.abs(nearest) < TOPPLE_DEADBAND) return;
+
+      // Leaning on a neighbour or a wall is a stable pose, not an unbalanced
+      // one — see propped(). `nearest > 0` means the centre of mass hangs off
+      // to the LEFT of the foot, so that is the way it goes over.
+      if (propped(b, nearest > 0 ? -1 : 1, list)) return;
+
+      // How precarious the pose is: CoM height over half the foot's width.
+      const half = Math.max((maxX - minX) / 2, TOPPLE_DEADBAND);
+      const lever = Math.min(MAX_TOPPLE_LEVER, Math.max(lowest, 0) / half);
+      const dir = -Math.sign(nearest);
+      // Already going over fast enough — let it fall, don't drive it.
+      if (b.spin * dir >= TOPPLE_MAX_SPIN) return;
+      b.spin += -nearest * lever * TOPPLE_GAIN * h;
+      b.asleep = false;
+      b.calm = 0;
     };
 
     const write = (b: Body, i: number) => {
@@ -318,9 +522,10 @@ export function useDropField({
               dy = -1;
               d = 1;
             }
-            // Each shape's own reach toward the other, not a circle round it.
+            // Each shape's own outline toward the other, not a circle round
+            // it — see reach().
             const towards = (Math.atan2(dy, dx) * 180) / Math.PI;
-            const overlap = reach(a, towards) + reach(c, towards + 180) - d;
+            const overlap = reach(a, towards) + reach(c, towards + 180) - d - OVERLAP_SLOP;
             if (overlap <= 0) continue;
             const nx = dx / d;
             const ny = dy / d;
@@ -434,6 +639,18 @@ export function useDropField({
             }
           }
         }
+      }
+
+      /* Gravity's TORQUE on whatever is resting on the floor — see topple().
+       * Out here rather than in the pass loop above for the same reason the
+       * sleep check is: this integrates into `spin`, and running it once per
+       * PASS would apply three times the intended angular acceleration per
+       * substep, against intermediate positions that the remaining passes
+       * have not finished resolving yet. */
+      for (const b of list) {
+        if (!b.released || b.held || b.asleep) continue;
+        const { down } = extents(b);
+        if (b.y >= arena.current.h - down - CONTACT_EPS) topple(b, h, list);
       }
 
       /* SLEEP IS A FUNCTION OF THE BODY'S OWN SPEED, not of what it happens
@@ -663,11 +880,4 @@ export function useDropField({
   }, [arenaRef, enabled, armDelay, dropFrom, specKey]);
 
   return { register };
-}
-
-/** A disc's support is its radius in every direction — half its own box. */
-function discSilhouette(): Silhouette {
-  const s = defaultSilhouette();
-  s.support.fill(0.5);
-  return s;
 }
