@@ -91,7 +91,7 @@ def light_geom(n):
     return m, top, bot, jaw, float(xs[sel].mean())
 
 
-def defringe(rgba, lo=70.0, hi=170.0, target=(0.85, 0.62, 0.46)):
+def defringe(rgba, lo=70.0, hi=170.0, target=(0.85, 0.62, 0.46), band_px=21):
     """Pull the background out of a cutout's semi-transparent hair edge.
 
     `estimate_foreground_ml` wants the OBSERVED colour (already what a flat
@@ -103,14 +103,12 @@ def defringe(rgba, lo=70.0, hi=170.0, target=(0.85, 0.62, 0.46)):
     Noah: "let's see if we can just refine further").
 
     Round two adds a recolour pass, restricted to a band around wherever
-    alpha is already partial (dilated 9px, so it also catches the odd
-    fully-opaque-but-pale pixel just inside a real edge) — that boundary
-    restriction is what makes this safe to run at all: tried unrestricted
-    once, on a different colour rule (desheen's neutral+bright pull), and it
-    caught a lit, slightly-neutral patch of cheek in the solid interior and
-    left a visible brown smudge on skin. The band can never reach that — it
-    is bounded by distance from an actual alpha edge, and a cheek's interior
-    is nowhere near one.
+    alpha is already partial — that boundary restriction is what makes this
+    safe to run at all: tried unrestricted once, on a different colour rule
+    (desheen's neutral+bright pull), and it caught a lit, slightly-neutral
+    patch of cheek in the solid interior and left a visible brown smudge on
+    skin. The band can never reach that — it is bounded by distance from an
+    actual alpha edge, and a cheek's interior is nowhere near one.
 
     THE RECOLOUR RULE ITSELF is brightness only, not desheen's neutral+bright
     (round one used that and it barely moved the fringe). Measured directly
@@ -120,13 +118,25 @@ def defringe(rgba, lo=70.0, hi=170.0, target=(0.85, 0.62, 0.46)):
     at luminance 105-117 they are still a washed-out light brown, not hair.
     Being IN THE BAND already stands in for the warmth test (nothing back
     there is skin), so brightness alone can drive the pull.
+
+    BAND WIDENED 9px -> 21px (round three, 2026-08-23 — Noah: "There's still
+    some issues with the hair on the front of my head... when my head is
+    slightly off angle but still looking forward"). Measured on exactly that
+    kind of frame: a stray forehead wisp's alpha ran through a wide,
+    genuinely gradual 0.2-0.8 transition (not a hard edge) over roughly 80px,
+    all of which already satisfies the "partial" test outright — dilation
+    was never the limiting factor there, so 9px simply wasn't generous
+    enough to also catch the fully-opaque-but-still-pale pixels riding just
+    inside that wide a transition. Re-checked at 21px directly against skin
+    (the forehead sits a few px from this exact band on an off-angle frame)
+    with no smudging, so the wider radius costs nothing there.
     """
     rgb = rgba[..., :3].astype(np.float64) / 255.0
     alpha = rgba[..., 3].astype(np.float64) / 255.0
     F = np.clip(estimate_foreground_ml(rgb, alpha), 0, 1)
 
     partial = ((alpha > 0.02) & (alpha < 0.98)).astype(np.uint8)
-    band = cv2.dilate(partial, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) > 0
+    band = cv2.dilate(partial, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (band_px, band_px))) > 0
 
     Frgb = F * 255.0
     lum = 0.299 * Frgb[..., 0] + 0.587 * Frgb[..., 1] + 0.114 * Frgb[..., 2]

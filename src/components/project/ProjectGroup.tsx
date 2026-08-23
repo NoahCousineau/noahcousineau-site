@@ -446,7 +446,25 @@ export function ProjectGroup({
         {descriptor}
       </h2>
 
-      <Rule />
+      {/* FULL-BLEED, unlike every other Rule() on the page (2026-08-23, per
+          Noah: "lets make the line immediately under the section title span
+          the whole browser width. This is only for the top line, not the
+          grid lines"). The header sits inside the section's own
+          GRID_MARGIN_UNITS side padding — negative margins matching that
+          padding pull just this one rule back out to the section's outer
+          edge, which is the shared artboard width every full-bleed rule on
+          the site already uses as "the browser" (the home grid's rules and
+          the project-header rule both stop at 1920u, not literal viewport
+          width past that cap). The title text above it is untouched, still
+          inset at the normal margin. */}
+      <div
+        style={{
+          marginLeft: `calc(var(--u) * -${GRID_MARGIN_UNITS})`,
+          marginRight: `calc(var(--u) * -${GRID_MARGIN_UNITS})`,
+        }}
+      >
+        <Rule />
+      </div>
     </div>
   );
   return (
