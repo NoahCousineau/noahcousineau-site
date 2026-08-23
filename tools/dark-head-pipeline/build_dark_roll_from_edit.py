@@ -24,13 +24,29 @@ being seen through a lens left at 90% opacity; through an open hole that
 same artwork reads as two black smudges. The tint now has to BE the lens
 rather than compensate for one, so it is sampled from the real lens right
 around each socket and applied gently.
+
+2026-08-23, Noah, round two on both of the above: "Let's ensure that the
+eyes look darker so they feel like they're behind the sunglasses" — the
+first tint read as a bare eye with a brown cast rather than something
+actually occluded, so EYE_TINT_MIX and a new EYE_DARKEN multiplier both went
+up; see the constants below for the exact before/after. And "Please also
+apply the hair fringe technique you were using to the eye tracking head" —
+this shares defringe() and premultiplied_resize() with the turntable
+pipeline (build_dark_frames_from_edit.py / imgutil.py) rather than
+reimplementing either; see their own docstrings for why each exists.
 """
 import os
+import sys
 import json
 
 import numpy as np
 from PIL import Image
 from psd_tools import PSDImage
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from build_dark_frames_from_edit import defringe  # noqa: E402
+from imgutil import premultiplied_resize  # noqa: E402
 
 SRC = '/Users/noahcousineau/Desktop/portfolio/rotating-head-turntable/01-raw-photos/DarkModeNoEyes.psd'
 SITE = '/Users/noahcousineau/Desktop/portfolio/noahcousineau-site'
@@ -41,7 +57,7 @@ TARGET_W = 1227  # same rendered width as the light head
 # attempt 500'd every other image on the site, see the note on this constant
 # in src/lib/headAssets.ts. Bump this and headAssets.ts's HEAD_DARK.src /
 # srcLeft / srcRight together whenever this script runs again for real.
-VERSION = 2
+VERSION = 3
 DST = f'{SITE}/public/assets/about/head-dark.v{VERSION}.png'
 
 
@@ -56,8 +72,17 @@ def save_versioned(img, versioned_path):
     img.save(unversioned, optimize=True)
 
 # How far the pupil is pulled toward the lens colour, 0 = untouched.
-EYE_TINT_MIX = 0.55
+# 0.55 -> 0.7 (2026-08-23): at 0.55 the eye read as bare with a brown cast,
+# not as something sitting behind tinted glass — Noah: "ensure that the eyes
+# look darker so they feel like they're behind the sunglasses."
+EYE_TINT_MIX = 0.7
 EYE_TINT_CONTRAST = 1.15
+# Flat multiplier applied AFTER the tint mix, new this round — the tint mix
+# alone couldn't get dark enough without also pushing the colour further
+# toward the (fairly saturated) lens tint than looked right. A separate
+# darken keeps the two independent: colour comes from the lens sample,
+# darkness comes from this.
+EYE_DARKEN = 0.65
 # The rendered pupil is a little larger than the hole so its edge is always
 # covered — the ratio the original hand-tuned constants used.
 PUPIL_OVERSIZE = 1.145
@@ -121,6 +146,7 @@ def build_dark_eyes(tint):
         rgb = a[..., :3] / 255.0
         rgb = np.clip((rgb - 0.5) * EYE_TINT_CONTRAST + 0.5, 0, 1)
         rgb = rgb * (1 - EYE_TINT_MIX) + rgb * (tint / 255.0) * EYE_TINT_MIX * 2.0
+        rgb = rgb * EYE_DARKEN
         a[..., :3] = np.clip(rgb, 0, 1) * 255
         save_versioned(Image.fromarray(a.astype(np.uint8)), f'{EYE_DIR}/eye-{side}-dark.v{VERSION}.png')
 
@@ -128,6 +154,11 @@ def build_dark_eyes(tint):
 def main():
     im = PSDImage.open(SRC).composite().convert('RGBA')
     a = np.array(im).astype(np.float32)
+    # Same defringe as the turntable frames (build_dark_frames_from_edit.py)
+    # — decontaminate the semi-transparent hair edge, then a boundary-band
+    # brightness pull. Alpha is untouched by this, so `alpha` below is the
+    # same one `sockets()` and `cap_neck()` work from either way.
+    a = defringe(a).astype(np.float32)
     alpha = a[..., 3]
     ys, xs = np.where(alpha > 40)
     x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
@@ -145,7 +176,13 @@ def main():
     bx0, bx1, by0, by1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
     crop = out.crop((bx0, by0, bx1 + 1, by1 + 1))
     cw, ch = crop.size
-    crop = crop.resize((TARGET_W, int(round(ch * TARGET_W / cw))), Image.LANCZOS)
+    # premultiplied_resize, not a plain PIL resize — see imgutil.py. A plain
+    # resize blends each transparent pixel's leftover, meaningless RGB into
+    # its opaque neighbours, repainting exactly the kind of edge halo
+    # defringe() above just removed.
+    resized = premultiplied_resize(
+        np.array(crop), (TARGET_W, int(round(ch * TARGET_W / cw))))
+    crop = Image.fromarray(resized, 'RGBA')
     save_versioned(crop, DST)
 
     bw, bh = bx1 - bx0 + 1, by1 - by0 + 1

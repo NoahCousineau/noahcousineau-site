@@ -87,7 +87,14 @@ export const HEAD_LIGHT: HeadAsset = {
  * the tint has to be the glass rather than compensate for it, and the old
  * artwork behind an open hole read as two dark smudges. The backing disc is
  * the lens's own colour sampled from the ring around each socket, so at full
- * pupil travel the sliver it covers is indistinguishable from the lens. */
+ * pupil travel the sliver it covers is indistinguishable from the lens.
+ *
+ * v3 (2026-08-23): went darker again — Noah: "ensure that the eyes look
+ * darker so they feel like they're behind the sunglasses." v2's tint mix
+ * (0.55) read as a bare eye with a brown cast, not as something occluded.
+ * See EYE_TINT_MIX / EYE_DARKEN in build_dark_roll_from_edit.py. v3 also
+ * runs the source through defringe() and premultiplied_resize(), the same
+ * hair-edge cleanup used on the turntable frames. */
 /* CACHE-BUSTED BY FILENAME (2026-08-22). Noah, after this file changed
  * twice in one evening: "It looks like an old version of the head is being
  * used." Every verification I could run — the composited pixels, a real
@@ -119,15 +126,15 @@ export const HEAD_LIGHT: HeadAsset = {
  * any lingering reference to an old path still resolves to CURRENT
  * content instead of nothing. */
 export const HEAD_DARK: HeadAsset = {
-  src: "/assets/about/head-dark.v2.png",
+  src: "/assets/about/head-dark.v3.png",
   aspect: "1227/1627",
   aspectVal: 1227 / 1627,
   eyes: {
     left: { x: 0.2929, y: 0.4979, widthPct: 13.21 },
     right: { x: 0.6094, y: 0.4918, widthPct: 13.4 },
-    srcLeft: "/assets/about/eye-left-dark.v2.png",
-    srcRight: "/assets/about/eye-right-dark.v2.png",
-    backing: "#2c1812",
+    srcLeft: "/assets/about/eye-left-dark.v3.png",
+    srcRight: "/assets/about/eye-right-dark.v3.png",
+    backing: "#2c1710",
   },
 };
 

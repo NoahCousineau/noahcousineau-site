@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { getLenis } from "./SmoothScroll";
 
 /**
  * PageLoader — full-viewport loading overlay that covers the screen while
@@ -71,6 +72,25 @@ function PageLoaderInner() {
     // manual state reset needed since useState's initial values above
     // already give us visible=true/fading=false/progress=0 on mount.
     startTimeRef.current = Date.now();
+
+    // ALWAYS LAND AT THE TOP OF A NEW PAGE (2026-08-23, per Noah, as a
+    // general site-wide rule: "whenever a page finishes loading, please
+    // always make sure it starts at the top of the page"). This overlay is
+    // opaque and full-viewport while it's up, so doing this immediately on
+    // mount — rather than waiting for `finish()` — is invisible to the
+    // reader and means the page is already correctly positioned by the
+    // moment the fade-out reveals it.
+    //
+    // Plain `window.scrollTo` alone isn't enough: Lenis (see
+    // SmoothScroll.tsx) intercepts wheel/touch input and drives the
+    // document scroll itself from its own internal target/animated
+    // position, which this jump does not touch. Left alone, Lenis's next
+    // rAF tick can pull the page back toward whatever position it still
+    // thinks is current — reproducible by navigating away from a scrolled
+    // page and back. `immediate: true` snaps Lenis's own state to 0 in the
+    // same frame instead of easing there.
+    window.scrollTo(0, 0);
+    getLenis()?.scrollTo(0, { immediate: true });
 
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
