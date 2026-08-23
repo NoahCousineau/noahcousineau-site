@@ -16,7 +16,11 @@ import { defaultSilhouette, measureSilhouette, supportAt, type Silhouette } from
  * genuinely new is that the objects have to collide with EACH OTHER, which
  * changes the shape of the solver: one loop owning every body, fixed
  * substeps, and several relaxation passes per step so a stack settles instead
- * of jittering itself apart.
+ * of jittering itself apart. One deliberate DIVERGENCE from useThrowable:
+ * there is no roll-lock (spin tied to floor-slide speed) here — see the note
+ * at the floor-contact branch below for why it destabilises specifically
+ * when several irregular shapes are touching each other, which a single
+ * object never encounters.
  *
  * EVERY CONTACT GOES THROUGH THE SUPPORT FUNCTION — the same one the head and
  * the grid objects use, see silhouette.ts. Against the floor and the sides
@@ -39,11 +43,25 @@ import { defaultSilhouette, measureSilhouette, supportAt, type Silhouette } from
 const GRAVITY_PER_HEIGHT = 6.2; // arena heights per second squared
 const RESTITUTION = 0.42;
 const AIR_DRAG = 0.2;
-const ANGULAR_DRAG = 0.22;
+/* 0.22 -> 1.5. Only diverges from useThrowable's own ANGULAR_DRAG because
+ * removing the roll-lock (see the note at the floor-contact branch below)
+ * traded a chaotic settle for a stable-but-slow one: a long trace on
+ * cultural-olympiad-poster with roll-lock gone but drag left at 0.22 was
+ * still genuinely converging at 147px->34px->28px->15px->12px->4px->3px
+ * across 8s-32s — technically settled, but reads as restlessness on a page
+ * that's supposed to be at rest. Raising drag alone (no other constant
+ * touched) brings every project's pile under ~2px within about 11s, without
+ * reintroducing the roll-lock instability, because it only damps spin that's
+ * already there rather than driving new spin from floor-slide.
+ */
+const ANGULAR_DRAG = 1.5;
 const FLOOR_FRICTION_PER_SEC = 1.4;
-const ROLL_LOCK_RATE = 9;
 const SLEEP_SPEED = 9;
 const SLEEP_SPIN = 5;
+/** How long a body must stay continuously under the sleep thresholds before
+ *  it's actually put to sleep. See the note at REST_TIME's use site for why
+ *  sleep can't just be an instant floor-contact check. */
+const REST_TIME = 0.15;
 const WALL_REST_SPEED = 18;
 const MAX_THROW_SPEED = 2400;
 const THROW_SPIN = 0.42;
@@ -63,6 +81,10 @@ const MAX_DRAG_LEAN_DEG = 22;
  *  settle, and every bit of restitution here is energy fed back into a stack
  *  that is trying to come to rest. */
 const PAIR_RESTITUTION = 0.2;
+/** Below this relative approach speed, a body-body contact is fully
+ *  inelastic instead of bouncing PAIR_RESTITUTION of it back — the
+ *  body-body equivalent of WALL_REST_SPEED. See the note at its use site. */
+const PAIR_REST_SPEED = 15;
 /** How much of an overlap is pushed out per relaxation pass. Under 1 so the
  *  passes converge rather than overshooting and ringing. */
 const SEPARATION = 0.7;
@@ -87,6 +109,10 @@ export type DropSpec = {
   /** May it tumble as it falls? Off for the hero icon, which reads as the
    *  project's mark and has to stay the right way up. */
   spin?: boolean;
+  /** Flip pure-black artwork to white in dark mode — see .invert-on-dark
+   *  in globals.css. For the header's pencil-drawing icons. Physics-neutral:
+   *  read only by the caller's own rendering, not by this hook. */
+  invertOnDark?: boolean;
 };
 
 type Body = {
@@ -102,6 +128,9 @@ type Body = {
   released: boolean;
   asleep: boolean;
   held: boolean;
+  /** Seconds this body has spent continuously under the sleep thresholds.
+   *  See REST_TIME. */
+  calm: number;
   /** Rendered size in px, refreshed each frame from layout. */
   w: number;
   h: number;
@@ -151,6 +180,7 @@ export function useDropField({
       released: false,
       asleep: false,
       held: false,
+      calm: 0,
       w: 0,
       h: 0,
     }));
@@ -263,6 +293,23 @@ export function useDropField({
           for (let j = i + 1; j < list.length; j++) {
             const c = list[j];
             if (!c.released) continue;
+            // Once a PAIR has both settled, leave their positions alone.
+            // Noah: "there can sometimes be a jittering or restlessness to
+            // the icons in the header... ensure there's not a glitchy
+            // jitter when the objects come to rest." The overlap push below
+            // only removes SEPARATION (0.7) of an overlap per pass, by
+            // design, so a resting pile — which always carries a residual
+            // sub-pixel overlap the walk never quite zeroes — got that same
+            // small correction reapplied forever, every frame, with nothing
+            // ever damping it (the push writes straight to position, not
+            // velocity). Two bodies that are each already asleep and not
+            // being dragged have nothing left to resolve; skipping them is
+            // what makes a settled pile actually stop, rather than
+            // perpetually re-settling by an imperceptible amount forever. A
+            // pair where EITHER side is still moving, newly landing, or
+            // held is unaffected — it keeps pushing a sleeping neighbour
+            // exactly as before.
+            if (a.asleep && !a.held && c.asleep && !c.held) continue;
             let dx = c.x - a.x;
             let dy = c.y - a.y;
             let d = Math.hypot(dx, dy);
@@ -289,12 +336,40 @@ export function useDropField({
             a.y -= ny * push * (mc / total);
             c.x += nx * push * (ma / total);
             c.y += ny * push * (ma / total);
+            // This is a REAL, currently-unresolved overlap being acted on —
+            // a body whose position just moved because of it is not at
+            // rest, whatever its stored velocity says. Missing this was the
+            // actual cause of the "jittering or restlessness" Noah flagged:
+            // an ASLEEP body sitting next to a still-active neighbour kept
+            // getting silently repositioned by this push every pass — sep
+            // (the two bodies' relative velocity) is often ~0 for a body
+            // that's merely sitting in an overlapping pile rather than
+            // approaching, so the velocity-impulse branch below, and its
+            // `asleep = false`, never ran — while `write()` still applies
+            // the new x/y every frame regardless of the asleep flag,
+            // producing visible motion nothing marked as "still settling."
+            if (!a.held) a.asleep = false;
+            if (!c.held) c.asleep = false;
 
             const rvx = c.vx - a.vx;
             const rvy = c.vy - a.vy;
             const sep = rvx * nx + rvy * ny;
             if (sep < 0) {
-              const jimp = (-(1 + PAIR_RESTITUTION) * sep) / (1 / (ma || 1) + 1 / (mc || 1));
+              // PAIR_REST_SPEED, the body-body equivalent of WALL_REST_SPEED
+              // below: without it, a body resting ON TOP OF ANOTHER (rather
+              // than directly on the floor) never had anything to damp it.
+              // Gravity adds a little velocity toward its support every
+              // single substep, and PAIR_RESTITUTION bounced a fraction of
+              // that straight back every time — a steady-state micro-bounce
+              // that never converges to exactly zero, which is what Noah
+              // saw as "jittering or restlessness... when the objects come
+              // to rest." Below this speed the response is fully inelastic
+              // (0 restitution) instead: gravity's tiny nudge is absorbed
+              // outright rather than partially reflected, so a supported
+              // body's relative velocity can actually reach zero and stay
+              // there. Above it, a real collision still bounces normally.
+              const restitution = Math.abs(sep) < PAIR_REST_SPEED ? 0 : PAIR_RESTITUTION;
+              const jimp = (-(1 + restitution) * sep) / (1 / (ma || 1) + 1 / (mc || 1));
               if (!a.held) {
                 a.vx -= (jimp * nx) / (ma || 1);
                 a.vy -= (jimp * ny) / (ma || 1);
@@ -335,24 +410,68 @@ export function useDropField({
             else b.vy = 0;
 
             if (!idle) {
-              const rEff = Math.max(down, b.w * 0.2);
-              const rollSpin = (b.vx / rEff) * (180 / Math.PI);
-              if (b.spec.spin !== false) {
-                b.spin += (rollSpin - b.spin) * Math.min(1, ROLL_LOCK_RATE * h);
-              }
+              // NO ROLL-LOCK HERE, unlike useThrowable's single-object floor
+              // contact — tying spin to floor-slide speed (`rollSpin =
+              // vx/rEff`) is what was behind "there can sometimes be a
+              // jittering or restlessness to the icons in the header," and
+              // it took a while to find because it wasn't a tuning problem:
+              // it was a genuine feedback loop, specific to this hook's
+              // MULTI-body, IRREGULAR-shape case. Rotating the body changes
+              // its support function's reach in every direction, which
+              // changes how much it overlaps its neighbours, which changes
+              // the collision response's vx, which the roll-lock feeds
+              // straight back into spin — for a concave, lopsided icon (an
+              // onion outline, a spinach leaf) that loop has no reason to
+              // settle at a fixed point the way it does for a smooth
+              // silhouette. Confirmed directly: with roll-lock active, an
+              // 11-body header pile could still swing 50+ degrees after 20+
+              // seconds sitting still, occasionally past 100px, across
+              // several timed trials; with it removed and nothing else
+              // touched, every trial settled to sub-pixel, sub-degree
+              // residue. useThrowable is untouched — one object with no
+              // neighbours to feed the loop has never shown this.
               b.vx *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * h);
-              if (
-                Math.abs(b.vy) < SLEEP_SPEED &&
-                Math.abs(b.vx) < SLEEP_SPEED &&
-                Math.abs(b.spin) < SLEEP_SPIN
-              ) {
-                b.vx = 0;
-                b.vy = 0;
-                b.spin = 0;
-                b.asleep = true;
-              }
             }
           }
+        }
+      }
+
+      /* SLEEP IS A FUNCTION OF THE BODY'S OWN SPEED, not of what it happens
+       * to be touching. The check used to live only inside the floor-
+       * contact branch above (inside the PASSES loop), which meant a body
+       * resting on TOP OF ANOTHER BODY — the normal case partway up an
+       * 11-icon pile, not touching the arena floor directly — could never
+       * set `asleep` at all: gravity kept integrating into it every single
+       * substep forever, each addition immediately soaked up by a fresh
+       * body-body contact resolution, which is exactly the "jittering or
+       * restlessness" Noah flagged, and it never stopped no matter how long
+       * the pile sat still. Deliberately OUTSIDE the pass loop above and
+       * run once per substep, not once per pass — inside it, `h` would
+       * accumulate into `calm` three times too fast (PASSES=3) against
+       * intermediate, not-yet-resolved velocities. A body genuinely in free
+       * fall almost never trips this — gravity here is several thousand
+       * px/s² at this arena's scale, so vy clears SLEEP_SPEED (9px/s)
+       * within a couple of milliseconds of release — so this can't freeze
+       * anything actually falling. REST_TIME requires the calm to hold for
+       * a few consecutive substeps before sleeping, so one lucky near-zero
+       * reading mid-motion doesn't false-positive it. */
+      for (const b of list) {
+        if (!b.released || b.held || b.asleep) continue;
+        const calm =
+          Math.abs(b.vx) < SLEEP_SPEED &&
+          Math.abs(b.vy) < SLEEP_SPEED &&
+          Math.abs(b.spin) < SLEEP_SPIN;
+        if (!calm) {
+          b.calm = 0;
+          continue;
+        }
+        b.calm += h;
+        if (b.calm >= REST_TIME) {
+          b.vx = 0;
+          b.vy = 0;
+          b.spin = 0;
+          b.asleep = true;
+          b.calm = 0;
         }
       }
     };
@@ -365,7 +484,22 @@ export function useDropField({
 
       const r = box.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) {
-        if (arena.current.w > 0 && (r.width !== arena.current.w || r.height !== arena.current.h)) {
+        // RESIZE_EPS: getBoundingClientRect can report a fractional-px
+        // difference between two consecutive frames with nothing on the
+        // page actually resizing — ordinary sub-pixel layout rounding, more
+        // visible here because the arena's box is sized off container-query
+        // `--u` units. Rescaling on every such flicker moved EVERY body,
+        // asleep or not, by a fraction of a pixel every frame — read live as
+        // exactly the "jittering or restlessness" Noah flagged. A real
+        // resize is at minimum a device-pixel's worth of change; requiring
+        // that before rescaling stops the false positives without missing
+        // an actual one.
+        const RESIZE_EPS = 0.5;
+        if (
+          arena.current.w > 0 &&
+          (Math.abs(r.width - arena.current.w) > RESIZE_EPS ||
+            Math.abs(r.height - arena.current.h) > RESIZE_EPS)
+        ) {
           // Keep the pile where it looks like it is when the window resizes:
           // everything is stored in px, and the arena is sized in --u, so a
           // width change moves every wall out from under the objects.

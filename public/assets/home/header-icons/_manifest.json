@@ -1,0 +1,399 @@
+{
+ "corita-art-center": [
+  {
+   "kind": "clay",
+   "name": "ball",
+   "file": "clay-ball.webp",
+   "width": 504,
+   "height": 512
+  },
+  {
+   "kind": "clay",
+   "name": "flower",
+   "file": "clay-flower.webp",
+   "width": 733,
+   "height": 759
+  },
+  {
+   "kind": "clay",
+   "name": "sign",
+   "file": "clay-sign.webp",
+   "width": 497,
+   "height": 485
+  },
+  {
+   "kind": "paper",
+   "name": "arrow",
+   "file": "paper-arrow.webp",
+   "width": 367,
+   "height": 422
+  },
+  {
+   "kind": "paper",
+   "name": "ball",
+   "file": "paper-ball.webp",
+   "width": 400,
+   "height": 437
+  },
+  {
+   "kind": "paper",
+   "name": "stop-sign",
+   "file": "paper-stop-sign.webp",
+   "width": 604,
+   "height": 637
+  },
+  {
+   "kind": "pencil",
+   "name": "c",
+   "file": "pencil-c.webp",
+   "width": 294,
+   "height": 410
+  },
+  {
+   "kind": "pencil",
+   "name": "corita",
+   "file": "pencil-corita.webp",
+   "width": 439,
+   "height": 488
+  },
+  {
+   "kind": "pencil",
+   "name": "k",
+   "file": "pencil-k.webp",
+   "width": 209,
+   "height": 451
+  }
+ ],
+ "cultural-olympiad-poster": [
+  {
+   "kind": "clay",
+   "name": "moulinrouge",
+   "file": "clay-moulinrouge.webp",
+   "width": 541,
+   "height": 526
+  },
+  {
+   "kind": "clay",
+   "name": "palmtree",
+   "file": "clay-palmtree.webp",
+   "width": 672,
+   "height": 709
+  },
+  {
+   "kind": "clay",
+   "name": "star",
+   "file": "clay-star.webp",
+   "width": 774,
+   "height": 695
+  },
+  {
+   "kind": "paper",
+   "name": "croissant",
+   "file": "paper-croissant.webp",
+   "width": 344,
+   "height": 159
+  },
+  {
+   "kind": "paper",
+   "name": "eiffel-tower",
+   "file": "paper-eiffel-tower.webp",
+   "width": 344,
+   "height": 419
+  },
+  {
+   "kind": "paper",
+   "name": "oscar",
+   "file": "paper-oscar.webp",
+   "width": 181,
+   "height": 367
+  },
+  {
+   "kind": "paper",
+   "name": "wine",
+   "file": "paper-wine.webp",
+   "width": 134,
+   "height": 225
+  },
+  {
+   "kind": "pencil",
+   "name": "arc",
+   "file": "pencil-arc.webp",
+   "width": 360,
+   "height": 297
+  },
+  {
+   "kind": "pencil",
+   "name": "burger",
+   "file": "pencil-burger.webp",
+   "width": 334,
+   "height": 225
+  }
+ ],
+ "more-work": [
+  {
+   "kind": "clay",
+   "name": "exclamationpoint",
+   "file": "clay-exclamationpoint.webp",
+   "width": 146,
+   "height": 581
+  },
+  {
+   "kind": "clay",
+   "name": "poppy",
+   "file": "clay-poppy.webp",
+   "width": 392,
+   "height": 631
+  },
+  {
+   "kind": "clay",
+   "name": "square",
+   "file": "clay-square.webp",
+   "width": 388,
+   "height": 368
+  },
+  {
+   "kind": "paper",
+   "name": "hammer",
+   "file": "paper-hammer.webp",
+   "width": 297,
+   "height": 378
+  },
+  {
+   "kind": "paper",
+   "name": "hat",
+   "file": "paper-hat.webp",
+   "width": 449,
+   "height": 248
+  },
+  {
+   "kind": "paper",
+   "name": "star",
+   "file": "paper-star.webp",
+   "width": 233,
+   "height": 240
+  },
+  {
+   "kind": "pencil",
+   "name": "book",
+   "file": "pencil-book.webp",
+   "width": 325,
+   "height": 315
+  },
+  {
+   "kind": "pencil",
+   "name": "brush",
+   "file": "pencil-brush.webp",
+   "width": 187,
+   "height": 342
+  },
+  {
+   "kind": "pencil",
+   "name": "laptop",
+   "file": "pencil-laptop.webp",
+   "width": 396,
+   "height": 284
+  }
+ ],
+ "socal-earth": [
+  {
+   "kind": "clay",
+   "name": "bear",
+   "file": "clay-bear.webp",
+   "width": 463,
+   "height": 434
+  },
+  {
+   "kind": "clay",
+   "name": "cloud",
+   "file": "clay-cloud.webp",
+   "width": 965,
+   "height": 377
+  },
+  {
+   "kind": "clay",
+   "name": "tree",
+   "file": "clay-tree.webp",
+   "width": 711,
+   "height": 865
+  },
+  {
+   "kind": "paper",
+   "name": "fish",
+   "file": "paper-fish.webp",
+   "width": 337,
+   "height": 203
+  },
+  {
+   "kind": "paper",
+   "name": "mountains",
+   "file": "paper-mountains.webp",
+   "width": 506,
+   "height": 240
+  },
+  {
+   "kind": "paper",
+   "name": "water",
+   "file": "paper-water.webp",
+   "width": 132,
+   "height": 239
+  },
+  {
+   "kind": "pencil",
+   "name": "bird",
+   "file": "pencil-bird.webp",
+   "width": 240,
+   "height": 164
+  },
+  {
+   "kind": "pencil",
+   "name": "flower",
+   "file": "pencil-flower.webp",
+   "width": 161,
+   "height": 205
+  },
+  {
+   "kind": "pencil",
+   "name": "tree",
+   "file": "pencil-tree.webp",
+   "width": 248,
+   "height": 340
+  }
+ ],
+ "sprouts-farmers-market": [
+  {
+   "kind": "clay",
+   "name": "blueberry",
+   "file": "clay-blueberry.webp",
+   "width": 370,
+   "height": 469
+  },
+  {
+   "kind": "clay",
+   "name": "lemon",
+   "file": "clay-lemon.webp",
+   "width": 627,
+   "height": 373
+  },
+  {
+   "kind": "clay",
+   "name": "spinach",
+   "file": "clay-spinach.webp",
+   "width": 417,
+   "height": 792
+  },
+  {
+   "kind": "paper",
+   "name": "banana",
+   "file": "paper-banana.webp",
+   "width": 237,
+   "height": 268
+  },
+  {
+   "kind": "paper",
+   "name": "lime",
+   "file": "paper-lime.webp",
+   "width": 464,
+   "height": 277
+  },
+  {
+   "kind": "paper",
+   "name": "mushroom",
+   "file": "paper-mushroom.webp",
+   "width": 527,
+   "height": 383
+  },
+  {
+   "kind": "pencil",
+   "name": "olive",
+   "file": "pencil-olive.webp",
+   "width": 421,
+   "height": 255
+  },
+  {
+   "kind": "pencil",
+   "name": "onion",
+   "file": "pencil-onion.webp",
+   "width": 387,
+   "height": 377
+  },
+  {
+   "kind": "pencil",
+   "name": "tomato",
+   "file": "pencil-tomato.webp",
+   "width": 389,
+   "height": 318
+  }
+ ],
+ "valley-strong-credit-union": [
+  {
+   "kind": "clay",
+   "name": "mug",
+   "file": "clay-mug.webp",
+   "width": 400,
+   "height": 319
+  },
+  {
+   "kind": "clay",
+   "name": "roof",
+   "file": "clay-roof.webp",
+   "width": 858,
+   "height": 308
+  },
+  {
+   "kind": "clay",
+   "name": "table",
+   "file": "clay-table.webp",
+   "width": 523,
+   "height": 303
+  },
+  {
+   "kind": "paper",
+   "name": "door",
+   "file": "paper-door.webp",
+   "width": 333,
+   "height": 567
+  },
+  {
+   "kind": "paper",
+   "name": "house",
+   "file": "paper-house.webp",
+   "width": 421,
+   "height": 322
+  },
+  {
+   "kind": "paper",
+   "name": "key",
+   "file": "paper-key.webp",
+   "width": 226,
+   "height": 399
+  },
+  {
+   "kind": "pencil",
+   "name": "cat",
+   "file": "pencil-cat.webp",
+   "width": 381,
+   "height": 386
+  },
+  {
+   "kind": "pencil",
+   "name": "dog",
+   "file": "pencil-dog.webp",
+   "width": 573,
+   "height": 397
+  },
+  {
+   "kind": "pencil",
+   "name": "toilet",
+   "file": "pencil-toilet.webp",
+   "width": 449,
+   "height": 474
+  },
+  {
+   "kind": "pencil",
+   "name": "window",
+   "file": "pencil-window.webp",
+   "width": 441,
+   "height": 565
+  }
+ ]
+}

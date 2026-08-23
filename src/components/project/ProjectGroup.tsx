@@ -71,6 +71,15 @@ export type MediaCell =
        *  transparent marks (a logo, a wordmark); real photography has its
        *  own background and would invert into something broken. */
       invertOnDark?: boolean;
+      /** Per-cell background override, for a cell whose own transparency
+       *  needs to stay one fixed colour rather than following the group's
+       *  `bgColor` (which is usually --color-paper, and flips with theme).
+       *  2026-08-23, Noah, on a cutout brain photo with real transparent
+       *  margin: "In dark mode it has a black background and it makes it
+       *  stand out too much... add a white background." A literal colour,
+       *  not a token — it must NOT flip to black in dark mode, which is
+       *  the entire problem being fixed. */
+      bgColor?: string;
     }
   | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean; objectFit?: "cover" | "contain" }
   | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number };
@@ -259,6 +268,9 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
       </div>
     );
   }
+  // Per-cell override wins over the group's own bgColor — see the note on
+  // MediaCell.bgColor above.
+  const effectiveBg = cell.bgColor ?? bgColor;
   return (
     <div
       className="relative w-full overflow-hidden"
@@ -277,7 +289,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
               // have this override set (plain `fit` cells above are
               // unaffected and keep hugging their image's full natural
               // height exactly as before).
-              { aspectRatio: cell.cropAspect, backgroundColor: bgColor || undefined }
+              { aspectRatio: cell.cropAspect, backgroundColor: effectiveBg || undefined }
             : // Plain "Fit" mode: the GRID adapts to the image, not the
               // other way around. We deliberately do NOT force
               // `aspectRatio` here — doing so was the bug: it locked the
@@ -289,8 +301,8 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
               // cell's height — and therefore the horizontal rule/divider
               // above and below it — hugs the image exactly. No
               // cropping, no zooming, no letterboxing.
-              { backgroundColor: bgColor || undefined }
-          : { aspectRatio: aspect ?? `${cell.w ?? 4}/${cell.h ?? 3}`, backgroundColor: bgColor || undefined, height: "100%" }
+              { backgroundColor: effectiveBg || undefined }
+          : { aspectRatio: aspect ?? `${cell.w ?? 4}/${cell.h ?? 3}`, backgroundColor: effectiveBg || undefined, height: "100%" }
       }
     >
       {cell.fit ? (
@@ -323,7 +335,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           />
         )
       ) : (
-        <ScaledMedia scale={cell.scale} bgColor={bgColor}>
+        <ScaledMedia scale={cell.scale} bgColor={effectiveBg}>
           <Image
             src={`/assets/${slug}/${cell.file}`}
             alt={cell.alt || ""}

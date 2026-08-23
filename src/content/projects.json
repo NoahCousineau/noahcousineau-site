@@ -173,7 +173,7 @@
           ]
         },
         {
-          "role": "creative director",
+          "role": "creative directors",
           "names": [
             "Summer Woodward",
             "Hunter Somerville"
@@ -2043,7 +2043,8 @@
                 {
                   "type": "image",
                   "file": "forced-perspective/forced-perspective_24_mario-iso.png",
-                  "scale": 98
+                  "scale": 98,
+                  "bgColor": "#ffffff"
                 },
                 {
                   "type": "image",

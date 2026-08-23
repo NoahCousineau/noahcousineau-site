@@ -6,6 +6,7 @@ import PageLoader from "@/components/PageLoader";
 import AwayOverlay from "@/components/AwayOverlay";
 import ThemeProvider, { THEME_INIT_SCRIPT } from "@/components/ThemeProvider";
 import ThemeToggle from "@/components/ThemeToggle";
+import HomeLink from "@/components/HomeLink";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -43,6 +44,7 @@ export default function RootLayout({
         <ThemeProvider>
         <PageLoader />
         <ThemeToggle />
+        <HomeLink />
         <SmoothScroll>
           {/* .site-content is the opaque curtain that slides up to uncover
               the fixed full-viewport footer beneath it — see the FULL-PAGE

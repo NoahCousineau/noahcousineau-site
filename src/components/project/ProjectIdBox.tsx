@@ -52,19 +52,19 @@ export function ProjectIdBox({
 }) {
   return (
     <div
-      className={`${bare ? "" : "bg-[color:var(--color-paper)]"} flex flex-wrap items-start justify-between`}
+      className={`${bare ? "" : "bg-[color:var(--color-paper)]"} flex items-start justify-between`}
       style={{
         columnGap: "calc(var(--u) * 120)",
-        rowGap: "calc(var(--u) * 60)",
         padding: "calc(var(--u) * 20) calc(var(--u) * 56)",
       }}
     >
       {/* Title — lowercase, Akzidenz regular, matches the artboard's
           two-stacked-line lockup ("sprouts" / "farmers market"). Tighter
           leading so the two lines fill more of the card's height, like
-          the sketch. */}
+          the sketch. `shrink-0`: its own intrinsic width, never squeezed by
+          the credits column next to it. */}
       <h1
-        className="lowercase leading-[1.02] tracking-tight m-0"
+        className="lowercase leading-[1.02] tracking-tight m-0 shrink-0"
         style={{ fontSize: "var(--text-project-title)", fontFamily: "var(--font-sans)" }}
       >
         {title.map((line, i) => (
@@ -75,14 +75,21 @@ export function ProjectIdBox({
       </h1>
 
       {/* Credits — N columns, each: role label (sans, underlined) +
-          names stacked beneath (Quinn Text italic, per the artboard). */}
-      {/* `ml-auto` and not just the row's `justify-between`: once the two
-          halves wrap onto separate lines (a long title, a narrow viewport)
-          justify-between has nothing left to space apart and the credits fall
-          back to the left. Noah: "make sure that the team credit information
-          is to the right." */}
+          names stacked beneath (Quinn Text italic, per the artboard).
+          2026-08-23, Noah, on Sprouts (five credit categories, the most of
+          any project): "have the credit information to the right of the
+          title... If needed, credit categories can be stacked below one
+          another." The OUTER row used to be `flex flex-wrap`, so once title
+          + all five columns together overran the card's width, the wrap hit
+          at the OUTER level and dropped the entire credits block onto its
+          own line under the title. Removing wrap from the outer row and
+          giving this div `min-w-0` (so flex stops treating its intrinsic
+          content width as a hard floor) moves the wrap point INSIDE the
+          credits block instead — individual columns now stack ("photography
+          ... below nasdaq board animation") while the block itself stays
+          pinned to the title's right, at any width. */}
       <div
-        className="flex flex-wrap ml-auto justify-end"
+        className="flex flex-wrap min-w-0 justify-end"
         style={{ columnGap: "calc(var(--u) * 96)", rowGap: "calc(var(--u) * 40)" }}
       >
         {credits.map((c) => (
