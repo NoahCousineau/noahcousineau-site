@@ -38,3 +38,7 @@ yarn-error.log*
 # Large self-hosted media (copy from ~/Desktop/portfolio/newly uploaded assets)
 /public/videos
 /public/fonts
+
+# Python bytecode caches from the dark-head-pipeline tools
+__pycache__/
+*.pyc

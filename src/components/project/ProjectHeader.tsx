@@ -98,7 +98,17 @@ export default function ProjectHeader({
   /* The icon is the LAST body in the list so it is the last one released —
    * the project's own mark arriving after the anonymous shapes have settled.
    * Its frame is the largest in its sequence, standing still: "I don't want
-   * these hero icons to animate as they do on the homepage." */
+   * these hero icons to animate as they do on the homepage." That is about
+   * FRAME PLAYBACK only — this header never mounts ProjectFrameAnimation, so
+   * there is no click-through sequence to hold back regardless. The icon
+   * DOES tumble and lean like every other body here: "The objects will
+   * drop with real physics and will be able to be moved around" names no
+   * exception, and it originally shipped with one (spin:false) on the
+   * reasoning that "static" meant motionless — which, on a page where every
+   * other object visibly spins, is also the one object a viewer could
+   * actually SEE rotate, since the anonymous circles are rotationally
+   * symmetric and show nothing regardless of what the physics does to them.
+   * Noah: "I don't see the header objects being able to rotate still." */
   const iconSrc = object ? object.frames[object.heroFrame - 1] : undefined;
   const iconWidth = object
     ? ICON_SCALE * ((object.heightFraction * object.width) / object.height)
@@ -117,7 +127,6 @@ export default function ProjectHeader({
         delay: PLACEHOLDERS.length * DROP_STAGGER_MS,
         src: iconSrc,
         aspect: object ? object.width / object.height : 1,
-        spin: false,
       });
     }
     return list;
