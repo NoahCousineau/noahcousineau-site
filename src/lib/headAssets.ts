@@ -107,7 +107,17 @@ export const HEAD_LIGHT: HeadAsset = {
  * The filename itself is the version instead — plain, and it's what
  * cache-busting means for a static asset absent a build pipeline that
  * fingerprints content hashes. Suffix bumps each time the pipeline
- * (build_dark_roll_from_edit.py) rewrites these three files. */
+ * (build_dark_roll_from_edit.py) rewrites these three files.
+ *
+ * UNVERSIONED COPIES STILL SIT ALONGSIDE THESE (head-dark.png etc, same
+ * bytes). Deleting them on the first bump broke exactly the failure mode
+ * this was meant to fix: Noah's browser had a tab open against the OLD
+ * unversioned path from before that commit, and once the underlying file
+ * was gone that request 404'd outright — "Looks like the images aren't
+ * loading" — worse than the stale-cache problem this exists to solve. Keep
+ * a same-content copy at the unversioned name every time VERSION bumps, so
+ * any lingering reference to an old path still resolves to CURRENT
+ * content instead of nothing. */
 export const HEAD_DARK: HeadAsset = {
   src: "/assets/about/head-dark.v2.png",
   aspect: "1227/1627",

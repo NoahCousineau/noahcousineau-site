@@ -44,6 +44,17 @@ TARGET_W = 1227  # same rendered width as the light head
 VERSION = 2
 DST = f'{SITE}/public/assets/about/head-dark.v{VERSION}.png'
 
+
+def save_versioned(img, versioned_path):
+    """Write the versioned file, plus a same-content copy at the unversioned
+    name. See the note on this in src/lib/headAssets.ts: deleting the
+    unversioned file on the first version bump turned a stale-cache
+    annoyance into an outright 404 for any tab still holding the old path.
+    The alias means an old reference always resolves to CURRENT content."""
+    img.save(versioned_path, optimize=True)
+    unversioned = versioned_path.replace(f'.v{VERSION}.png', '.png')
+    img.save(unversioned, optimize=True)
+
 # How far the pupil is pulled toward the lens colour, 0 = untouched.
 EYE_TINT_MIX = 0.55
 EYE_TINT_CONTRAST = 1.15
@@ -111,7 +122,7 @@ def build_dark_eyes(tint):
         rgb = np.clip((rgb - 0.5) * EYE_TINT_CONTRAST + 0.5, 0, 1)
         rgb = rgb * (1 - EYE_TINT_MIX) + rgb * (tint / 255.0) * EYE_TINT_MIX * 2.0
         a[..., :3] = np.clip(rgb, 0, 1) * 255
-        Image.fromarray(a.astype(np.uint8)).save(f'{EYE_DIR}/eye-{side}-dark.v{VERSION}.png', optimize=True)
+        save_versioned(Image.fromarray(a.astype(np.uint8)), f'{EYE_DIR}/eye-{side}-dark.v{VERSION}.png')
 
 
 def main():
@@ -135,7 +146,7 @@ def main():
     crop = out.crop((bx0, by0, bx1 + 1, by1 + 1))
     cw, ch = crop.size
     crop = crop.resize((TARGET_W, int(round(ch * TARGET_W / cw))), Image.LANCZOS)
-    crop.save(DST, optimize=True)
+    save_versioned(crop, DST)
 
     bw, bh = bx1 - bx0 + 1, by1 - by0 + 1
     print(json.dumps({
