@@ -1,93 +1,94 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Hero from "@/components/home/Hero";
+import PasswordHand from "@/components/PasswordHand";
 
-function PasswordForm() {
-  const [pass, setPass] = useState("");
-  const [error, setError] = useState(false);
-  const [busy, setBusy] = useState(false);
+/*
+ * THE GATE (rebuilt 2026-08-23 around Noah's hand animation).
+ *
+ * "The password page is to appear whenever a new user first visits the site
+ * and selects a project... The homepage will be visible behind it."
+ *
+ * That last clause is why this route renders the Hero rather than a page of
+ * its own: the reader clicked a project from the home page, so as far as they
+ * are concerned nothing navigated — a hand simply came up and stopped them.
+ * src/proxy.ts sends them here with ?from=<where they were going>, and the
+ * thumbs up sends them on.
+ *
+ * ONLY THE HERO, not the whole home page. It is the only part a reader can
+ * see behind a full-viewport overlay they cannot scroll, and pulling in the
+ * project grid would mean loading every tile's artwork for a screen nobody
+ * looks past. The Hero also carries the rotating head, which is the part
+ * worth seeing behind the hand anyway.
+ *
+ * The loading screen is suppressed here (see PageLoader) because it belongs
+ * at the END of this sequence, not the start: the thumbs up fades into it.
+ */
+
+function Gate() {
   const router = useRouter();
   const params = useSearchParams();
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(false);
+  const check = useCallback(async (pass: string) => {
     try {
       const res = await fetch("/api/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pass }),
       });
-      if (res.ok) {
-        const from = params.get("from");
-        router.replace(from && from.startsWith("/work") ? from : "/work");
-        router.refresh();
-      } else {
-        setError(true);
-        setBusy(false);
-      }
+      return res.ok;
     } catch {
-      setError(true);
-      setBusy(false);
+      return false;
     }
-  }
+  }, []);
+
+  const enter = useCallback(() => {
+    const from = params.get("from");
+    router.replace(from && from.startsWith("/work") ? from : "/work");
+    router.refresh();
+  }, [params, router]);
 
   return (
-    <form onSubmit={submit} className="flex flex-col items-center gap-5 w-full max-w-xs">
-      <input
-        type="password"
-        value={pass}
-        onChange={(e) => setPass(e.target.value)}
-        autoFocus
-        placeholder="••••••"
-        className="w-full bg-transparent border-b-2 border-[color:var(--color-ink)] py-3 text-center text-xl outline-none placeholder:opacity-30"
-        aria-label="Password"
-      />
-      {error && (
-        <p className="text-[color:var(--color-accent)] text-sm">Incorrect password.</p>
-      )}
-      <button
-        type="submit"
-        disabled={busy || !pass}
-        className="uppercase tracking-widest border border-[color:var(--color-ink)] px-8 py-3 transition-opacity hover:opacity-60 disabled:opacity-30"
-        style={{ fontSize: "var(--text-caption)" }}
+    <>
+      {/* The home page, carrying on behind. Inert: the reader's only move
+          here is to type. */}
+      <main
+        className="js-password-backdrop mx-auto w-full max-w-[1920px]"
+        aria-hidden
+        style={{
+          containerType: "inline-size",
+          ["--u" as string]: "calc(100cqw / 1920)",
+          pointerEvents: "none",
+        }}
       >
-        {busy ? "…" : "Enter"}
-      </button>
-    </form>
+        <Hero />
+      </main>
+
+      {/* z-50 and not higher so the home mark and the theme toggle (both
+          z-60) stay reachable — the hand never reaches those corners. */}
+      <div className="fixed inset-0 z-50" style={{ containerType: "inline-size" }}>
+        <div
+          className="w-full h-full flex items-center justify-center"
+          style={{ ["--u" as string]: "min(100cqw / 1920, 100dvh / 1080)" }}
+        >
+          {/* Pinned to the artboard's own width so the hand stays centred on
+              a viewport too tall for 16:9, where --u is height-derived and
+              the flex parent is wider than 1920 units. */}
+          <div style={{ width: "calc(var(--u) * 1920)" }}>
+            <PasswordHand onSubmit={check} onFinished={enter} />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
 export default function PasswordPage() {
   return (
-    <main className="min-h-[100svh] flex flex-col items-center justify-center px-(--gutter) text-center">
-      <p
-        className="uppercase tracking-widest text-[color:var(--color-muted)] mb-6"
-        style={{ fontSize: "var(--text-caption)" }}
-      >
-        Protected
-      </p>
-      <h1
-        className="uppercase leading-[0.85] tracking-tight mb-10"
-        style={{ fontSize: "var(--text-title)" }}
-      >
-        Enter Password
-      </h1>
-
-      <Suspense fallback={null}>
-        <PasswordForm />
-      </Suspense>
-
-      <Link
-        href="/"
-        className="mt-12 uppercase tracking-widest underline underline-offset-4 hover:opacity-60 transition-opacity"
-        style={{ fontSize: "var(--text-caption)" }}
-      >
-        ← Back to home
-      </Link>
-    </main>
+    <Suspense fallback={null}>
+      <Gate />
+    </Suspense>
   );
 }

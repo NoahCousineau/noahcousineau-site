@@ -21,17 +21,20 @@ export function Stage({
   children,
   className = "",
   id,
+  onPointerDown,
 }: {
   heightUnits: number;
   children?: React.ReactNode;
   className?: string;
   id?: string;
+  onPointerDown?: React.PointerEventHandler<HTMLDivElement>;
 }) {
   return (
     <div
       id={id}
       className={`relative w-full ${className}`}
       style={{ height: `calc(var(--u) * ${heightUnits})` }}
+      onPointerDown={onPointerDown}
     >
       {children}
     </div>

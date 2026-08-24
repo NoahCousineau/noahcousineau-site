@@ -23,6 +23,9 @@ import { getAdjacent } from "@/lib/projects";
  */
 export default function ConditionalFooter() {
   const pathname = usePathname() ?? "";
+  /* The gate is a single non-scrolling screen with a hand over it; there is
+   * nothing below to put a footer under. */
+  if (pathname === "/password") return null;
   const match = pathname.match(/^\/work\/([^/]+)$/);
   const slug = match?.[1];
   const next = slug ? getAdjacent(slug).next : undefined;

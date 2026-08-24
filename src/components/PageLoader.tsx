@@ -57,6 +57,11 @@ const POLL_INTERVAL_MS = 100;
 
 export default function PageLoader() {
   const pathname = usePathname();
+  /* NOT ON THE GATE. The password screen ends by fading its thumbs up into
+   * the loading screen (see PasswordHand), so showing the worm on the way IN
+   * would play it twice in one sequence — once over a hand that is about to
+   * fly up, and again thirty seconds later when the project actually loads. */
+  if (pathname === "/password") return null;
   // Keying by pathname forces React to unmount/remount PageLoaderInner on
   // every route change, giving it fresh initial state for free (see the
   // component doc comment above for why this is preferred over manually
