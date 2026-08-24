@@ -42,6 +42,22 @@ the hairline untouched — matching what Noah can actually see.
 opaque and at least RIM_PX inside the edge — a distance transform gives that
 directly, and it is exactly "what this bit of the head looks like once you
 are past the contaminated band".
+
+AND THEN THE ALPHA HAS TO BE FEATHERED, or the fix trades one artefact for
+another. 2026-08-23, Noah, on the first version of this: "the rotating head
+drop border is now getting a bit messy." Under the dark rim the cut's alpha
+was a hard, essentially binary step — 255, 253, 220, 4 over four pixels, and
+stair-stepping by whole pixels along its length. The dark line had been
+covering that staircase up. Take the line away and the raw jagged cut is
+what shows, which reads as a chewed edge rather than a clean one.
+
+So the same region gets a small blur applied to its ALPHA, which is what
+antialiasing that boundary means. Restricted to the skin cut for the third
+time and for the same reason: the hairline's alpha is already a soft,
+genuinely gradual ramp — measured through 0.2-0.8 over tens of pixels — and
+blurring it would smear the individual strands that make the hair read as
+hair. Verified by eye against the yellow starburst, which is the least
+forgiving background on the site for both problems.
 """
 import os
 import sys
@@ -60,14 +76,33 @@ RIM_PX = 6
 # 0.90 catches the neck rim (114/182 = 0.63) with a wide margin while leaving
 # ordinary shading — which never approaches a 10% step over 6px — alone.
 DARK_RATIO = 0.90
-# ...and only where that interior colour is genuinely skin-light. Measured:
-# skin behind the neck/jaw rim sits at 180-190 mean luminance, the hair just
-# inside the hairline at ~110. 150 separates them with room on both sides.
-# See THE DISCRIMINATOR above for why this test is the one that matters.
-LIGHT_REF = 150.0
+# ...and only where that interior colour is skin rather than hair, RAMPED
+# between these two luminances rather than switched at one.
+#
+# A hard threshold was the second thing Noah called messy. Lit skin behind the
+# cut measures 180-190 and hair just inside the hairline ~110, so a single cut
+# at 150 does separate them — but the SHADOWED skin along the side of the neck
+# sits below it, so that stretch kept its dark rim while the lit stretch two
+# pixels away had been cleaned. The seam between treated and untreated was
+# itself the defect. Ramping means the correction fades out where the head
+# stops being obviously skin, so there is no edge to see.
+SKIN_LO = 95.0
+SKIN_HI = 165.0
+# How far either side of the cut gets the antialiasing blur, in px.
+FEATHER_PX = 2
+# Blur radius for that antialiasing. Around a pixel: enough to turn a
+# whole-pixel staircase into a ramp, not enough to soften the silhouette
+# itself into a glow.
+FEATHER_SIGMA = 0.9
 
 
-def remove_rim(rgba, rim_px=RIM_PX, dark_ratio=DARK_RATIO, light_ref=LIGHT_REF):
+def _ramp(v, lo, hi):
+    """0 below lo, 1 above hi, smoothstepped between — no hard seam."""
+    t = np.clip((v - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def remove_rim(rgba, rim_px=RIM_PX, dark_ratio=DARK_RATIO):
     """Replace a dark contaminated edge band with the silhouette's own colour."""
     a = rgba.astype(np.float32)
     alpha = a[..., 3]
@@ -95,13 +130,44 @@ def remove_rim(rgba, rim_px=RIM_PX, dark_ratio=DARK_RATIO, light_ref=LIGHT_REF):
     # The band to consider: inside the shape (any alpha at all) but not yet
     # deep. Semi-transparent hair is included — a dark rim can ride on it too
     # — but the ratio test still decides.
-    band = (alpha > 0) & (depth < rim_px)
-    darker = lum_now < dark_ratio * np.maximum(lum_ref, 1.0)
-    fix = band & darker & (lum_ref > light_ref)
+    # How much this looks like skin rather than hair, 0..1 (see SKIN_LO/HI).
+    w_skin = _ramp(lum_ref, SKIN_LO, SKIN_HI)
+
+    # How much darker the pixel is than the silhouette just inside it, scaled
+    # so it reaches full strength well before the rim's real depth (measured
+    # 114 against 182, a deficit of 0.37) and tapers to nothing at the
+    # threshold, so ordinary shading is nudged rather than flattened.
+    deficit = 1.0 - lum_now / np.maximum(lum_ref, 1.0)
+    floor = 1.0 - dark_ratio
+    w_dark = _ramp(deficit, floor, floor * 2.5)
+
+    # Only inside the shape and only within the contaminated depth.
+    in_band = ((alpha > 0) & (depth < rim_px)).astype(np.float32)
+    w = (w_skin * w_dark * in_band)[..., None]
 
     out = a.copy()
-    out[..., :3][fix] = inward[fix]
-    return out.astype(np.uint8)
+    out[..., :3] = a[..., :3] * (1.0 - w) + inward * w
+
+    # --- antialias the cut (see the note at the top) -----------------------
+    # The zone straddling the alpha boundary, faded out by the same skin
+    # weight so the feather stops where the hair starts without a seam.
+    inside = alpha > 127
+    d_in = ndimage.distance_transform_edt(inside)
+    d_out = ndimage.distance_transform_edt(~inside)
+    near_edge = (d_in <= FEATHER_PX) | (d_out <= FEATHER_PX)
+    wf = w_skin * near_edge.astype(np.float32)
+    if wf.max() > 0:
+        smoothed = ndimage.gaussian_filter(alpha, FEATHER_SIGMA)
+        new_alpha = alpha * (1.0 - wf) + smoothed * wf
+        # A pixel that was fully clear and is now partly opaque would
+        # otherwise carry whatever junk colour the transparent area happened
+        # to hold (measured: around RGB(52,52,52) out here), and that junk is
+        # what a feather would fade IN. Give anything that gained coverage the
+        # skin colour it is fading out of.
+        gained = new_alpha > alpha + 1.0
+        out[..., :3][gained] = inward[gained]
+        out[..., 3] = new_alpha
+    return np.clip(out, 0, 255).astype(np.uint8)
 
 
 def process(path, frame_w=None, frame_h=None):

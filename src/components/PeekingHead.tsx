@@ -3,7 +3,7 @@
 import Link from "next/link";
 import HeadWithEyes from "./HeadWithEyes";
 import { useTheme } from "./ThemeProvider";
-import { headAsset } from "@/lib/headAssets";
+import { headAsset, HEAD_LIGHT, type HeadAsset } from "@/lib/headAssets";
 
 /*
  * The footer's head, peeking up over the bottom edge of the browser window
@@ -46,6 +46,41 @@ const REVEAL_FRACTION = 0.66;
 /** Head width in artboard units. */
 const HEAD_WIDTH_UNITS = 300;
 
+/**
+ * Mean eye position for a variant, as a fraction of its own box.
+ *
+ * 2026-08-23, Noah: "the heads in the footer seem to move position a lot when
+ * they move between light mode and dark mode. Let's arrange the heads in a
+ * way so the eyes don't shift over much when we switch between modes."
+ *
+ * The two variants are different photographs cropped to different boxes: the
+ * dark head is a shade wider for its height (0.753 against 0.735) and its
+ * sockets sit markedly lower within the crop (49.5% down, against 45.3%),
+ * because the shades put the eye line further down the face. Anchoring by the
+ * BOX — which is what `bottom` and a plain translateX(-50%) do — therefore
+ * lands the eyes in two different places: measured, 18.8 units apart
+ * vertically (about 15px at a 1512 viewport) and 2.8 apart horizontally.
+ * Since the eyes are the whole point of a tracking head, they are what should
+ * hold still, so the box is positioned FROM them rather than the other way
+ * round.
+ */
+function eyeCentre(asset: HeadAsset) {
+  if (!asset.eyes) return { x: 0.5, y: 0.5 };
+  return {
+    x: (asset.eyes.left.x + asset.eyes.right.x) / 2,
+    y: (asset.eyes.left.y + asset.eyes.right.y) / 2,
+  };
+}
+
+/* The light head's placement is the reference, so light mode is pixel-for-
+ * pixel what it always was and only the dark head moves to meet it. */
+const LIGHT_HEIGHT_UNITS = HEAD_WIDTH_UNITS / HEAD_LIGHT.aspectVal;
+const LIGHT_EYE = eyeCentre(HEAD_LIGHT);
+/** Where the eye line sits above the window's bottom edge, artboard units.
+ *  Derived from the light head's existing reveal: bottom = -h(1-R), and the
+ *  eyes sit h(1-eyeY) above that, so the two h terms collapse to this. */
+const EYE_ABOVE_BOTTOM_UNITS = LIGHT_HEIGHT_UNITS * (REVEAL_FRACTION - LIGHT_EYE.y);
+
 export default function PeekingHead({
   /** Horizontal centre, in artboard units. Defaults to the page centre; the
    * footer places it under its right-hand link columns instead (2026-08-20,
@@ -63,17 +98,29 @@ export default function PeekingHead({
    * heads reveal the same FRACTION OF THEMSELVES, which is what the reveal
    * was always meant to control. */
   const { theme } = useTheme();
-  const heightUnits = HEAD_WIDTH_UNITS / headAsset(theme).aspectVal;
-  const hiddenUnits = heightUnits * (1 - REVEAL_FRACTION);
+  const asset = headAsset(theme);
+  const heightUnits = HEAD_WIDTH_UNITS / asset.aspectVal;
+  const eye = eyeCentre(asset);
+
+  /* Position the box so this variant's OWN eye line lands on the shared
+   * target, instead of revealing a fixed fraction of the box and letting the
+   * eyes fall where they may. Both heads end up showing the same amount of
+   * themselves BELOW the eyes, which is the part the window crops — so the
+   * cut reads as the same cut in both themes. */
+  const bottomUnits = EYE_ABOVE_BOTTOM_UNITS - heightUnits * (1 - eye.y);
+  /* And the same for the horizontal: nudge by the difference between this
+   * variant's eye centre and the light one's, so the sockets stay put
+   * side-to-side too (the dark crop's are ~1% of the head further left). */
+  const eyeShiftUnits = HEAD_WIDTH_UNITS * (LIGHT_EYE.x - eye.x);
 
   return (
     <div
       className="absolute pointer-events-none select-none"
       style={{
         width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
-        bottom: `calc(var(--u) * -${hiddenUnits})`,
+        bottom: `calc(var(--u) * ${bottomUnits})`,
         left: `calc(var(--u) * ${centerXUnits})`,
-        transform: "translateX(-50%)",
+        transform: `translateX(calc(-50% + var(--u) * ${eyeShiftUnits}))`,
       }}
     >
       <Link
