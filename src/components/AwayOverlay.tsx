@@ -156,6 +156,16 @@ export default function AwayOverlay() {
   }, []);
 
   useEffect(() => {
+    /* NOT WHEN EMBEDDED. An iframe's window is blurred whenever it is not the
+     * focused frame, which is nearly always, so the `blur` trigger below would
+     * fire immediately and permanently in every embed — including all ten
+     * phones on /dev/mobile, which would show nothing but the clock. The away
+     * screen is a full-viewport takeover addressed to someone who has stepped
+     * away from THE SITE; inside someone else's page that is not a claim this
+     * component can make. Registering nothing is enough, since the overlay
+     * starts hidden and only these listeners ever raise it. */
+    if (window.self !== window.top) return;
+
     let lastActivity = Date.now();
 
     const clearLeaveTimer = () => {

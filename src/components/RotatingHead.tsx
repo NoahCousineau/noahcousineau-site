@@ -57,6 +57,9 @@ export default function RotatingHead({
   const GRID_COLS = variant === 'smooth' ? 8 : 6;
   const FRAME_WIDTH = 960;
   const FRAME_HEIGHT = 1440;
+  // The canvas BACKING STORE, in device-independent pixels — how much detail
+  // is drawn, not how big it appears. See the note on the <canvas> below for
+  // why those are now two different things.
   const DISPLAY_WIDTH = 900;
   const DISPLAY_HEIGHT = 1350;
 
@@ -311,7 +314,26 @@ export default function RotatingHead({
           ${isDragging ? 'opacity-90' : 'opacity-100'}
           transition-opacity
         `}
-        style={{ background: 'transparent' }}
+        /*
+         * SIZED IN ARTBOARD UNITS, which it was not until 2026-08-23. The
+         * width/height ATTRIBUTES above are the bitmap; with no CSS size a
+         * canvas also lays out at that bitmap size, so this was a fixed 900px
+         * element in a layout where everything else scales with `--u`. Its
+         * container (Hero's Place, 650x950u) clips, and on a desktop that only
+         * ever trimmed the sprite's transparent margin — but on a 390px phone
+         * the container is 132px wide and the canvas was still 900, so the
+         * home page showed a 132px window onto the middle of the head. An ear.
+         *
+         * 1200 x 1800 units is exactly 900 x 1350 at the desktop `--u` of
+         * 0.75, so this is a no-op at the widths the design was built at and
+         * only takes effect as the viewport narrows. The px fallback keeps the
+         * old behaviour if this is ever mounted outside an artboard.
+         */
+        style={{
+          background: 'transparent',
+          width: 'calc(var(--u, 0.75px) * 1200)',
+          height: 'calc(var(--u, 0.75px) * 1800)',
+        }}
       />
     </div>
   );

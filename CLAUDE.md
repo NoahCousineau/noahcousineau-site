@@ -78,6 +78,17 @@ npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/star
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
 ```
 
+`http://localhost:3000/dev/mobile` — every route in live phone-sized frames,
+side by side, with a device and zoom control. Dev only (404s in production).
+Hot reload reaches inside the frames, so it is a place to edit from rather
+than just look at. See `src/app/dev/mobile/page.tsx`.
+
+Note that the artboard unit makes the whole design scale linearly with
+viewport WIDTH, so at 390px `--u` is 0.203 and the site is the desktop layout
+at a fifth the size — it fits, nothing overflows, but the smallest type lands
+around 4px. Making mobile READ means real layout decisions (reflow, a
+type floor, a different hero), not a bug fix.
+
 ## Verification habit
 
 After any visual/layout change: run `npm run build` (must exit 0), then
