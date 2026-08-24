@@ -61,6 +61,7 @@ import json
 
 import numpy as np
 import cv2
+from scipy import ndimage
 from PIL import Image
 from psd_tools import PSDImage
 from pymatting import estimate_foreground_ml
@@ -149,6 +150,77 @@ def defringe(rgba, lo=70.0, hi=170.0, target=(0.85, 0.62, 0.46), band_px=21):
     return np.clip(out * 255, 0, 255).astype(np.uint8)
 
 
+# --- the backdrop showing THROUGH the hair ---------------------------------
+#
+# 2026-08-23, Noah: "On the dark mode head rotation, there's still a bit of
+# weirdness happening with the hair."
+#
+# Not the same fault as defringe(), and that is the whole reason it survived
+# defringe(). Those pixels are the SEMI-transparent strands at the outline.
+# These are pale, desaturated patches sitting at alpha 255 well INSIDE the
+# silhouette — daylight coming through gaps between hair strands, which his
+# mask quite reasonably kept, since there is hair on all sides of them. In
+# DarkMode26.psd one such patch is 47x103px of RGB(190,182,176) surrounded by
+# hair at half that luminance. Every frame in the set has some, from 0.06% of
+# the head up to 0.86%, so as the turntable goes round they flicker in and out
+# — which is what "weirdness" looks like in motion.
+#
+# Alpha cannot find them: they are as opaque as the hair around them. What
+# separates them is that they are BRIGHT and NEUTRAL where hair is dark and
+# warm, and — the load-bearing test — that they are ENCLOSED BY HAIR. Being
+# bright and neutral on its own describes the gold of the sunglasses frame,
+# the lens highlights, and a specular on the nose; requiring that the
+# neighbourhood is already mostly hair excludes all three without naming any
+# of them, and keeps this from ever touching the face.
+#
+# They are FILLED with the local hair colour rather than made transparent.
+# Punching them through would show the yellow starburst behind the head as
+# bright holes in the hair, which trades a pale flicker for a worse one. The
+# fill colour is the mean of the hair actually around each pixel, so it
+# follows the parting and the light rather than flattening to one brown.
+SAT_LO, SAT_HI = 16.0, 32.0        # neutral enough to be backdrop, at 16 and under
+HOLE_LUM_LO, HOLE_LUM_HI = 135.0, 160.0
+HAIR_LUM, HAIR_WARM = 120.0, 12.0  # what counts as hair for the enclosure test
+ENCLOSE_RADIUS = 40
+ENCLOSE_LO, ENCLOSE_HI = 0.25, 0.40
+HOLE_FEATHER = 3
+
+
+def fill_hair_holes(rgba):
+    rgb = rgba[..., :3].astype(np.float32)
+    al = rgba[..., 3].astype(np.float32)
+    op = al > 240
+    lum = rgb.mean(2)
+    sat = rgb.max(2) - rgb.min(2)
+
+    hair = op & (lum < HAIR_LUM) & (rgb[..., 0] > rgb[..., 2] + HAIR_WARM)
+    k = 2 * ENCLOSE_RADIUS + 1
+    frac = ndimage.uniform_filter(hair.astype(np.float32), k)
+    den = np.maximum(frac, 1e-6)
+    local = np.stack(
+        [ndimage.uniform_filter(rgb[..., c] * hair, k) / den for c in range(3)], -1)
+
+    def ss(t):
+        t = np.clip(t, 0, 1)
+        return t * t * (3 - 2 * t)
+
+    w = (ss((lum - HOLE_LUM_LO) / (HOLE_LUM_HI - HOLE_LUM_LO))
+         * ss((SAT_HI - sat) / (SAT_HI - SAT_LO))
+         * ss((frac - ENCLOSE_LO) / (ENCLOSE_HI - ENCLOSE_LO)))
+    w[~op] = 0
+    # Dilate BEFORE blurring. A plain blur pulls the middle of a patch down
+    # along with its edges, and the first version of this reached a maximum
+    # weight of 0.61 — it lightened the blotches instead of removing them.
+    w = ndimage.gaussian_filter(
+        ndimage.grey_dilation(w, size=2 * HOLE_FEATHER + 1), HOLE_FEATHER)
+    w = np.minimum(w, 1.0)
+    w[~op] = 0
+
+    out = rgba.astype(np.float32).copy()
+    out[..., :3] = rgb * (1 - w[..., None]) + local * w[..., None]
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def dark_rgba(n):
     """Noah's edit, flattened and defringed. Cached — both steps are slow."""
     cache = f'{EDIT}/.flattened'
@@ -158,10 +230,14 @@ def dark_rgba(n):
     if not os.path.exists(flat) or os.path.getmtime(flat) < os.path.getmtime(src):
         PSDImage.open(src).composite().convert('RGBA').save(flat)
 
-    fringed = f'{cache}/DarkMode{n}.defringed.png'
+    # Holes first, then the outline. fill_hair_holes() reads the hair around
+    # each patch to decide what to put in it, and defringe() rewrites exactly
+    # that neighbourhood at the edge — running it first would have the fill
+    # sampling colours that are still moving.
+    fringed = f'{cache}/DarkMode{n}.holes-defringed.png'
     if not os.path.exists(fringed) or os.path.getmtime(fringed) < os.path.getmtime(flat):
         raw = np.array(Image.open(flat).convert('RGBA'))
-        Image.fromarray(defringe(raw)).save(fringed)
+        Image.fromarray(defringe(fill_hair_holes(raw))).save(fringed)
     return np.array(Image.open(fringed).convert('RGBA'))
 
 
