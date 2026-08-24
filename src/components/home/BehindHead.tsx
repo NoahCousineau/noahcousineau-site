@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Place } from "./Stage";
-import { BEHIND_SETS, PENCIL_MARKS } from "@/lib/behindHead";
+import { BEHIND_SETS } from "@/lib/behindHead";
 import {
   getHeadTick,
   headTickServerSnapshot,
@@ -18,6 +18,11 @@ import {
  * animation that we have behind the rotating head... There will now be four
  * new elements around the head. Furthest back is a red star, then a yellow
  * star, then my head, then the blue star, then the pencil marks."
+ *
+ * THE PENCIL MARKS ARE OUT for now — 2026-08-23: "Let's get rid of the pencil
+ * lines for now." Their artwork and PENCIL_MARKS in lib/behindHead.ts are
+ * deliberately left in place, since "for now" reads as a pause rather than a
+ * deletion; bringing them back is re-adding the layer, not re-cutting assets.
  *
  * ONE COMPONENT, FIVE LAYERS, AND THE HEAD IS NOT ONE OF THEM. Everything
  * here is absolutely positioned inside Hero's <Stage>, so paint order is
@@ -54,58 +59,32 @@ import {
  */
 // Centred on the head's own MEAN ink centre over a full rotation, measured
 // live at (473.8, 524.6) — the per-frame centre only wanders 467..476 x and
-// 521..528 y, so one fixed anchor holds for the whole turntable. Sized so
-// the head's height is ~59% of the star's, which is the proportion in Noah's
-// sketches (970 of 1620); the first pass at 848 put it at 67% and the neck
-// ran out past the star's lower edge.
-const YELLOW = { cx: 474, cy: 525, w: 960 };
+// 521..528 y, so one fixed anchor holds for the whole turntable.
+//
+// 960 -> 720, 2026-08-23: "Let's reduce the side of the yellow star by 25%."
+const YELLOW = { cx: 474, cy: 525, w: 720 };
 const RED = { cx: 185, cy: 185, w: 271 };
 const BLUE = { cx: 800, cy: 830, w: 404 };
 
 /**
- * The three pencil clusters. Noah: "There are three clusters of pencil lines.
- * Have each of them take different times to get to their final height. One
- * should be after 8 frames, another 10, and another 12."
+ * How the two growing stars behave, 2026-08-23: "Let's make the blue star not
+ * grow as much, same for the red star. Have the blue and red star go to their
+ * next frame every other head rotation frame. Stagger the blue and red star
+ * frames so they grow at different times."
  *
- * `rot` does double duty. It sets the slant — the strokes were photographed
- * hanging vertically and the sketches show them radiating away from the head
- * — and it also decides which end is the BASE, because the wipe below always
- * runs along the artwork's own bottom-to-top axis. A line looks identical
- * rotated by r or r+180, but its "bottom" ends up at opposite ends, so the
- * cluster below and left of the head is turned through 212° rather than 32°:
- * same slant on screen, base pointing back at the head, which is what makes
- * all three draw outwards from the centre.
+ * `range` trims the sequence rather than rescaling anything. The swing is the
+ * ratio between the biggest and smallest frame Noah shot, and with these
+ * assets the only honest way to shrink it is to use fewer of them: red's full
+ * 1-5 runs 2.9x and blue's 1-6 runs 2.5x, against 2.1x and 1.9x for the
+ * slices below. Rescaling frames to close the gap instead would fight the
+ * photographs, which are the growth.
  *
- * `mark` indexes PENCIL_MARKS. Four clusters were shot and three are used —
- * the fourth (index 2, a squarer set of shorter strokes) is left in the
- * manifest for swapping in, since which three read best is a design call.
+ * `every` is the frames-per-step divisor and `phase` the stagger. Both stars
+ * step at half the head's rate; the phase offset is what stops them peaking
+ * together, which they otherwise would every time their periods lined up.
  */
-const PENCILS = [
-  { mark: 0, cx: 633, cy: 112, w: 92, rot: 32, draw: 8 },
-  { mark: 1, cx: 917, cy: 278, w: 85, rot: 38, draw: 10 },
-  { mark: 3, cx: 100, cy: 878, w: 122, rot: 212, draw: 12 },
-];
-
-/**
- * How much of a pencil cluster is showing, as two fractions of its length
- * measured FROM THE BASE.
- *
- * Noah: "These will animate from their base outwards and will also erase
- * from base outwards, repeating their animation when the entire line is
- * cleared out." So the visible run is a window between the erase front and
- * the draw front: the draw front travels base→tip over `draw` frames, then
- * the erase front follows it over the same span, eating the line from the
- * base until nothing is left, and the cycle restarts. Erasing at the drawing
- * speed is the one thing Noah didn't specify; matching them keeps the
- * three clusters' cycles at a clean 2x their stated draw time.
- */
-function pencilWindow(tick: number, draw: number) {
-  const period = draw * 2;
-  let t = tick % period;
-  if (t < 0) t += period;
-  if (t < draw) return { from: 0, to: (t + 1) / draw };
-  return { from: (t - draw + 1) / draw, to: 1 };
-}
+const RED_GAIT = { range: [1, 4] as const, every: 2, phase: 0 };
+const BLUE_GAIT = { range: [0, 4] as const, every: 2, phase: 3 };
 
 /** A set of registered frames, all mounted, one visible. */
 function FrameStack({
@@ -149,6 +128,17 @@ function FrameStack({
   );
 }
 
+/** Frame index for a star, ping-ponging within its own trimmed range at its
+ *  own rate and phase. */
+function starFrame(
+  tick: number,
+  gait: { range: readonly [number, number]; every: number; phase: number }
+) {
+  const [lo, hi] = gait.range;
+  const n = hi - lo + 1;
+  return lo + pingPong(Math.floor(tick / gait.every) + gait.phase, n);
+}
+
 export default function BehindHead() {
   const tick = useSyncExternalStore(
     subscribeHeadTick,
@@ -174,7 +164,7 @@ export default function BehindHead() {
     <>
       {/* Furthest back, behind even the yellow star. */}
       <Place x={rp.x} y={rp.y} w={rp.w} className="z-0 pointer-events-none">
-        <FrameStack set={red} index={pingPong(tick, red.frames.length)} sizes="25vw" />
+        <FrameStack set={red} index={starFrame(tick, RED_GAIT)} sizes="25vw" />
       </Place>
 
       {/* The big shape the head sits on — what the old placeholder starburst
@@ -186,52 +176,9 @@ export default function BehindHead() {
       {/* ...the head is here, at z-10, rendered by Hero... */}
 
       <Place x={bp.x} y={bp.y} w={bp.w} className="z-20 pointer-events-none">
-        <FrameStack set={blue} index={pingPong(tick, blue.frames.length)} sizes="25vw" />
+        <FrameStack set={blue} index={starFrame(tick, BLUE_GAIT)} sizes="25vw" />
       </Place>
 
-      {/* Frontmost. The strokes are photographed graphite — black art on
-          transparency — so dark mode flips them white through the shared
-          .invert-on-dark utility rather than needing a second set of
-          artwork. Noah: "The only difference when we switch to dark mode is
-          that the pencil lines will be white." */}
-      {PENCILS.map((p) => {
-        const mark = PENCIL_MARKS[p.mark];
-        const h = p.w * (mark.height / mark.width);
-        const { from, to } = pencilWindow(tick, p.draw);
-        return (
-          <Place
-            key={p.mark}
-            x={p.cx - p.w / 2}
-            y={p.cy - h / 2}
-            w={p.w}
-            className="z-30 pointer-events-none"
-          >
-            <div style={{ transform: `rotate(${p.rot}deg)` }}>
-              <div
-                style={{
-                  // inset(top right bottom left): the visible window runs
-                  // from `from` to `to` measured off the bottom, so the top
-                  // inset is what the draw front has not reached yet and the
-                  // bottom inset is what the erase front has taken.
-                  clipPath: `inset(${(1 - to) * 100}% 0% ${from * 100}% 0%)`,
-                }}
-              >
-                <Image
-                  src={mark.src}
-                  alt=""
-                  width={mark.width}
-                  height={mark.height}
-                  sizes="10vw"
-                  unoptimized
-                  loading="eager"
-                  draggable={false}
-                  className="w-full h-auto select-none invert-on-dark"
-                />
-              </div>
-            </div>
-          </Place>
-        );
-      })}
     </>
   );
 }

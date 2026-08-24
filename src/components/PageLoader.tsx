@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import LoadingWorm from "./LoadingWorm";
 import { usePathname } from "next/navigation";
 import { getLenis } from "./SmoothScroll";
 import { markPageLoading, markPageReady } from "@/lib/pageReady";
@@ -16,13 +17,15 @@ import { markPageLoading, markPageReady } from "@/lib/pageReady";
  * let the page "pop in" piecemeal while images trickle in (looking
  * broken/unfinished), this shows a deliberate full-screen loading state
  * — the same pattern used by many high-production portfolio sites
- * (progress bar / animated mark while assets load, then a reveal).
+ * (an animated mark while assets load, then a reveal).
  *
- * THIS IS A PLACEHOLDER VISUAL — Noah said he'll redesign the actual
- * loading animation later. Do not treat the current visual (simple
- * pulsing wordmark + progress bar) as final; it exists only to prove out
- * the *mechanism* (gate content behind real asset-load progress) so the
- * visual can be swapped freely later without touching the loading logic.
+ * THE VISUAL IS NOW NOAH'S OWN (2026-08-23) — a red clay worm crawling
+ * across the floor with the word "loading" warped along its back, see
+ * LoadingWorm.tsx. It replaced the placeholder pulsing wordmark and
+ * percentage bar. Note that it deliberately shows NOTHING about progress:
+ * "it always keeps the same speed and never slows if the loading is taking
+ * some time." The gating logic below is untouched by that — it still waits
+ * on real asset loading; it just no longer reports how far along it is.
  *
  * HOW IT WORKS:
  * 1. Mounted with `key={pathname}` by the parent (see layout.tsx) — this
@@ -64,7 +67,6 @@ export default function PageLoader() {
 function PageLoaderInner() {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const startTimeRef = useRef<number>(0);
 
   /* Announce that a page is behind the curtain again, before anything paints.
@@ -81,7 +83,7 @@ function PageLoaderInner() {
     // Every mount of this component (one per route, thanks to the
     // `key={pathname}` wrapper above) starts its own fresh timer — no
     // manual state reset needed since useState's initial values above
-    // already give us visible=true/fading=false/progress=0 on mount.
+    // already give us visible=true/fading=false on mount.
     startTimeRef.current = Date.now();
 
     // ALWAYS LAND AT THE TOP OF A NEW PAGE (2026-08-23, per Noah, as a
@@ -129,13 +131,10 @@ function PageLoaderInner() {
       if (cancelled) return;
       const elements = getMediaElements();
       if (elements.length === 0) {
-        setProgress(100);
         finish();
         return;
       }
       const loadedCount = elements.filter(isMediaLoaded).length;
-      const pct = Math.round((loadedCount / elements.length) * 100);
-      setProgress(pct);
 
       const elapsed = Date.now() - startTimeRef.current;
       if (loadedCount === elements.length || elapsed >= MAX_WAIT_MS) {
@@ -148,7 +147,6 @@ function PageLoaderInner() {
       cancelled = true;
       if (pollId) clearInterval(pollId);
       if (observer) observer.disconnect();
-      setProgress(100);
       // The curtain is going up: anything that has been holding an entrance
       // back until it can actually be seen may start now. Signalled at the
       // START of the fade rather than after it, so a 400ms cross-fade reveals
@@ -198,54 +196,17 @@ function PageLoaderInner() {
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "24px",
         background: "var(--color-paper, #fff)",
         opacity: fading ? 0 : 1,
         transition: "opacity 400ms ease",
         pointerEvents: fading ? "none" : "auto",
       }}
     >
-      {/* PLACEHOLDER VISUAL — swap freely later. The pulsing wordmark +
-          progress bar only exist to prove the loading mechanism works;
-          Noah will redesign this. */}
-      <div
-        style={{
-          fontFamily: "var(--font-serif, Georgia, serif)",
-          fontStyle: "italic",
-          fontSize: "clamp(20px, 3vw, 32px)",
-          color: "var(--color-ink, #0d0d0d)",
-          animation: "pageLoaderPulse 1.4s ease-in-out infinite",
-        }}
-      >
-        Cousineau
-      </div>
-      <div
-        style={{
-          width: "min(240px, 60vw)",
-          height: "2px",
-          background: "rgba(13,13,13,0.12)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${progress}%`,
-            height: "100%",
-            background: "var(--color-ink, #0d0d0d)",
-            transition: "width 150ms ease-out",
-          }}
-        />
-      </div>
-      <style>{`
-        @keyframes pageLoaderPulse {
-          0%, 100% { opacity: 0.35; }
-          50% { opacity: 1; }
-        }
-      `}</style>
+      {/* Noah's crawling worm — replaced the pulsing "Cousineau" wordmark
+          and the percentage bar on 2026-08-23: "I would like for this to
+          replace the 'cousineau' type and the loading bar." It shows no
+          progress by design; see the note in LoadingWorm.tsx. */}
+      <LoadingWorm />
     </div>
   );
 }

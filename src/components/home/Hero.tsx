@@ -27,16 +27,41 @@ export default function Hero() {
   const RIGHT_MAX_W = 887;
 
   return (
-    // Stage height 900 -> 1080 (2026-08-20, per Noah: "add some more space
-    // between the top animation and the text area for more gravitas").
-    // Hero's own content (head, paper shapes, lockup) already fills its 900u
-    // box almost exactly (content spans y104-898), so that box had no
-    // built-in bottom margin at all — Description's first line began
-    // essentially right where Hero's content ended. The extra 180u lands
-    // here, as pure trailing space after Hero, rather than shifting every
-    // one of Description's fixed Place coordinates, which would touch that
-    // component's own internal composition for a gap that's really about
-    // the boundary BETWEEN the two sections.
+    /* ONE VIEWPORT TALL, AND THE COMPOSITION CENTRED IN IT (2026-08-23, per
+     * Noah: "Make sure the whole interaction and the 'noah cousineau graphic
+     * designer' is shifted upwards to be vertically centered in the frame.")
+     *
+     * Not a nudge upwards, because which way it needed to move depended on
+     * the window. Measured where the head-and-star mass actually landed
+     * against the viewport's middle: HIGH by 56px at 1440x900, high by 37 at
+     * 1512x900, high by 15 at 1920x1080 — but LOW by 75px at 1920x900. A
+     * fixed offset would have fixed one of those and worsened the rest.
+     *
+     * The cause is that `--u` is 1/1920 of the WIDTH, so this Stage's 1080u
+     * height grows with how wide the window is and has nothing to do with
+     * how tall it is. On a wide, short window — a large display, or any
+     * maximised browser on one — the Stage is taller than the viewport and
+     * the composition is pushed below centre. (Same shape of bug as the
+     * project header's rule, fixed the same day by moving it onto dvh.)
+     *
+     * So Hero gets its OWN `--u`, the smaller of the width-derived unit and
+     * a height-derived one. The artboard still governs the layout exactly as
+     * before; it just also promises never to need more height than there is,
+     * scaling the whole composition down instead on windows too short for
+     * it. Overriding the variable on this wrapper keeps it local — the
+     * Description and Projects sections below still inherit main's own
+     * width-based unit, which is what their fixed coordinates expect.
+     *
+     * Stage height 900 -> 1080 (2026-08-20, per Noah: "add some more space
+     * between the top animation and the text area for more gravitas").
+     */
+    <div
+      className="w-full flex items-center justify-center"
+      style={{
+        minHeight: "100dvh",
+        ["--u" as string]: "min(100cqw / 1920, 100dvh / 1080)",
+      }}
+    >
     <Stage heightUnits={1080} className="overflow-hidden">
       {/* Red star (z-0), yellow star (z-1), blue star (z-20) and the pencil
           marks (z-30) — Noah's photographed paper cut-outs, replacing the
@@ -69,5 +94,6 @@ export default function Hero() {
         <HeroLockup />
       </Place>
     </Stage>
+    </div>
   );
 }
