@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lightModeStaggeredAdjustments } from '@/lib/rotatingHeadConfig';
+import { setHeadTick } from '@/lib/headFrame';
 
 interface FrameAdjustment {
   x: number;
@@ -193,6 +194,31 @@ export default function RotatingHead({
   useEffect(() => {
     drawFrame(currentFrame);
   }, [currentFrame, isDarkMode, variant, drawFrame]);
+
+  /* Publish the rotation as a monotonic tick, so the stars and pencil marks
+   * behind the head can run on the same beat — see lib/headFrame.ts for why
+   * this accumulates a signed step instead of exporting `currentFrame`
+   * directly. Kept here rather than in the parent because this is the only
+   * place the frame actually advances (auto-rotation AND drag momentum both
+   * land in `currentFrame`). Writing to a module store is not React state,
+   * so this doesn't re-render anything that hasn't subscribed. */
+  const tickRef = useRef(0);
+  const prevFrameRef = useRef<number | null>(null);
+  useEffect(() => {
+    // `currentFrame` is fractional and can go negative while a drag has
+    // momentum, so this needs a true modulo, not `%`.
+    const f = ((Math.round(currentFrame) % TOTAL_FRAMES) + TOTAL_FRAMES) % TOTAL_FRAMES;
+    const prev = prevFrameRef.current;
+    if (prev !== null && f !== prev) {
+      let step = f - prev;
+      // The short way round: 30 -> 0 is one frame forward, not thirty back.
+      if (step > TOTAL_FRAMES / 2) step -= TOTAL_FRAMES;
+      if (step < -TOTAL_FRAMES / 2) step += TOTAL_FRAMES;
+      tickRef.current += step;
+      setHeadTick(tickRef.current);
+    }
+    prevFrameRef.current = f;
+  }, [currentFrame, TOTAL_FRAMES]);
 
   // Drag handler
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {

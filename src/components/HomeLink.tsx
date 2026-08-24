@@ -19,8 +19,17 @@ import { usePathname } from "next/navigation";
  * (the index) and /password stay off it, neither being a page you'd already
  * be reading long enough to want a way out mid-scroll.
  *
- * SAME SIZE AS THE SUNGLASSES: 16px tall, matching the sunglasses' native
- * viewBox height, so the two read as a pair sharing a corner.
+ * SIZED AGAINST THE SUNGLASSES: 24px (2026-08-23, Noah: "make the home page
+ * logo larger, the same height as the sunglasses").
+ *
+ * Taken as optical parity rather than literally, because literally it was
+ * already true and would have changed nothing: measured on the live page,
+ * this mark's ink was 16px tall against the sunglasses' 11.6px — the C was
+ * ALREADY the taller of the two. What made it read as small is that the
+ * sunglasses are 32px WIDE, so their mass is a broad bar while the C was a
+ * narrow ring. Rendered both at 16/20/24/28/34 side by side to pick: at 24
+ * the ring carries the same weight as the bar, and past 28 it starts to
+ * dominate the corner instead of pairing with it.
  *
  * THE MARK (2026-08-23, per Noah, replacing the placeholder house with his
  * own "C" roundel — see Personal Branding/Favicon.svg, identical to
@@ -49,8 +58,8 @@ export default function HomeLink() {
                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
     >
       <svg
-        width="16"
-        height="16"
+        width="24"
+        height="24"
         viewBox="0 0 191.54 191.54"
         aria-hidden="true"
         focusable="false"

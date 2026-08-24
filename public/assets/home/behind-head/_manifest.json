@@ -1,0 +1,37 @@
+{
+ "sets": {
+  "yellow": {
+   "frames": 8,
+   "width": 1000,
+   "height": 1000
+  },
+  "red": {
+   "frames": 5,
+   "width": 720,
+   "height": 745
+  },
+  "blue": {
+   "frames": 6,
+   "width": 820,
+   "height": 761
+  }
+ },
+ "pencils": [
+  {
+   "width": 460,
+   "height": 852
+  },
+  {
+   "width": 460,
+   "height": 846
+  },
+  {
+   "width": 460,
+   "height": 462
+  },
+  {
+   "width": 460,
+   "height": 911
+  }
+ ]
+}
