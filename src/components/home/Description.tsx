@@ -28,10 +28,21 @@ const LINES_CENTER_UNITS = (381 + 882) / 2;
 
 /** Top of "His work can be seen below.", artboard units. */
 const LINE4_TOP_UNITS = 1387;
+
+/** The Stage's own height, artboard units — 2460 -> 1810, 2026-08-23 per
+ *  Noah: "There's now a lot of space between the hand and the project grid
+ *  so let's reduce that as well." This governs the RUN-OUT: how much
+ *  document space Stage reserves after the pin releases before Projects
+ *  begins. Only needs to clear the rule at y1528 (+ its 6u) with a
+ *  deliberate but no longer padded-out gap — the outer clip that used to
+ *  make this number load-bearing for containment is gone (see the note at
+ *  the Stage below), so this is purely a spacing choice now. */
+const STAGE_HEIGHT_UNITS = 1500;
 /** Where that line comes to rest, as a fraction of viewport height from the
  *  top. Noah: "stop scroll about 3/4 up the page" — three quarters of the way
- *  UP is a quarter of the way DOWN. */
-const LINE4_TARGET_TOP = 0.25;
+ *  UP is a quarter of the way DOWN — then, once he saw it: "let's shift the
+ *  'his work can be seen below' and the hand up slightly more." 0.25 -> 0.17. */
+const LINE4_TARGET_TOP = 0.17;
 
 /* The fingertip, as a percentage of the hand artwork's own box — measured off
  * pointing-hand.png's alpha (topmost opaque pixel, 519/1597 across and
@@ -249,8 +260,27 @@ export default function Description() {
     // the Stage rather than to the individual <Place> coordinates keeps every
     // element's artboard position — and therefore the composition — exactly
     // as designed, and just lengthens the run-out before the projects grid.
+    //
+    // NO OUTER overflow-hidden (removed 2026-08-23). Each line already clips
+    // itself via its own tight reveal-mask (the overflow-hidden wrapper
+    // directly around each `.js-desc-line*`) — the outer one was redundant
+    // for that and turned out to be actively wrong once line 4 needed to
+    // travel to the TOP of the viewport: Stage is pinned wherever it happens
+    // to be on screen when the centering trigger fires, which is only ever
+    // ABOVE the viewport's top on wide/short screens. Measured on a 390x844
+    // (mobile) viewport: the centering math freezes Stage's own top edge at
+    // 294px down, but LINE4_TARGET_TOP=0.17 asks for content at 844*0.17 =
+    // 143px — ABOVE Stage's frozen top edge. With the clip in place, that
+    // was a real, reproducible bug: getBoundingClientRect reported the
+    // correct position (143px, on-screen) while the actual pixels were
+    // blank, because overflow-hidden on Stage discarded them regardless —
+    // it clips relative to STAGE's own frozen box, not to the viewport, so
+    // "on-screen" and "inside Stage's box" are different questions once
+    // content is asked to rise above where Stage itself is anchored. Desktop
+    // (1512x900) never showed this: that aspect ratio puts Stage's frozen
+    // top ABOVE y=0 (i.e., already above the viewport) with room to spare.
     <div ref={pinRef}>
-    <Stage heightUnits={2460} className="overflow-hidden">
+    <Stage heightUnits={STAGE_HEIGHT_UNITS}>
       <div ref={root} className="absolute inset-0">
         {/* Lines 1–3. Each is wrapped in an overflow-hidden mask so it can
             rise out from behind its own rule on scroll — see the LINE

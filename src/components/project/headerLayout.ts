@@ -15,39 +15,57 @@
  * drift, and the failure would show up as things hovering or sinking.
  */
 
-/** Header height, artboard units. Matches the proportion of Noah's mockup
- *  (a frame 1.82x as wide as it is tall), which puts the rule near the foot
- *  of the window at the widths the site is actually read at. */
-export const HEADER_HEIGHT_UNITS = 1056;
+/**
+ * Header height — VIEWPORT-HEIGHT based, not width based. 2026-08-23, Noah:
+ * "please move the bottom line of the header areas up more. It should be
+ * about 15% of the page height from the bottom."
+ *
+ * This used to be a pure artboard-unit height (1056u, ~55% of the WIDTH),
+ * which is exactly why it needed moving: `--u` is `100cqw / 1920`, tied to
+ * viewport WIDTH, so the rule's position relative to the viewport's HEIGHT
+ * swung all over the place depending on the window's aspect ratio. Measured
+ * on the live site before this change: 16.9% up from the bottom at
+ * 1512x900, but only 12.0% at 1920x1080, and 20.8% at 1280x800 — three
+ * different answers to "how far up is the rule" for the same design, none
+ * of them reliably "about 15%". A wide/short window — a large desktop
+ * display is exactly this shape — landed at the low end, which reads as
+ * "the line is too close to the bottom", the complaint that prompted this.
+ *
+ * Expressing the height itself as a share of `dvh` (see the RULE_SHARE note
+ * below for why 90%, and Footer.tsx for why `dvh` over `vh`) fixes the
+ * inconsistency at its root: the rule now lands at the same fraction of the
+ * viewport's HEIGHT everywhere, because it's finally measured against the
+ * thing Noah actually specified.
+ */
+const HEADER_HEIGHT_VH = 94.4;
 
 /**
  * ...but not below this, and the reason is that the TYPE has a floor and the
- * artboard unit does not.
+ * viewport unit does not.
  *
  * --text-project-title and the two credit sizes are clamp()ed with rem
- * minimums, so below roughly 1030px of viewport they stop shrinking while
- * `--u` keeps going. Measured at 390px: the title and credits together want
- * about 300px, and a header sized purely in units offered 214 — the credits
- * ran straight through the rule and were clipped by the section. (That
- * mismatch is older than this header; the ID card overflowed the hero image
- * the same way, it was just less obvious against a photograph.)
- *
- * 29rem leaves the type its 300px and still gives the objects room to fall
- * into. It only binds below ~843px of viewport width, where 0.55x the width
- * drops under it; at every larger size the unit-based height wins.
+ * minimums, so on a very short viewport they stop shrinking while a pure
+ * dvh height keeps going. 29rem is the same floor this header has always
+ * used — see the ORIGINAL note this replaced: measured at narrow/short
+ * viewports, the title and credits together want about 300px, and anything
+ * shorter ran the credits straight through the rule.
  */
 export const HEADER_MIN_HEIGHT = "29rem";
 
 /** The whole expression, so the two pages can't disagree about it. */
-export const HEADER_HEIGHT_CSS = `max(calc(var(--u) * ${HEADER_HEIGHT_UNITS}), ${HEADER_MIN_HEIGHT})`;
+export const HEADER_HEIGHT_CSS = `max(${HEADER_HEIGHT_VH}dvh, ${HEADER_MIN_HEIGHT})`;
 
 /**
- * Where the rule sits: 90% down, i.e. "about 10% above the bottom".
+ * Where the rule sits: 90% down the header, unchanged from the original
+ * "about 10% above the bottom" — only what the 100% now MEANS changed (the
+ * viewport's height, not the header's own width-derived one). Composed with
+ * HEADER_HEIGHT_VH above: 90% of 94.4dvh is 85dvh, i.e. 15% up from the
+ * bottom of the viewport, which is the number Noah actually asked for.
  *
- * A PERCENTAGE, not a unit count, because the header's height is no longer a
- * pure unit expression — at narrow widths the rem floor above takes over, and
- * a rule pinned at 950u would then sit wherever it happened to land rather
- * than 10% up from the bottom.
+ * Still a PERCENTAGE, not a unit count or a bare dvh value, because the
+ * header's height still isn't a pure dvh expression — the rem floor above
+ * takes over on short viewports, and a rule pinned at a fixed dvh would sit
+ * below the header's own bottom edge there instead of 10% up from it.
  */
 export const HEADER_RULE_PCT = "90%";
 

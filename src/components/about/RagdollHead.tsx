@@ -100,6 +100,28 @@ const ROLL_LOCK_RATE = 10;
 /** Below these, on the floor, the head is done. */
 const SLEEP_SPEED = 16;
 const SLEEP_SPIN = 8;
+
+/* --- balance/toppling — see topple() below for the full argument. Same
+ * mechanism as the project header's icon pile (useDropField.ts), ported
+ * here 2026-08-23 per Noah: "make sure that the head in the about me page
+ * follows the new and improved physics of the header icons." Values carried
+ * over as-is rather than re-tuned: this head and those icons already share
+ * every other constant in this file with useThrowable's, and a throw test
+ * (drag down-left, release) reproducibly settled the head resting on a
+ * single WISP OF HAIR — the support function correctly found that wisp as
+ * the true lowest opaque pixel (independently re-measured against the raw
+ * PNG to confirm it wasn't a bug), but a real head balanced on one hair
+ * would immediately topple further, not hang there. That is this file's own
+ * version of "objects can stand straight up when real life physics would
+ * have them roll onto their side." */
+const CONTACT_BAND = 0.012;
+const TOPPLE_DEADBAND = 0.02;
+const TOPPLE_GAIN = 900;
+const MAX_TOPPLE_LEVER = 3;
+const TOPPLE_MAX_SPIN = 80;
+/** Slack on "is a wall already holding this up", in px. */
+const PROP_TOLERANCE = 3;
+
 /** Throw ceiling, so a violent flick can't outrun the eye. */
 const MAX_THROW_SPEED = 2600;
 
@@ -117,12 +139,51 @@ type ShapeData = {
    * one multiply converts it to px at any rendered size. Index i is the
    * direction i degrees clockwise from screen-right. */
   support: Float32Array;
+  /** Convex hull of the silhouette, [x0,y0,x1,y1,...] relative to the
+   *  pivot, in WIDTH fractions — see the BALANCE note at topple() for why
+   *  this is carried alongside support. */
+  hull: Float32Array;
 };
 
 /** Reasonable guesses for the brief window before the PNG has decoded —
  * close enough that nothing looks broken if a drag happens immediately. */
 function defaultShape(): ShapeData {
-  return { pivot: { x: 0.5, y: 0.45 }, support: new Float32Array(BUCKET_COUNT).fill(0.35) };
+  const n = 24;
+  const hull = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    hull[i * 2] = Math.cos(t) * 0.35;
+    hull[i * 2 + 1] = Math.sin(t) * 0.35;
+  }
+  return { pivot: { x: 0.5, y: 0.45 }, support: new Float32Array(BUCKET_COUNT).fill(0.35), hull };
+}
+
+/** Andrew's monotone chain — same algorithm as lib/silhouette.ts, kept local
+ *  here rather than imported: this component deliberately runs its own copy
+ *  of the integrator (see the file header), and importing half of it while
+ *  leaving the rest independent would be a worse kind of coupling than
+ *  duplicating thirty lines. */
+function convexHull(pts: number[][]): number[][] {
+  if (pts.length < 3) return pts;
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: number[], a: number[], b: number[]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: number[][] = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0)
+      lower.pop();
+    lower.push(q);
+  }
+  const upper: number[][] = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const q = p[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0)
+      upper.pop();
+    upper.push(q);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
 }
 
 /** Support in an arbitrary direction (degrees, any range), as a fraction of
@@ -258,9 +319,21 @@ export default function RagdollHead({
         supportPx[b] = best;
       }
 
+      // Convex hull of the same edge points, for the balance test in
+      // topple() — see the note there for why support alone isn't enough.
+      const hullPts = convexHull(
+        Array.from({ length: n }, (_, i) => [edgeX[i] - pivotPx.x, edgeY[i] - pivotPx.y])
+      );
+      const hull = new Float32Array(hullPts.length * 2);
+      for (let i = 0; i < hullPts.length; i++) {
+        hull[i * 2] = hullPts[i][0] / W;
+        hull[i * 2 + 1] = hullPts[i][1] / W;
+      }
+
       shape.current = {
         pivot: { x: pivotPx.x / W, y: pivotPx.y / H },
         support: supportPx.map((v) => v / W),
+        hull,
       };
 
       // The CSS rotation origin follows the same measured pivot, so the
@@ -308,6 +381,67 @@ export default function RagdollHead({
       x: wrap.offsetLeft + shape.current.pivot.x * wrap.offsetWidth + pos.current.x,
       y: wrap.offsetTop + shape.current.pivot.y * wrap.offsetHeight + pos.current.y,
     });
+
+    /**
+     * GRAVITY'S TORQUE, not just its pull straight down. See the note at
+     * CONTACT_BAND above for what this fixes — the head resting balanced on
+     * a single strand of hair rather than rolling the rest of the way onto
+     * a stable, broad contact.
+     *
+     * Rotates the measured convex hull into screen space, takes whichever
+     * points sit within CONTACT_BAND of the lowest one ("on the floor"),
+     * and checks the pivot (x=0 in this hull-relative frame, since the
+     * pivot IS the origin the hull was built around) against that span. A
+     * span straddling x=0 is genuinely balanced — no torque. A span
+     * entirely to one side means gravity has a real moment arm, and the
+     * torque scales with how tall the pivot sits over how narrow the
+     * contact is (`lever`), same as a real object is far more precarious
+     * balanced on a point than lying on a broad flat side.
+     *
+     * `minX`/`maxX` (the side-wall bounds, in scope from the caller) gate
+     * this exactly like useDropField's propped() check: a head genuinely
+     * leaning into a side wall is stable there, not unbalanced, and
+     * shouldn't be driven to topple away from the thing holding it up.
+     */
+    const topple = (dt: number, minX: number, maxX: number, pivotX: number) => {
+      const hull = shape.current.hull;
+      if (hull.length < 6) return;
+      const rad = (rotationRef.current * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      let lowest = -Infinity;
+      for (let i = 0; i < hull.length; i += 2) {
+        const sy = hull[i] * sin + hull[i + 1] * cos;
+        if (sy > lowest) lowest = sy;
+      }
+      const band = CONTACT_BAND;
+      let spanMin = Infinity;
+      let spanMax = -Infinity;
+      for (let i = 0; i < hull.length; i += 2) {
+        const sx = hull[i] * cos - hull[i + 1] * sin;
+        const sy = hull[i] * sin + hull[i + 1] * cos;
+        if (sy >= lowest - band) {
+          if (sx < spanMin) spanMin = sx;
+          if (sx > spanMax) spanMax = sx;
+        }
+      }
+      if (!isFinite(spanMin)) return;
+
+      const nearest = spanMin > 0 ? spanMin : spanMax < 0 ? spanMax : 0;
+      if (nearest === 0 || Math.abs(nearest) < TOPPLE_DEADBAND) return;
+
+      // Leaning on a side wall is a stable pose — don't fight it.
+      const fallsLeft = nearest > 0;
+      if (fallsLeft && pivotX - minX <= PROP_TOLERANCE) return;
+      if (!fallsLeft && maxX - pivotX <= PROP_TOLERANCE) return;
+
+      const half = Math.max((spanMax - spanMin) / 2, TOPPLE_DEADBAND);
+      const lever = Math.min(MAX_TOPPLE_LEVER, Math.max(lowest, 0) / half);
+      const dir = fallsLeft ? -1 : 1;
+      if (spin.current * dir >= TOPPLE_MAX_SPIN) return;
+      spin.current += -nearest * lever * TOPPLE_GAIN * dt;
+    };
 
     /* Runs for as long as the component is mounted and skips the physics
      * while at rest. It used to stop and restart itself behind a rafRef
@@ -456,6 +590,13 @@ export default function RagdollHead({
           const rollSpin = (vel.current.x / rEff) * (180 / Math.PI);
           spin.current += (rollSpin - spin.current) * Math.min(1, ROLL_LOCK_RATE * dt);
           vel.current.x *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * dt);
+
+          // See topple() above: a real head resting on a single wisp of
+          // hair would keep rolling onto something broader, not hang
+          // there. Runs after friction/roll-lock so it has the frame's
+          // final `p.x`/wall bounds to check "is a wall already propping
+          // this up" against.
+          topple(dt, minX, maxX, p.x);
 
           if (
             Math.abs(vel.current.y) < SLEEP_SPEED &&
