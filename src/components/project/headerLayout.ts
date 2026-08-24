@@ -67,7 +67,10 @@ export const HEADER_HEIGHT_CSS = `max(${HEADER_HEIGHT_VH}dvh, ${HEADER_MIN_HEIGH
  * takes over on short viewports, and a rule pinned at a fixed dvh would sit
  * below the header's own bottom edge there instead of 10% up from it.
  */
-export const HEADER_RULE_PCT = "90%";
+/* 90% -> 92.5% (2026-08-23: "move the horizontal line on the project
+ * headers down just slightly"). Composed with HEADER_HEIGHT_VH that puts
+ * the rule at ~87.3dvh, i.e. 12.7% up from the bottom rather than 15%. */
+export const HEADER_RULE_PCT = "92.5%";
 
 /** Rule weight — the same 6u the home page's grid rules are drawn at. */
 export const HEADER_RULE_UNITS = 6;

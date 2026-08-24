@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Place } from "./Stage";
-import { BEHIND_SETS } from "@/lib/behindHead";
+import { BEHIND_SETS, PENCIL_MARKS } from "@/lib/behindHead";
 import {
   getHeadTick,
   headTickServerSnapshot,
@@ -19,10 +19,12 @@ import {
  * new elements around the head. Furthest back is a red star, then a yellow
  * star, then my head, then the blue star, then the pencil marks."
  *
- * THE PENCIL MARKS ARE OUT for now — 2026-08-23: "Let's get rid of the pencil
- * lines for now." Their artwork and PENCIL_MARKS in lib/behindHead.ts are
- * deliberately left in place, since "for now" reads as a pause rather than a
- * deletion; bringing them back is re-adding the layer, not re-cutting assets.
+ * ONE PENCIL GROUPING IS BACK — 2026-08-23, after a round with them all
+ * removed: "let's add one of the pencil groupings back on the homepage
+ * animation. Let's have this just be the second grouping and have it in the
+ * top right. Let's work on improving the speed and 'drawing' of each
+ * individual line. I would love if each of the three lines were drawn
+ * differently." See PENCIL below.
  *
  * ONE COMPONENT, FIVE LAYERS, AND THE HEAD IS NOT ONE OF THEM. Everything
  * here is absolutely positioned inside Hero's <Stage>, so paint order is
@@ -63,8 +65,16 @@ import {
 //
 // 960 -> 720, 2026-08-23: "Let's reduce the side of the yellow star by 25%."
 const YELLOW = { cx: 474, cy: 525, w: 720 };
-const RED = { cx: 185, cy: 185, w: 271 };
-const BLUE = { cx: 800, cy: 830, w: 404 };
+// Both stars sit ON the yellow star's edge, half-tucked behind it, the way
+// they do in Noah's sketches — 2026-08-23: "let's have the red star somewhat
+// behind the yellow start like the sketches. Let's also move the blue star
+// in, but make the size it grows smaller." Shrinking the yellow by a quarter
+// had left them both stranded out in white space, since their coordinates
+// were set against the bigger star. Each centre is now placed a little
+// inside the yellow's own radius (360u from its centre at 474,525) along the
+// direction it already sat in, so it overlaps rather than floats.
+const RED = { cx: 260, cy: 274, w: 271 };
+const BLUE = { cx: 744, cy: 778, w: 330 };
 
 /**
  * How the two growing stars behave, 2026-08-23: "Let's make the blue star not
@@ -83,8 +93,63 @@ const BLUE = { cx: 800, cy: 830, w: 404 };
  * step at half the head's rate; the phase offset is what stops them peaking
  * together, which they otherwise would every time their periods lined up.
  */
+/**
+ * The one pencil cluster, top right, with its three strokes drawn as three
+ * separate marks rather than one block wipe.
+ *
+ * Each stroke now has its OWN duration, its own pause before it starts, and
+ * its own rest once it is down — which is what "each of the three lines were
+ * drawn differently" needs, and what a single clip-path over the whole
+ * cluster could never give: that wiped a straight edge across all three at
+ * once, so they always grew in lockstep at the same rate. The strokes are
+ * split out of the cluster at build time (see split_strokes in
+ * build_behind.py), so each gets its own box to wipe.
+ *
+ * The numbers are deliberately uneven and not multiples of each other: three
+ * lines drawn at 5, 8 and 11 frames, starting 0/3/7 frames apart, take 44
+ * frames to return to the same relative state, so the group does not settle
+ * into a visible pulse.
+ */
+const PENCIL = {
+  mark: 1, // "just be the second grouping"
+  cx: 902,
+  cy: 168,
+  w: 108,
+  rot: 34,
+  /** per stroke: [frames to draw, frames to wait first, frames held down] */
+  strokes: [
+    { draw: 5, delay: 0, hold: 6 },
+    { draw: 8, delay: 3, hold: 4 },
+    { draw: 11, delay: 7, hold: 9 },
+  ],
+};
+
+/**
+ * How much of one stroke is showing, 0..1 from its base.
+ *
+ * Draw, hold, then erase from the base and wait out the rest of the cycle —
+ * the erase keeps Noah's original brief for these ("will also erase from base
+ * outwards, repeating their animation when the entire line is cleared out").
+ * Eased rather than linear: a hand-drawn line leaves the pencil quickly and
+ * arrives slowly, and a constant-rate wipe is the main thing that made the
+ * first version read as a mask sliding rather than a line being drawn.
+ */
+function strokeWindow(tick: number, sp: { draw: number; delay: number; hold: number }) {
+  const period = sp.delay + sp.draw + sp.hold + sp.draw;
+  let t = ((tick % period) + period) % period;
+  const ease = (v: number) => 1 - Math.pow(1 - v, 2.2);
+  if (t < sp.delay) return { from: 0, to: 0 };
+  t -= sp.delay;
+  if (t < sp.draw) return { from: 0, to: ease((t + 1) / sp.draw) };
+  t -= sp.draw;
+  if (t < sp.hold) return { from: 0, to: 1 };
+  t -= sp.hold;
+  return { from: ease((t + 1) / sp.draw), to: 1 };
+}
+
 const RED_GAIT = { range: [1, 4] as const, every: 2, phase: 0 };
-const BLUE_GAIT = { range: [0, 4] as const, every: 2, phase: 3 };
+// Blue trimmed again (0-4 -> 0-3): "make the size it grows smaller".
+const BLUE_GAIT = { range: [0, 3] as const, every: 2, phase: 3 };
 
 /** A set of registered frames, all mounted, one visible. */
 function FrameStack({
@@ -178,6 +243,61 @@ export default function BehindHead() {
       <Place x={bp.x} y={bp.y} w={bp.w} className="z-20 pointer-events-none">
         <FrameStack set={blue} index={starFrame(tick, BLUE_GAIT)} sizes="25vw" />
       </Place>
+
+      {/* Frontmost: the pencil cluster, each stroke on its own clock. Black
+          graphite on transparency, so dark mode flips it white through the
+          shared .invert-on-dark utility rather than a second set of art. */}
+      {(() => {
+        const mark = PENCIL_MARKS[PENCIL.mark];
+        const h = PENCIL.w * (mark.height / mark.width);
+        return (
+          <Place
+            x={PENCIL.cx - PENCIL.w / 2}
+            y={PENCIL.cy - h / 2}
+            w={PENCIL.w}
+            className="z-30 pointer-events-none"
+          >
+            <div
+              className="relative w-full"
+              style={{
+                aspectRatio: `${mark.width} / ${mark.height}`,
+                transform: `rotate(${PENCIL.rot}deg)`,
+              }}
+            >
+              {mark.strokes.map((st, i) => {
+                const sp = PENCIL.strokes[i % PENCIL.strokes.length];
+                const { from, to } = strokeWindow(tick, sp);
+                return (
+                  <div
+                    key={st.src}
+                    className="absolute"
+                    style={{
+                      left: `${st.x * 100}%`,
+                      top: `${st.y * 100}%`,
+                      width: `${st.w * 100}%`,
+                      height: `${st.h * 100}%`,
+                      // inset(top right bottom left): the window runs from
+                      // `from` to `to` measured off this stroke's own base.
+                      clipPath: `inset(${(1 - to) * 100}% 0% ${from * 100}% 0%)`,
+                    }}
+                  >
+                    <Image
+                      src={st.src}
+                      alt=""
+                      fill
+                      sizes="10vw"
+                      unoptimized
+                      loading="eager"
+                      draggable={false}
+                      className="object-fill select-none invert-on-dark"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </Place>
+        );
+      })()}
 
     </>
   );

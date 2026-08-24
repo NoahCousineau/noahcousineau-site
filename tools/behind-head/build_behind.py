@@ -174,6 +174,30 @@ def build_set(name, folder, out_w, normalise, quality):
     return dict(frames=len(frames), width=out_w, height=out_h)
 
 
+def split_strokes(mask):
+    """Label the separate pencil strokes inside one cluster.
+
+    2026-08-23, Noah, bringing one grouping back: "I would love if each of the
+    three lines were drawn differently." A cluster is a handful of strokes
+    that never touch, so plain 4-connected labelling separates them exactly —
+    no skeletonising or stroke tracing needed. Each is then exported on its
+    own with its offset inside the cluster, which is what lets the component
+    wipe them on independent clocks instead of running one mask over all of
+    them at once.
+    """
+    from scipy import ndimage as ndi
+    lab, n = ndi.label(mask)
+    out = []
+    for i in range(1, n + 1):
+        ys, xs = np.where(lab == i)
+        # Ignore matte specks; a real stroke is a good fraction of the frame.
+        if len(xs) < mask.size * 0.0004:
+            continue
+        out.append((int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())))
+    out.sort(key=lambda b: b[0])  # left to right
+    return out
+
+
 def build_pencils():
     folder, out_w, quality = PENCIL
     d = os.path.join(SRC, folder)
@@ -191,8 +215,26 @@ def build_pencils():
         h = int(round(crop.height * out_w / crop.width))
         crop = crop.resize((out_w, h), Image.LANCZOS)
         crop.save(os.path.join(dst, f"{i}.webp"), **webp(quality))
-        out.append(dict(width=out_w, height=h))
-        print(f"  pencil {i}: {crop.width}x{crop.height}")
+
+        # ...and each stroke on its own, positioned inside the cluster box.
+        cw, ch = s["x1"] - s["x0"] + 1, s["y1"] - s["y0"] + 1
+        mask = np.array(im)[s["y0"]:s["y1"] + 1, s["x0"]:s["x1"] + 1, 3] > ALPHA
+        strokes = []
+        for k, (bx0, by0, bx1, by1) in enumerate(split_strokes(mask), start=1):
+            sub = im.crop((s["x0"] + bx0, s["y0"] + by0,
+                           s["x0"] + bx1 + 1, s["y0"] + by1 + 1))
+            sw = max(1, round(sub.width * out_w / cw))
+            sh = max(1, round(sub.height * out_w / cw))
+            sub.resize((sw, sh), Image.LANCZOS).save(
+                os.path.join(dst, f"{i}-{k}.webp"), **webp(quality))
+            strokes.append(dict(
+                src=f"{i}-{k}.webp", width=sw, height=sh,
+                # position inside the cluster, as fractions of its box
+                x=round(bx0 / cw, 5), y=round(by0 / ch, 5),
+                w=round((bx1 - bx0 + 1) / cw, 5), h=round((by1 - by0 + 1) / ch, 5),
+            ))
+        out.append(dict(width=out_w, height=h, strokes=strokes))
+        print(f"  pencil {i}: {crop.width}x{crop.height}, {len(strokes)} strokes")
     return out
 
 
@@ -217,7 +259,24 @@ export type BehindSet = {
   height: number;
 };
 
-export type PencilMark = { src: string; width: number; height: number };
+/** One stroke of a cluster, placed as fractions of the cluster's own box. */
+export type PencilStroke = {
+  src: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type PencilMark = {
+  src: string;
+  width: number;
+  height: number;
+  /** The cluster's strokes, left to right, each drawable on its own. */
+  strokes: PencilStroke[];
+};
 
 '''
 
@@ -241,8 +300,15 @@ def write_ts(sets, pencils):
     for i, p in enumerate(pencils, start=1):
         lines.append(
             f'  {{ src: "/assets/home/behind-head/pencil/{i}.webp", '
-            f'width: {p["width"]}, height: {p["height"]} }},'
+            f'width: {p["width"]}, height: {p["height"]}, strokes: ['
         )
+        for st in p["strokes"]:
+            lines.append(
+                f'    {{ src: "/assets/home/behind-head/pencil/{st["src"]}", '
+                f'width: {st["width"]}, height: {st["height"]}, '
+                f'x: {st["x"]}, y: {st["y"]}, w: {st["w"]}, h: {st["h"]} }},'
+            )
+        lines.append("  ] },")
     lines.append("];")
     lines.append("")
     with open(TS_OUT, "w") as f:

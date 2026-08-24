@@ -19,7 +19,7 @@ import { usePathname } from "next/navigation";
  * (the index) and /password stay off it, neither being a page you'd already
  * be reading long enough to want a way out mid-scroll.
  *
- * SIZED AGAINST THE SUNGLASSES: 24px (2026-08-23, Noah: "make the home page
+ * SIZED AGAINST THE SUNGLASSES: 30px (24 on the first pass) (2026-08-23, Noah: "make the home page
  * logo larger, the same height as the sunglasses").
  *
  * Taken as optical parity rather than literally, because literally it was
@@ -52,14 +52,26 @@ export default function HomeLink() {
       href="/"
       aria-label="Back to home"
       title="Home"
-      className="fixed top-5 left-5 z-[60]
+      style={{ left: "calc(min(100vw, 1920px) / 20)" }}
+      /* Left edge on the page-title column rather than a flat 20px corner
+         inset — 2026-08-23: "have it align better with the section titles as
+         well." Measured on a project page: the page title starts at 96
+         artboard units (75.6px at a 1512 viewport) and the sticky SECTION
+         titles at 178u. Aligned to the title, not the section headings, for
+         one concrete reason: those headings stick to top:0 and occupy y
+         12-60px, which is exactly where this sits, so sharing their column
+         would put the mark on top of them every time one stuck. 96u is the
+         nearest column that cannot collide. `--u` is defined on <main> and
+         this is fixed outside it, so the same value is spelled out against
+         the artboard's own 1920 cap. */
+      className="fixed top-5 z-[60]
                  p-2 -m-2 cursor-pointer select-none
                  transition-opacity duration-200 hover:opacity-60
                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
     >
       <svg
-        width="24"
-        height="24"
+        width="30"
+        height="30"
         viewBox="0 0 191.54 191.54"
         aria-hidden="true"
         focusable="false"

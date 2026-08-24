@@ -19,7 +19,24 @@ export type BehindSet = {
   height: number;
 };
 
-export type PencilMark = { src: string; width: number; height: number };
+/** One stroke of a cluster, placed as fractions of the cluster's own box. */
+export type PencilStroke = {
+  src: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type PencilMark = {
+  src: string;
+  width: number;
+  height: number;
+  /** The cluster's strokes, left to right, each drawable on its own. */
+  strokes: PencilStroke[];
+};
 
 
 export const BEHIND_SETS: Record<string, BehindSet> = {
@@ -41,8 +58,26 @@ export const BEHIND_SETS: Record<string, BehindSet> = {
 };
 
 export const PENCIL_MARKS: PencilMark[] = [
-  { src: "/assets/home/behind-head/pencil/1.webp", width: 460, height: 852 },
-  { src: "/assets/home/behind-head/pencil/2.webp", width: 460, height: 846 },
-  { src: "/assets/home/behind-head/pencil/3.webp", width: 460, height: 462 },
-  { src: "/assets/home/behind-head/pencil/4.webp", width: 460, height: 911 },
+  { src: "/assets/home/behind-head/pencil/1.webp", width: 460, height: 852, strokes: [
+    { src: "/assets/home/behind-head/pencil/1-1.webp", width: 91, height: 528, x: 0.0, y: 0.38032, w: 0.19704, h: 0.61968 },
+    { src: "/assets/home/behind-head/pencil/1-2.webp", width: 66, height: 823, x: 0.4532, y: 0.0, w: 0.14286, h: 0.96543 },
+    { src: "/assets/home/behind-head/pencil/1-3.webp", width: 91, height: 440, x: 0.80296, y: 0.40957, w: 0.19704, h: 0.51596 },
+  ] },
+  { src: "/assets/home/behind-head/pencil/2.webp", width: 460, height: 846, strokes: [
+    { src: "/assets/home/behind-head/pencil/2-1.webp", width: 78, height: 596, x: 0.0, y: 0.27068, w: 0.17051, h: 0.70426 },
+    { src: "/assets/home/behind-head/pencil/2-2.webp", width: 55, height: 778, x: 0.4424, y: 0.0, w: 0.11982, h: 0.9198 },
+    { src: "/assets/home/behind-head/pencil/2-3.webp", width: 140, height: 577, x: 0.69585, y: 0.3183, w: 0.30415, h: 0.6817 },
+  ] },
+  { src: "/assets/home/behind-head/pencil/3.webp", width: 460, height: 462, strokes: [
+    { src: "/assets/home/behind-head/pencil/3-1.webp", width: 74, height: 265, x: 0.0, y: 0.3042, w: 0.1614, h: 0.57343 },
+    { src: "/assets/home/behind-head/pencil/3-2.webp", width: 74, height: 462, x: 0.25263, y: 0.0, w: 0.1614, h: 1.0 },
+    { src: "/assets/home/behind-head/pencil/3-3.webp", width: 50, height: 289, x: 0.59298, y: 0.32168, w: 0.10877, h: 0.62587 },
+    { src: "/assets/home/behind-head/pencil/3-4.webp", width: 103, height: 383, x: 0.77544, y: 0.11538, w: 0.22456, h: 0.82867 },
+  ] },
+  { src: "/assets/home/behind-head/pencil/4.webp", width: 460, height: 911, strokes: [
+    { src: "/assets/home/behind-head/pencil/4-1.webp", width: 60, height: 264, x: 0.0, y: 0.71066, w: 0.13065, h: 0.28934 },
+    { src: "/assets/home/behind-head/pencil/4-2.webp", width: 76, height: 481, x: 0.20101, y: 0.43909, w: 0.16583, h: 0.52792 },
+    { src: "/assets/home/behind-head/pencil/4-3.webp", width: 86, height: 902, x: 0.50251, y: 0.0, w: 0.18593, h: 0.98985 },
+    { src: "/assets/home/behind-head/pencil/4-4.webp", width: 83, height: 650, x: 0.8191, y: 0.26396, w: 0.1809, h: 0.7132 },
+  ] },
 ];

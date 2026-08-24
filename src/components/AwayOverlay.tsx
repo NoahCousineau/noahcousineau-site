@@ -22,7 +22,8 @@ import { ArcText, BottomArcText } from "./ArcText";
  * IT APPEARS ON TWO TRIGGERS:
  *
  * 1. IDLE (2026-08-20, per Noah: "Let's have this page appear after the
- *    user is inactive on the site for 25 seconds.") Tracked with a single
+ *    user is inactive on the site for 25 seconds." Raised to 30s on
+ *    2026-08-23 — see IDLE_MS.) Tracked with a single
  *    one-second poll against a last-activity timestamp rather than a timer
  *    that gets torn down and rebuilt on every mousemove — pointer moves
  *    arrive dozens of times a second and only need to stamp a number.
@@ -55,7 +56,13 @@ import { ArcText, BottomArcText } from "./ArcText";
  */
 
 /** Inactivity before the panel appears. */
-const IDLE_MS = 25_000;
+/* 25s -> 30s, 2026-08-23: "I feel like the clock screen comes up too
+ * frequently. Let's have it so it only comes up 30 seconds after the user is
+ * actively not using or hovering over the site." The hovering half of that
+ * was already handled — `mousemove` is in ACTIVITY below, so a cursor moving
+ * anywhere over the page keeps stamping the clock; only a genuinely still
+ * pointer counts as idle. */
+const IDLE_MS = 30_000;
 /** How often the idle poll checks the activity stamp. */
 const IDLE_POLL_MS = 1000;
 /** Debounce on the leave triggers, so an alt-tab bounce or focus brushing

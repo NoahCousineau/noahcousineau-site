@@ -414,6 +414,20 @@ export function ProjectStatement({
           // to a start position that can never be crossed, rather than
           // throwing, means a torn-down trigger is inert instead of
           // poisoning every other trigger's next refresh.
+          /* FIRES ONCE THE COPY HAS LEFT THE SCREEN (2026-08-23, Noah: "I'm
+           * noticing the hand will rotate down on the site and fall, but the
+           * last sentence or so from the description text is still visible.
+           * Let's move the hand down more so its the only thing that can be
+           * seen when its interaction plays.")
+           *
+           * This used to fire when the paragraph's bottom edge reached the
+           * hand's own sticky line, which is near the top of the window — so
+           * the last line or two were still sitting just above the hand as it
+           * swung. Keying off the viewport's top edge instead, with a margin
+           * past it, means the trigger cannot fire until the text is
+           * genuinely gone. The hand's resting line also moves down (see the
+           * sticky wrapper below) so it plays nearer the middle of an empty
+           * screen rather than hard against the top of one. */
           start: () => {
             const el = handStickyRef.current;
             // A trigger position past any real document height — a torn-
@@ -421,7 +435,7 @@ export function ProjectStatement({
             // crashing the refresh that every OTHER trigger on the page
             // depends on completing.
             if (!el) return 1e9;
-            return `bottom ${parseFloat(getComputedStyle(el).top)}px`;
+            return "bottom top-=80";
           },
           once: true,
         },
@@ -583,7 +597,10 @@ export function ProjectStatement({
             zIndex: 100,
           }}
         >
-          <div ref={handStickyRef} className="sticky" style={{ top: "calc(var(--u) * 100)" }}>
+          {/* 100u -> 320u: the hand rests nearer the middle of the window,
+              so the fall reads against empty page rather than starting at
+              its very top edge. See the trigger note above. */}
+          <div ref={handStickyRef} className="sticky" style={{ top: "calc(var(--u) * 320)" }}>
             {/* Rotation wrapper for the end-of-paragraph swing (see the
                 effect above). Kept separate from the sticky element so the
                 two transforms never fight: sticky owns the vertical

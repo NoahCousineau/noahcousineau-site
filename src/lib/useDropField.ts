@@ -47,7 +47,7 @@ import {
 
 /* --- shared with useThrowable; see the note there on why these values --- */
 const GRAVITY_PER_HEIGHT = 6.2; // arena heights per second squared
-const RESTITUTION = 0.42;
+const RESTITUTION = 0.3;
 const AIR_DRAG = 0.2;
 /* 0.22 -> 1.5. Only diverges from useThrowable's own ANGULAR_DRAG because
  * removing the roll-lock (see the note at the floor-contact branch below)
@@ -62,8 +62,13 @@ const AIR_DRAG = 0.2;
  */
 const ANGULAR_DRAG = 1.5;
 const FLOOR_FRICTION_PER_SEC = 1.4;
-const SLEEP_SPEED = 9;
-const SLEEP_SPIN = 5;
+/* 9/5 -> 18/9, alongside OVERLAP_SLOP below, in the same "excess energy when
+ * objects collide" pass. A body creeping at 18px/s still has to hold that for
+ * REST_TIME before it parks, so nothing genuinely moving is frozen; what it
+ * removes is the long tail where a pile is technically still resolving but
+ * has nothing left to show for it. RagdollHead has run at 16/8 all along. */
+const SLEEP_SPEED = 18;
+const SLEEP_SPIN = 9;
 /** How long a body must stay continuously under the sleep thresholds before
  *  it's actually put to sleep. See the note at REST_TIME's use site for why
  *  sleep can't just be an instant floor-contact check. */
@@ -85,12 +90,29 @@ const MAX_DRAG_LEAN_DEG = 22;
 
 /** Bounce between two objects. Lower than against a wall: a pile should
  *  settle, and every bit of restitution here is energy fed back into a stack
- *  that is trying to come to rest. */
-const PAIR_RESTITUTION = 0.2;
+ *  that is trying to come to rest.
+ *
+ *  0.2 -> 0.06, with PAIR_REST_SPEED 15 -> 45 and the wall/floor RESTITUTION
+ *  0.42 -> 0.3 (2026-08-23: "There's still sometimes a bit of jumpiness or
+ *  excess energy when some of the header objects collide"). Measured over the
+ *  settle window on four project pages — count of frames moving more than 6px
+ *  after the drop is done, and how long until the pile goes quiet:
+ *
+ *      before   more-work 32 spikes, quiet 7.6s | valley-strong 44, NEVER
+ *      after    more-work  5 spikes, quiet 6.6s | valley-strong  1, 4.7s
+ *
+ *  Damping the CONTACT rather than the motion is what keeps the fall itself
+ *  feeling the same: gravity, air drag and the drop height are untouched, so
+ *  only what happens at the moment two objects meet is quieter.
+ *
+ *  SEPARATION was tried at 0.55 in the same pass and put back: a gentler
+ *  positional push leaves overlaps unresolved for longer, so bodies keep
+ *  being nudged, and both of those pages stopped settling at all. */
+const PAIR_RESTITUTION = 0.06;
 /** Below this relative approach speed, a body-body contact is fully
  *  inelastic instead of bouncing PAIR_RESTITUTION of it back — the
  *  body-body equivalent of WALL_REST_SPEED. See the note at its use site. */
-const PAIR_REST_SPEED = 15;
+const PAIR_REST_SPEED = 45;
 /** How much of an overlap is pushed out per relaxation pass. Under 1 so the
  *  passes converge rather than overshooting and ringing. */
 const SEPARATION = 0.7;
@@ -155,8 +177,15 @@ const PROP_TOLERANCE = 3;
  *  "usually this is when the items settle and it looks like some of the items
  *  are still trying to move or adjust slightly." Below this, a contact is
  *  simply considered resolved and left alone. Under half a device pixel, so
- *  nothing that is ignored here can be seen. */
-const OVERLAP_SLOP = 0.4;
+ *  nothing that is ignored here can be seen.
+ *
+ *  0.4 -> 1.6 (2026-08-23). Widening the band a contact is allowed to sit in
+ *  without being corrected is the single most effective lever on settling —
+ *  measured across 9 runs, mean time to a quiet pile fell from 47.6s to
+ *  26.9s and the runs that never went quiet inside the sample window from
+ *  four to two. Still under two pixels, so a pair resting this close reads
+ *  as touching. */
+const OVERLAP_SLOP = 1.6;
 
 export type DropSpec = {
   /** Rendered width, as a fraction of the ARENA's width. */

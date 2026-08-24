@@ -33,6 +33,17 @@ import {
  *  site, which puts the crawl at about nine seconds to cross the screen. */
 const STEP_MS = 130;
 
+/* 2026-08-23: "It would be nice if he was a little smaller. Make him start
+ * more from the left side of the screen, maybe about 25% from the left."
+ *
+ * The scale is taken about the worm's own footing on the floor, so shrinking
+ * it doesn't lift it off the ground, and the travel is applied INSIDE that
+ * scale so his stride shrinks with him rather than a smaller worm covering
+ * the same distance per step. */
+const SCALE = 0.8;
+/** Where his middle starts, as a fraction across the frame. */
+const START_CENTRE = 0.25;
+
 export default function LoadingWorm() {
   const [tick, setTick] = useState(0);
 
@@ -58,6 +69,10 @@ export default function LoadingWorm() {
   const travel = ((cycles * WORM_CYCLE_ADVANCE + behind) % span) - behind;
 
   const bandH = WORM_BAND.y1 - WORM_BAND.y0;
+  const first = WORM_STEPS[0];
+  const centre0 = first.x + first.w / 2;
+  const shift = START_CENTRE * WORM_VIEWBOX.w - centre0;
+  const floor = WORM_BAND.y1;
 
   return (
     <div
@@ -81,6 +96,10 @@ export default function LoadingWorm() {
         // whatever shape the window happens to be.
         style={{ display: "block", height: "auto", overflow: "visible" }}
       >
+        <g transform={`translate(${shift} 0)`}>
+        <g
+          transform={`translate(${centre0} ${floor}) scale(${SCALE}) translate(${-centre0} ${-floor})`}
+        >
         <g transform={`translate(${travel} 0)`}>
           <image
             href={step.src}
@@ -94,6 +113,8 @@ export default function LoadingWorm() {
               screen sits on --color-paper, which is near-black in dark mode,
               and the type has to invert with it. */}
           <path d={step.letters} fill="var(--color-ink)" />
+        </g>
+        </g>
         </g>
       </svg>
     </div>
