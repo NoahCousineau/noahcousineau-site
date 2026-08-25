@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { projects, assetPath } from "@/lib/projects";
+import WorkIndexPhoneGuard from "./WorkIndexPhoneGuard";
 
 export const metadata = {
   title: "Work — Noah Cousineau",
@@ -10,6 +11,8 @@ export const metadata = {
 export default function WorkIndex() {
   return (
     <main className="px-(--gutter) py-[16vh] max-w-(--maxw) mx-auto">
+      {/* Phones are sent home from here — see the component. */}
+      <WorkIndexPhoneGuard />
       <h1
         className="uppercase leading-[0.85] tracking-tight mb-[10vh]"
         style={{ fontSize: "var(--text-display)" }}

@@ -45,6 +45,12 @@ import { headAsset, HEAD_LIGHT, type HeadAsset } from "@/lib/headAssets";
 const REVEAL_FRACTION = 0.66;
 /** Head width in artboard units. */
 const HEAD_WIDTH_UNITS = 300;
+/* 2026-08-25, phones only: "Have the head now at the bottom center of the
+ * phone. Have it larger than it currently is." 300 -> 620 units, which at a
+ * 390px screen is 126px of head against 61px — and everything downstream
+ * (the reveal fraction, the eye anchoring, the tracking) is expressed as a
+ * fraction of this, so only the one number moves. */
+const PHONE_HEAD_WIDTH_UNITS = 620;
 
 /**
  * Mean eye position for a variant, as a fraction of its own box.
@@ -81,14 +87,19 @@ const LIGHT_EYE = eyeCentre(HEAD_LIGHT);
  *  eyes sit h(1-eyeY) above that, so the two h terms collapse to this. */
 const EYE_ABOVE_BOTTOM_UNITS = LIGHT_HEIGHT_UNITS * (REVEAL_FRACTION - LIGHT_EYE.y);
 
+export { PHONE_HEAD_WIDTH_UNITS };
+
 export default function PeekingHead({
   /** Horizontal centre, in artboard units. Defaults to the page centre; the
    * footer places it under its right-hand link columns instead (2026-08-20,
    * per Noah: "shift the head over so it's below the 'about me' and email
    * link"). */
   centerXUnits = 960,
+  widthUnits = HEAD_WIDTH_UNITS,
 }: {
   centerXUnits?: number;
+  /** Overridden on phones — see PHONE_HEAD_WIDTH_UNITS. */
+  widthUnits?: number;
 }) {
   /* Sized from the CURRENT theme's own aspect rather than one fixed number.
    * With a single hardcoded height the shorter dark head was letterboxed
@@ -99,7 +110,7 @@ export default function PeekingHead({
    * was always meant to control. */
   const { theme } = useTheme();
   const asset = headAsset(theme);
-  const heightUnits = HEAD_WIDTH_UNITS / asset.aspectVal;
+  const heightUnits = widthUnits / asset.aspectVal;
   const eye = eyeCentre(asset);
 
   /* Position the box so this variant's OWN eye line lands on the shared
@@ -107,17 +118,22 @@ export default function PeekingHead({
    * eyes fall where they may. Both heads end up showing the same amount of
    * themselves BELOW the eyes, which is the part the window crops — so the
    * cut reads as the same cut in both themes. */
-  const bottomUnits = EYE_ABOVE_BOTTOM_UNITS - heightUnits * (1 - eye.y);
+  // The eye line's height above the window's bottom edge scales with the
+  // head, or a bigger head would sit with its eyes in the same place and the
+  // rest of it off the bottom of the screen.
+  const eyeAboveBottom =
+    EYE_ABOVE_BOTTOM_UNITS * (widthUnits / HEAD_WIDTH_UNITS);
+  const bottomUnits = eyeAboveBottom - heightUnits * (1 - eye.y);
   /* And the same for the horizontal: nudge by the difference between this
    * variant's eye centre and the light one's, so the sockets stay put
    * side-to-side too (the dark crop's are ~1% of the head further left). */
-  const eyeShiftUnits = HEAD_WIDTH_UNITS * (LIGHT_EYE.x - eye.x);
+  const eyeShiftUnits = widthUnits * (LIGHT_EYE.x - eye.x);
 
   return (
     <div
       className="absolute pointer-events-none select-none"
       style={{
-        width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
+        width: `calc(var(--u) * ${widthUnits})`,
         bottom: `calc(var(--u) * ${bottomUnits})`,
         left: `calc(var(--u) * ${centerXUnits})`,
         transform: `translateX(calc(-50% + var(--u) * ${eyeShiftUnits}))`,

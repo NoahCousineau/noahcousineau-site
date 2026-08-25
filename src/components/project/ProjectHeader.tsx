@@ -17,6 +17,7 @@ import {
   HEADER_RULE_UNITS,
   HEADER_INSET_UNITS,
 } from "./headerLayout";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 /*
  * PROJECT PAGE HEADER (2026-08-22, icons round 2026-08-23).
@@ -60,6 +61,14 @@ const DROP_STAGGER_MS = 130;
  * every other icon on the page is measured against, since it "should always
  * be the largest icon"). */
 const ICON_SCALE = 0.72;
+/* 2026-08-25, phones: "Double the size of all the icons respectively." One
+ * multiplier on the scale every icon is already measured against, so the
+ * hero icon stays the largest and the relative sizes are untouched. */
+const PHONE_ICON_SCALE = 2;
+/* ...and "Move the title down as to not conflict with the 'C' logo." The
+ * mark is fixed near the top-left; the header's own inset is 40 units, which
+ * on a 390px screen is 8px and puts the title straight under it. */
+const PHONE_TITLE_TOP_UNITS = 300;
 
 /** Where the project's own icon comes down. */
 const ICON_X = 0.807;
@@ -203,6 +212,7 @@ export default function ProjectHeader({
   title: string[];
   credits: Credit[];
 }) {
+  const phone = useIsPhone();
   const arenaRef = useRef<HTMLDivElement>(null);
   const object = PROJECT_OBJECTS[slug];
   const icons = HEADER_ICONS[slug] ?? NO_ICONS;
@@ -217,8 +227,9 @@ export default function ProjectHeader({
    * drop with real physics and will be able to be moved around" names no
    * exception. */
   const iconSrc = object ? object.frames[object.heroFrame - 1] : undefined;
+  const iconScale = phone ? ICON_SCALE * PHONE_ICON_SCALE : ICON_SCALE;
   const iconWidth = object
-    ? ICON_SCALE * ((object.heightFraction * object.width) / object.height)
+    ? iconScale * ((object.heightFraction * object.width) / object.height)
     : 0;
 
   /* RANDOMISED ONCE PER PAGE LOAD, per Noah: "Everytime the site loads, the
@@ -289,6 +300,11 @@ export default function ProjectHeader({
     armDelay: reduced ? 0 : DROP_DELAY_MS,
     dropFrom: reduced ? 0.02 : 0.45,
     enabled: revealed,
+    /* 2026-08-25, phones: "Instead of being able to click and drag the icons,
+     * the mobile version will have them react to the orientation of the
+     * phone... similar to how the Wii motion control worked." */
+    tilt: phone,
+    draggable: !phone,
   });
 
   return (
@@ -351,7 +367,9 @@ export default function ProjectHeader({
       <div
         className="absolute z-20 pointer-events-none"
         style={{
-          top: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
+          top: `calc(var(--u) * ${
+            phone ? PHONE_TITLE_TOP_UNITS : HEADER_INSET_UNITS
+          })`,
           left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
         }}

@@ -220,6 +220,9 @@ type Body = {
   released: boolean;
   asleep: boolean;
   held: boolean;
+  /** Set once the body has fully entered the arena; gates the ceiling, which
+   *  must not exist while it is still dropping in. See the wall pass. */
+  inside: boolean;
   /** Seconds this body has spent continuously under the sleep thresholds.
    *  See REST_TIME. */
   calm: number;
@@ -238,13 +241,49 @@ export function useDropField({
    *  motion path keeps the objects without animating them in. */
   dropFrom = 0.45,
   enabled = true,
+  tilt = false,
+  draggable = true,
 }: {
   arenaRef: React.RefObject<HTMLElement | null>;
   specs: DropSpec[];
   armDelay?: number;
   dropFrom?: number;
   enabled?: boolean;
+  /** Take the gravity direction from the device's own orientation — see
+   *  the TILT note below. Phones only. */
+  tilt?: boolean;
+  /** Whether objects can be picked up and thrown. Off on phones, where the
+   *  tilt IS the interaction. */
+  draggable?: boolean;
 }) {
+  /* WHICH WAY IS DOWN (2026-08-25).
+   *
+   * Noah, for phones: "Instead of being able to click and drag the icons,
+   * the mobile version will have them react to the orientation of the phone.
+   * If the phone is held vertically, they'll fall straight down. If the phone
+   * is tilted to the right, they'll fall along the right side of the screen.
+   * If the phone is tilted to the left, then they'll fall to the left side of
+   * the screen. If the phone is titled up, they'll hit the top of the screen.
+   * If the phone is held level, there's no movement."
+   *
+   * All five cases fall out of one mapping, which is why it is worth writing
+   * rather than a table of conditions. `gamma` is the device's left-right
+   * tilt and is positive with the right edge down; `beta` is front-back and
+   * is +90 when the phone is upright facing you, 0 lying flat, -90 tilted
+   * away. So the gravity vector in SCREEN space is just
+   *
+   *     (sin gamma, sin beta)
+   *
+   * — upright gives (0, 1), straight down; right edge down gives (+1, 0);
+   * left edge down (-1, 0); tilted away (0, -1), up into the top of the
+   * screen; and flat gives (0, 0), no movement at all, because a phone lying
+   * on a table has no gravity in the plane of its own screen. Exactly his
+   * five cases and everything in between them.
+   *
+   * A ref rather than state: the integrator reads it every substep and must
+   * not restart when it changes.
+   */
+  const gravityDir = useRef({ x: 0, y: 1 });
   const els = useRef<(HTMLElement | null)[]>([]);
   const bodies = useRef<Body[]>([]);
   const arena = useRef({ w: 0, h: 0 });
@@ -270,6 +309,7 @@ export function useDropField({
       rot: 0,
       spin: 0,
       released: false,
+      inside: false,
       asleep: false,
       held: false,
       calm: 0,
@@ -315,6 +355,8 @@ export function useDropField({
       right: supportAt(b.shape.support, 0 - b.rot) * b.w,
       down: supportAt(b.shape.support, 90 - b.rot) * b.w,
       left: supportAt(b.shape.support, 180 - b.rot) * b.w,
+      // Only the ceiling asks for this — see the note there.
+      up: supportAt(b.shape.support, 270 - b.rot) * b.w,
     });
 
     /* How far the body reaches toward ANOTHER BODY in a screen-space
@@ -503,10 +545,12 @@ export function useDropField({
     const substep = (h: number) => {
       const list = bodies.current;
       const g = arena.current.h * GRAVITY_PER_HEIGHT;
+      const { x: gx, y: gy } = gravityDir.current;
 
       for (const b of list) {
         if (!b.released || b.held || b.asleep) continue;
-        b.vy += g * h;
+        b.vx += g * gx * h;
+        b.vy += g * gy * h;
         const drag = Math.max(0, 1 - AIR_DRAG * h);
         b.vx *= drag;
         b.vy *= drag;
@@ -620,7 +664,7 @@ export function useDropField({
 
         for (const b of list) {
           if (!b.released) continue;
-          const { right, down, left } = extents(b);
+          const { right, down, left, up } = extents(b);
           const idle = b.asleep && !b.held;
 
           if (b.x < left) {
@@ -635,9 +679,25 @@ export function useDropField({
             } else b.vx = 0;
           }
 
-          /* No ceiling: an object still falling in is legitimately above the
-           * arena, and clamping it there would leave it sitting on the top
-           * edge instead of dropping through. */
+          /* A CEILING, BUT ONLY ONCE THE BODY IS INSIDE (2026-08-25).
+           *
+           * There was none, for a good reason: an object still falling in is
+           * legitimately above the arena, and clamping it there would leave
+           * it sitting on the top edge instead of dropping through.
+           *
+           * Tilt gives it somewhere to go, though. Noah: "If the phone is
+           * titled up, they'll hit the top of the screen" — and with gravity
+           * pointing at the top and nothing to stop them, measured, they left
+           * through it and kept going to y = -25000. So the ceiling switches
+           * on per body the first time it is fully inside the arena, which
+           * cannot happen before it has dropped in and cannot un-happen. */
+          if (!b.inside && b.y - up >= 0) b.inside = true;
+          if (b.inside && b.y - up < 0) {
+            b.y = up;
+            if (!idle && b.vy < -WALL_REST_SPEED) b.vy = -b.vy * RESTITUTION;
+            else b.vy = 0;
+          }
+
           if (b.y > arena.current.h - down) {
             b.y = arena.current.h - down;
             if (!idle && b.vy > WALL_REST_SPEED) b.vy = -b.vy * RESTITUTION;
@@ -785,6 +845,10 @@ export function useDropField({
     >();
 
     const onDown = (e: PointerEvent) => {
+      // On a phone the tilt IS the interaction — "Instead of being able to
+      // click and drag the icons, the mobile version will have them react to
+      // the orientation of the phone."
+      if (!draggable) return;
       const idx = els.current.findIndex((el) => el === e.currentTarget);
       const b = bodies.current[idx];
       if (!b || !b.released) return;
@@ -906,7 +970,65 @@ export function useDropField({
       });
       if (raf != null) cancelAnimationFrame(raf);
     };
-  }, [arenaRef, enabled, armDelay, dropFrom, specKey]);
+  }, [arenaRef, enabled, armDelay, dropFrom, specKey, draggable]);
+
+  /* Reads the device's own orientation into `gravityDir` — see the note on
+   * that ref for the mapping and why it is one expression.
+   *
+   * iOS 13 and later will not deliver these events at all until the page has
+   * asked for permission, and the ask is only honoured from inside a user
+   * gesture. So the request rides on the first touch anywhere on the page and
+   * then removes itself. Until that happens — and on any device that refuses
+   * or does not support it — `gravityDir` keeps its default of straight down,
+   * which is the behaviour everything else on the site already assumes. There
+   * is no broken state to fall into. */
+  useEffect(() => {
+    if (!tilt || typeof window === "undefined") return;
+
+    const onOrient = (e: DeviceOrientationEvent) => {
+      if (e.beta == null || e.gamma == null) return;
+      const rad = Math.PI / 180;
+      const x = Math.sin(e.gamma * rad);
+      const y = Math.sin(e.beta * rad);
+      // Cap the magnitude so a steep tilt cannot make gravity stronger than
+      // it is standing up — only differently aimed.
+      const m = Math.hypot(x, y);
+      gravityDir.current = m > 1 ? { x: x / m, y: y / m } : { x, y };
+    };
+
+    let attached = false;
+    const attach = () => {
+      if (attached) return;
+      attached = true;
+      window.addEventListener("deviceorientation", onOrient);
+    };
+
+    type PermissionCapable = {
+      requestPermission?: () => Promise<"granted" | "denied">;
+    };
+    const DOE = window.DeviceOrientationEvent as
+      | (typeof window.DeviceOrientationEvent & PermissionCapable)
+      | undefined;
+
+    if (DOE && typeof DOE.requestPermission === "function") {
+      const ask = () => {
+        window.removeEventListener("touchend", ask);
+        DOE.requestPermission?.()
+          .then((r) => {
+            if (r === "granted") attach();
+          })
+          .catch(() => {});
+      };
+      window.addEventListener("touchend", ask, { once: true });
+      return () => {
+        window.removeEventListener("touchend", ask);
+        window.removeEventListener("deviceorientation", onOrient);
+      };
+    }
+
+    attach();
+    return () => window.removeEventListener("deviceorientation", onOrient);
+  }, [tilt]);
 
   return { register };
 }

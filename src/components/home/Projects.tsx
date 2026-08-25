@@ -73,7 +73,8 @@ const RIGHT_W = CELL_WIDTH;  // 918u (same width as left)
 // (start at 0), NOT the master artboard's absolute y.
 const GRID_LOCAL_HEIGHT = 1575; // same span the sketch's grid occupied (reduced to avoid the line above footer)
 const ROW_H = GRID_LOCAL_HEIGHT / 3;
-const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row), not 4
+// The rule y-positions are derived per layout in the component — three
+// rows on a desktop, one per cell on a phone.
 
 /*
  * ONE CELL PER ROW ON A PHONE (2026-08-25).

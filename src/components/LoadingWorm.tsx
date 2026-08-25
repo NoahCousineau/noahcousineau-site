@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useIsPhone } from "@/lib/useIsPhone";
 import {
   WORM_BAND,
   WORM_CYCLE_ADVANCE,
@@ -41,10 +42,16 @@ const STEP_MS = 130;
  * scale so his stride shrinks with him rather than a smaller worm covering
  * the same distance per step. */
 const SCALE = 0.8;
+/* 2026-08-25, phones only: "Have the worm be double the size he is now."
+ * Taken about his footing like the desktop scale, so he grows without
+ * lifting off the floor, and his stride grows with him. */
+const PHONE_SCALE = 1.6;
 /** Where his middle starts, as a fraction across the frame. */
 const START_CENTRE = 0.25;
 
 export default function LoadingWorm() {
+  const phone = useIsPhone();
+  const SCALE_NOW = phone ? PHONE_SCALE : SCALE;
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -87,8 +94,8 @@ export default function LoadingWorm() {
    * out of sight at the instant it moves — so it leaves as a shrinking sliver
    * on the right and returns as a growing one on the left, with no frame in
    * between where it is visible in two places or in neither. */
-  const A = SCALE;
-  const B = shift + centre0 * (1 - SCALE);
+  const A = SCALE_NOW;
+  const B = shift + centre0 * (1 - SCALE_NOW);
   const maxScreenW = A * Math.max(...WORM_STEPS.map((st) => st.w));
   const span = WORM_VIEWBOX.w + maxScreenW;
 
@@ -111,6 +118,19 @@ export default function LoadingWorm() {
         // height off the bottom; the band carries roughly a further 1% of
         // its own padding below the worm, so 2% here lands it at ~3%.
         bottom: "2%",
+        /* CLIPPED SIDEWAYS. The svg below is `overflow: visible` so the worm
+         * can be drawn outside its own viewBox — that is what lets him walk
+         * off one edge and back on the other. Visible overflow also COUNTS
+         * toward the document's width, though, and at the phone's doubled
+         * scale that pushed a 390px page out to 783 and triggered mobile
+         * shrink-to-fit, which quietly rescales the entire site. Clipping
+         * here cuts him at the window's edge, which is where he should
+         * disappear anyway.
+         *
+         * `clip` rather than `hidden`: `overflow-x: hidden` forces the other
+         * axis to `auto`, which would make this a scroll container and crop
+         * the worm's own height. `clip` leaves the vertical axis alone. */
+        overflowX: "clip",
       }}
     >
       <svg
@@ -123,7 +143,7 @@ export default function LoadingWorm() {
       >
         <g transform={`translate(${shift} 0)`}>
         <g
-          transform={`translate(${centre0} ${floor}) scale(${SCALE}) translate(${-centre0} ${-floor})`}
+          transform={`translate(${centre0} ${floor}) scale(${SCALE_NOW}) translate(${-centre0} ${-floor})`}
         >
         <g transform={`translate(${travel} 0)`}>
           <image

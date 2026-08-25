@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Stage, Place, uFont } from "./Stage";
-import PeekingHead from "./PeekingHead";
+import PeekingHead, { PHONE_HEAD_WIDTH_UNITS } from "./PeekingHead";
+import { useIsPhone } from "@/lib/useIsPhone";
 import FallenHand from "./FallenHand";
 import { useRef } from "react";
 import { THIRD_COLUMN_X } from "./footerLayout";
@@ -94,6 +95,27 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
 // preserves the two rows' internal spacing and their rules exactly as
 // designed. Gap from the logo's own box bottom (318.6u, per the LINK BLOCK
 // note) to the first link row is now ~34.9u, down from ~54.9u.
+/*
+ * PHONE (2026-08-25). Noah: "Have the links larger and left aligned in two
+ * columns (one column for the content on the left, one column for the
+ * content on the right)."
+ *
+ * The desktop footer is five columns of two — three of project links on the
+ * left, two of contact details on the right. His two columns are that same
+ * split, so nothing is regrouped: the three project columns stack into one
+ * left-hand column of six links, and the two contact columns stack into one
+ * right-hand column of four. Six rows and four rows down the same two x
+ * positions, which is why this needs only a row index rather than a second
+ * layout.
+ *
+ * The type more than doubles, 17.9 -> 40 units, and the rules widen to match.
+ */
+const PHONE_COL_X = [90, 1010];
+const PHONE_ROW_H = 128;
+const PHONE_TOP_Y = 380;
+const PHONE_FONT = 40;
+const PHONE_RULE_W = 820;
+
 const ROW1_TEXT_Y = 353.5; // was 373.5, was 391.5, was 431.5 — see LINK BLOCK note below
 const ROW1_RULE_Y = 381.49;
 const ROW2_TEXT_Y = 402.5;
@@ -137,6 +159,7 @@ const ROW2_RULE_Y = 429.4;
  * footer simply shows as a tall black panel.
  */
 export default function Footer({ nextProjectHref }: { nextProjectHref?: string }) {
+  const phone = useIsPhone();
   // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
   // — which does scroll — is what tells the fallen hand it has arrived.
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -182,11 +205,20 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             "résumé" at x1409.32 and email / phone at x1630.09, each
             RULE_WIDTH wide), i.e. the midpoint of 1409.32 and
             1630.09 + 204.22. */}
-        <PeekingHead centerXUnits={(1409.32 + 1630.09 + RULE_WIDTH) / 2} />
+        {/* 2026-08-25, phones: "Have the head now at the bottom center of
+            the phone. Have it larger than it currently is." Dead centre of
+            the artboard rather than under the two right-hand link columns,
+            and nearly twice the width. */}
+        <PeekingHead
+          centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
+          widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
+        />
         {nextProjectHref && (
           <FallenHand triggerRef={spacerRef} nextHref={nextProjectHref} />
         )}
-        <Stage heightUnits={STAGE_HEIGHT}>
+        {/* Taller on a phone: six stacked link rows instead of two, plus
+            the wordmark above them. PHONE_TOP_Y + 6 rows + a rule. */}
+        <Stage heightUnits={phone ? PHONE_TOP_Y + PHONE_ROW_H * 6 + 90 : STAGE_HEIGHT}>
           {/* Large Cousineau wordmark — same asset as the old small footer
               logo, scaled to the sketch's exact bbox. y nudged 41.44 ->
               21.44 on 2026-08-20 (Noah: "Shift the 'cousineau' logo up just
@@ -214,7 +246,44 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
 
           {/* Five link columns, each 2 stacked links + rule, positioned at
               their exact sketch x-coordinates. */}
-          {COLUMNS.map((col) => (
+          {phone
+            ? COLUMNS.flatMap((col, ci) =>
+                col.items.map((item, ii) => ({ item, ci, ii }))
+              ).map(({ item, ci, ii }, flatIndex) => {
+                // Columns 0-2 are the project links (left), 3-4 the contact
+                // details (right); the running index within each side is what
+                // gives the row.
+                const right = ci >= 3;
+                const row = right
+                  ? (ci - 3) * 2 + ii
+                  : ci * 2 + ii;
+                const x = PHONE_COL_X[right ? 1 : 0];
+                const y = PHONE_TOP_Y + row * PHONE_ROW_H;
+                const external =
+                  item.href.startsWith("http") || item.href.endsWith(".pdf");
+                return (
+                  <div key={`${flatIndex}-${item.href}`}>
+                    <Place x={x} y={y}>
+                      <Link
+                        href={item.href}
+                        target={external ? "_blank" : undefined}
+                        rel={external ? "noreferrer" : undefined}
+                        className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
+                        style={{ fontFamily: "var(--font-sans)", fontSize: uFont(PHONE_FONT) }}
+                      >
+                        {item.label}
+                      </Link>
+                    </Place>
+                    <Place x={x} y={y + PHONE_FONT + 22} w={PHONE_RULE_W}>
+                      <div
+                        className="w-full bg-[color:var(--color-paper)]"
+                        style={{ height: uFont(4) }}
+                      />
+                    </Place>
+                  </div>
+                );
+              })
+            : COLUMNS.map((col) => (
             <div key={col.x}>
               <Place x={col.x} y={ROW1_TEXT_Y}>
                 <Link

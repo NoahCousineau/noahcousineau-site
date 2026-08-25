@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Stage, Place, uFont } from "./Stage";
 import { HAND_BOX, HAND_FRAMES, HAND_PIXELS } from "@/lib/passwordHand";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 /*
  * THE PASSWORD HAND (2026-08-23).
@@ -177,6 +178,35 @@ const MIN_LENGTH = 4;
 /** Long enough that a fast typist sends one request, not one per key. */
 const DEBOUNCE_MS = 140;
 
+/*
+ * THE PHONE ARTBOARD (2026-08-25). Noah: "have the hand take up the majority
+ * of the screen without anything bleeding off the sides of the phone screen."
+ *
+ * Same device as the hero and the project grid: shrink the artboard rather
+ * than resize the hand, so the copy, the entry box, the dots and the caret —
+ * all positioned in these units, and all fitted to the palm by measurement —
+ * scale together and stay exactly where they were put.
+ *
+ * The number is the hand's own width plus a margin. The cropped artwork is
+ * HAND_BOX.w = 701.4 units across and starts at x = 595.3, so an artboard of
+ * (595.3 + 701.4) minus what is only empty space to its left, plus a gutter,
+ * lands at 820: the hand then occupies 701/820 = 86% of the screen's width
+ * with the rest as margin, and cannot bleed because the artboard IS the
+ * screen.
+ */
+const PHONE_ARTBOARD = 820;
+/** Slide the whole composition left so the hand is centred on the narrower
+ *  artboard rather than sitting where a 1920-wide one put it. */
+const PHONE_SHIFT_X =
+  (PHONE_ARTBOARD - HAND_BOX.w) / 2 - HAND_BOX.x;
+
+/** The artboard this screen is laid out on, which the PAGE has to agree with
+ *  — it owns the `--u` declaration and the wrapper's width. Exported rather
+ *  than duplicated so the two cannot drift apart. */
+export function usePasswordArtboard(): number {
+  return useIsPhone() ? PHONE_ARTBOARD : 1920;
+}
+
 export default function PasswordHand({
   onSubmit,
   onFinished,
@@ -186,6 +216,10 @@ export default function PasswordHand({
   /** Called once the thumbs up has faded — hand off to the loading screen. */
   onFinished: () => void;
 }) {
+  const phone = useIsPhone();
+  const shiftX = phone ? PHONE_SHIFT_X : 0;
+  const artboard = phone ? PHONE_ARTBOARD : 1920;
+
   const [phase, setPhase] = useState<Phase>("enter");
   const [value, setValue] = useState("");
 
@@ -360,14 +394,14 @@ export default function PasswordHand({
   return (
     <>
       <Stage
-        heightUnits={1080}
+        heightUnits={phone ? 1080 * (artboard / 1920) : 1080}
         // The entry box is small, tilted and sitting on a photograph, so it
         // does not read as a click target the way a form field would. Anywhere
         // on this screen puts the cursor in it.
         onPointerDown={() => inputRef.current?.focus()}
       >
         <Place
-          x={HAND_BOX.x}
+          x={HAND_BOX.x + shiftX}
           y={HAND_BOX.y}
           w={HAND_BOX.w}
           h={HAND_BOX.h}
@@ -380,7 +414,9 @@ export default function PasswordHand({
               // The fly-in turns and grows about the PAGE'S centre — see
               // PAGE_CENTER. Expressed relative to this div's own box (which
               // sits at HAND_BOX), same as the old artwork-corner origin was.
-              transformOrigin: `calc(var(--u) * ${PAGE_CENTER.x - HAND_BOX.x}) calc(var(--u) * ${PAGE_CENTER.y - HAND_BOX.y})`,
+              transformOrigin: `calc(var(--u) * ${
+                artboard / 2 - HAND_BOX.x - shiftX
+              }) calc(var(--u) * ${PAGE_CENTER.y - HAND_BOX.y})`,
             }}
           >
             <canvas
@@ -396,7 +432,7 @@ export default function PasswordHand({
           <div
             className="absolute"
             style={{
-              left: `calc(var(--u) * ${COPY_ANCHOR.x})`,
+              left: `calc(var(--u) * ${COPY_ANCHOR.x + shiftX})`,
               top: `calc(var(--u) * ${COPY_ANCHOR.y - COPY_ANCHOR.size * BASELINE_RATIO})`,
               transform: `rotate(${COPY_ANCHOR.rot}deg)`,
               transformOrigin: "0 0",
@@ -429,7 +465,7 @@ export default function PasswordHand({
           <div
             className="absolute"
             style={{
-              left: `calc(var(--u) * ${FIELD.cx - FIELD.w / 2})`,
+              left: `calc(var(--u) * ${FIELD.cx - FIELD.w / 2 + shiftX})`,
               top: `calc(var(--u) * ${FIELD.cy - FIELD.h / 2})`,
               width: `calc(var(--u) * ${FIELD.w})`,
               height: `calc(var(--u) * ${FIELD.h})`,

@@ -60,7 +60,10 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
       ) : (
         <span />
       )}
-      <Link href="/work" className="hover:opacity-60 transition-opacity">
+      {/* Hidden on phones: the work index is gone there (2026-08-25, "Remove
+          the 'work index' page from mobile"). `max-md` is the same 767px
+          line useIsPhone draws — see that file. */}
+      <Link href="/work" className="max-md:hidden hover:opacity-60 transition-opacity">
         All work
       </Link>
       {next ? (

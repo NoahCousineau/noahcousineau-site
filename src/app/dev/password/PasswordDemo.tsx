@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Hero from "@/components/home/Hero";
-import PasswordHand from "@/components/PasswordHand";
+import PasswordHand, { usePasswordArtboard } from "@/components/PasswordHand";
 
 /*
  * The client half of the password demo — see page.tsx for what it is for.
@@ -12,6 +12,7 @@ import PasswordHand from "@/components/PasswordHand";
  * (see PasswordHand.tsx), the same as a fresh page load would.
  */
 export default function PasswordDemo() {
+  const artboard = usePasswordArtboard();
   const [resetKey, setResetKey] = useState(0);
   const [finished, setFinished] = useState(false);
 
@@ -50,9 +51,16 @@ export default function PasswordDemo() {
       <div className="fixed inset-0 z-50" style={{ containerType: "inline-size" }}>
         <div
           className="w-full h-full flex items-center justify-center"
-          style={{ ["--u" as string]: "min(100cqw / 1920, 100dvh / 1080)" }}
+          /* The artboard narrows on a phone so the hand fills the screen —
+             see PHONE_ARTBOARD in PasswordHand. The height term still caps
+             it on a window too short for the composition. */
+          style={{
+            ["--u" as string]: `min(100cqw / ${artboard}, 100dvh / ${
+              (1080 * artboard) / 1920
+            })`,
+          }}
         >
-          <div style={{ width: "calc(var(--u) * 1920)" }}>
+          <div style={{ width: `calc(var(--u) * ${artboard})` }}>
             <PasswordHand
               key={resetKey}
               onSubmit={check}

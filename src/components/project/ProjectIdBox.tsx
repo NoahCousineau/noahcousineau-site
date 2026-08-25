@@ -1,3 +1,6 @@
+"use client";
+import { useIsPhone } from "@/lib/useIsPhone";
+
 /*
  * ProjectIdBox — the white "ID card" that sits over the top of every
  * project page's hero image: client/project name (left) + staff credits
@@ -32,6 +35,23 @@
  */
 export type Credit = { role: string; names: string[] };
 
+/*
+ * PHONE (2026-08-25). Noah: "Move the title down as to not conflict with the
+ * 'C' logo. Increase the project title size by 2x. Have the credit
+ * information below the title, left aligned."
+ *
+ * The desktop card is one flex ROW — title left, credits right — which at
+ * 390px would give each of them under half the screen. On a phone it becomes
+ * a column, so the credits fall below the title and start at the same left
+ * edge, and the credit grid drops to a single column since three tracks
+ * across a phone is three words per line.
+ *
+ * The title doubles. The top inset that moves it clear of the "C" mark lives
+ * in ProjectHeader, which owns the inset — not here.
+ */
+const PHONE_TITLE_SCALE = 2;
+const PHONE_CREDIT_COLUMNS = 1;
+
 /** Credit columns per row. Three since 2026-08-23, when Noah laid out
  *  Sprouts' five categories as a 3-wide block (see the grid note below). */
 const CREDIT_COLUMNS = 3;
@@ -51,13 +71,13 @@ const CREDIT_COLUMNS = 3;
  *
  * A full final row (or a count that divides evenly) inserts nothing.
  */
-function layoutCredits(credits: Credit[]): (Credit | null)[] {
-  const rem = credits.length % CREDIT_COLUMNS;
+function layoutCredits(credits: Credit[], columns = CREDIT_COLUMNS): (Credit | null)[] {
+  const rem = credits.length % columns;
   if (rem === 0) return credits;
   const split = credits.length - rem;
   return [
     ...credits.slice(0, split),
-    ...Array.from({ length: CREDIT_COLUMNS - rem }, () => null),
+    ...Array.from({ length: columns - rem }, () => null),
     ...credits.slice(split),
   ];
 }
@@ -80,12 +100,19 @@ export function ProjectIdBox({
    */
   bare?: boolean;
 }) {
+  const phone = useIsPhone();
+  const columns = phone ? PHONE_CREDIT_COLUMNS : CREDIT_COLUMNS;
   return (
     <div
-      className={`${bare ? "" : "bg-[color:var(--color-paper)]"} flex items-start justify-between`}
+      className={`${bare ? "" : "bg-[color:var(--color-paper)]"} flex ${
+        phone ? "flex-col items-start" : "items-start justify-between"
+      }`}
       style={{
         columnGap: "calc(var(--u) * 120)",
-        padding: "calc(var(--u) * 20) calc(var(--u) * 56)",
+        rowGap: phone ? "calc(var(--u) * 70)" : undefined,
+        padding: phone
+          ? "calc(var(--u) * 20) calc(var(--u) * 40)"
+          : "calc(var(--u) * 20) calc(var(--u) * 56)",
       }}
     >
       {/* Title — lowercase, Akzidenz regular, matches the artboard's
@@ -102,7 +129,9 @@ export function ProjectIdBox({
       <h1
         className="lowercase leading-[1.02] m-0 shrink-0"
         style={{
-          fontSize: "var(--text-project-title)",
+          fontSize: phone
+            ? `calc(var(--text-project-title) * ${PHONE_TITLE_SCALE})`
+            : "var(--text-project-title)",
           fontFamily: "var(--font-sans)",
           letterSpacing: "-0.01em",
         }}
@@ -146,12 +175,12 @@ export function ProjectIdBox({
       <div
         className="grid min-w-0"
         style={{
-          gridTemplateColumns: `repeat(${CREDIT_COLUMNS}, max-content)`,
+          gridTemplateColumns: `repeat(${columns}, max-content)`,
           columnGap: "calc(var(--u) * 96)",
           rowGap: "calc(var(--u) * 40)",
         }}
       >
-        {layoutCredits(credits).map((c, i) =>
+        {layoutCredits(credits, columns).map((c, i) =>
           c === null ? (
             <div key={`blank-${i}`} aria-hidden />
           ) : (

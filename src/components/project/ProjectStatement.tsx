@@ -7,6 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "@/components/Stage";
 import { RULE_WEIGHT_CSS } from "./ProjectGroup";
 import { lockScroll, releaseScroll } from "@/lib/scrollLock";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 /**
  * linkify — auto-links bare domain mentions (e.g. "socalearth.org") and
@@ -136,6 +137,8 @@ function StatementFitText({
   tail,
   maxWidthUnits,
   fontSizeUnits,
+  fitToWidth = true,
+  onHeightChange,
   className = "",
   onWrapChange,
 }: {
@@ -144,6 +147,13 @@ function StatementFitText({
   tail: string;
   maxWidthUnits: number;
   fontSizeUnits: number;
+  /** When false the type stays at `fontSizeUnits` and wraps instead of being
+   *  shrunk onto one line — see the phone note at the call site. */
+  fitToWidth?: boolean;
+  /** Reports the rendered height in artboard units. Needed because with
+   *  `fitToWidth` off the line count is not knowable in advance — see the
+   *  note on STAGE_HEIGHT below. */
+  onHeightChange?: (units: number) => void;
   className?: string;
   onWrapChange?: (wrapped: boolean) => void;
 }) {
@@ -151,6 +161,7 @@ function StatementFitText({
   const tailText = normalizeSegment(tail, "tail");
 
   const probeRef = useRef<HTMLSpanElement>(null);
+  const visibleRef = useRef<HTMLSpanElement>(null);
   const measureOneLineRef = useRef<HTMLSpanElement>(null);
   const [fontScale, setFontScale] = useState(1);
   const [wrapped, setWrapped] = useState(false);
@@ -165,6 +176,16 @@ function StatementFitText({
     if (!probe || !measureOneLine) return;
 
     const fit = () => {
+      if (!fitToWidth) {
+        // Full size, wrapping freely. `wrapped` is the multi-line branch of
+        // the render below, which is exactly what is wanted here — it is
+        // only ever reached on desktop as a last resort, but it is the same
+        // layout.
+        setFontScale(1);
+        setWrapped(true);
+        onWrapChange?.(true);
+        return;
+      }
       const uPx = probe.getBoundingClientRect().width / 1000;
       measureOneLine.style.fontSize = `${fontSizeUnits * uPx}px`;
       const maxPx = uPx * maxWidthUnits;
@@ -189,15 +210,36 @@ function StatementFitText({
       }
     };
 
+    /* The rendered height, for callers that cannot predict the line count.
+     * Reported in artboard units so it composes with everything else. */
+    const report = () => {
+      const el = visibleRef.current;
+      if (!el || !onHeightChange) return;
+      const uPx = probe.getBoundingClientRect().width / 1000;
+      if (uPx > 0) onHeightChange(el.getBoundingClientRect().height / uPx);
+    };
+
+    const run = () => {
+      fit();
+      report();
+    };
+
     fit();
-    const ro = new ResizeObserver(fit);
+    report();
+    const ro = new ResizeObserver(run);
     ro.observe(document.documentElement);
-    window.addEventListener("resize", fit);
+    if (visibleRef.current) ro.observe(visibleRef.current);
+    window.addEventListener("resize", run);
     return () => {
       ro.disconnect();
-      window.removeEventListener("resize", fit);
+      window.removeEventListener("resize", run);
     };
-  }, [leadText, emphasis, tailText, maxWidthUnits, fontSizeUnits]);
+    // `onWrapChange`/`onHeightChange` are deliberately not dependencies: both
+    // are callers' inline callbacks, so a new identity every render, and
+    // listing them would tear down and rebuild the ResizeObserver on every
+    // single render. They are only ever called, never read for their value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadText, emphasis, tailText, maxWidthUnits, fontSizeUnits, fitToWidth]);
 
   const serif = { fontFamily: "var(--font-serif)" };
   // Measure the PLAIN text (parens stripped) — the parens themselves
@@ -208,22 +250,38 @@ function StatementFitText({
 
   return (
     <span style={{ display: "block", position: "relative" }}>
-      {/* invisible probe: exactly 1000 artboard units wide, used to read --u in real px */}
+      {/* THE TWO MEASURING SPANS LIVE IN A CLIPPED 0x0 BOX.
+          `visibility: hidden` hides them but does not stop them taking part
+          in layout, and the one-line measurer is `white-space: nowrap` by
+          construction — it exists to find out how wide the text WOULD be on
+          one line. So it is as wide as that answer, and it was pushing the
+          document out to match: measured on a phone at the doubled size,
+          776px of it inside a 390px window, which set off mobile
+          shrink-to-fit and quietly rescaled the whole site. A 0x0
+          `overflow: hidden` parent is a scroll container, so its children's
+          size stops there and never reaches the document — while each child
+          still lays out at its own real width, which is the only thing the
+          measurements need. */}
       <span
-        ref={probeRef}
         aria-hidden
-        style={{ position: "absolute", visibility: "hidden", width: "calc(var(--u) * 1000)", height: 0, pointerEvents: "none" }}
-      />
-      {/* invisible unscaled measurer for the full one-line text */}
-      <span
-        ref={measureOneLineRef}
-        aria-hidden
-        style={{ position: "absolute", visibility: "hidden", whiteSpace: "nowrap", top: 0, left: 0, pointerEvents: "none" }}
+        style={{ position: "absolute", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", pointerEvents: "none" }}
       >
-        {oneLineText}
+        {/* exactly 1000 artboard units wide, used to read --u in real px */}
+        <span
+          ref={probeRef}
+          style={{ display: "block", width: "calc(var(--u) * 1000)", height: 0 }}
+        />
+        {/* unscaled measurer for the full one-line text */}
+        <span
+          ref={measureOneLineRef}
+          style={{ display: "block", whiteSpace: "nowrap" }}
+        >
+          {oneLineText}
+        </span>
       </span>
       {/* the VISIBLE text */}
       <span
+        ref={visibleRef}
         className={className}
         style={{
           display: "block",
@@ -322,6 +380,10 @@ export function ProjectStatement({
   /** Body copy below the hand — one string, or an array for multiple paragraphs. */
   paragraph: string | string[];
 }) {
+  const phone = useIsPhone();
+  /** The question's rendered height in artboard units, on phones where the
+   *  line count is not known ahead of time. See STAGE_HEIGHT below. */
+  const [questionHeight, setQuestionHeight] = useState<number | null>(null);
   const paragraphs = Array.isArray(paragraph) ? paragraph : [paragraph];
   const [statementWrapped, setStatementWrapped] = useState(false);
   const handRef = useRef<HTMLDivElement>(null);
@@ -591,8 +653,19 @@ export function ProjectStatement({
   // When the statement wraps to two lines (tail drops down per Noah's
   // request), the Stage needs extra height and the rule needs to sit
   // below the second line instead of at its single-line position.
+  /* These two are the desktop cases: the question is fitted onto one line,
+   * or wrapped onto exactly two when it will not shrink far enough. Both
+   * counts are knowable in advance, so both heights can be constants.
+   *
+   * On a phone neither holds. The question renders at its full doubled size
+   * and wraps to however many lines the words happen to need — three for
+   * SoCal Earth, more or fewer elsewhere — so the height is MEASURED and
+   * reported back by StatementFitText instead. Leaving it at the two-line
+   * constant is what put the question on top of the paragraph below it. */
   const STAGE_HEIGHT_ONE_LINE = 147;
   const STAGE_HEIGHT_TWO_LINE = 260; // ~2x the single-line text height + gap before rule
+  /** Space between the question's last line and the rule under it. */
+  const RULE_GAP_UNITS = 36;
   const RULE_Y_ONE_LINE = 141;
   const RULE_Y_TWO_LINE = 254;
 
@@ -601,19 +674,48 @@ export function ProjectStatement({
     // "add more vertical space between sections of copy and images".
     <div className="relative w-full" style={{ marginTop: "calc(var(--u) * 230)" }}>
       {/* Statement line + rule — fixed, known height, still Stage/Place. */}
-      <Stage heightUnits={statementWrapped ? STAGE_HEIGHT_TWO_LINE : STAGE_HEIGHT_ONE_LINE} className="overflow-visible">
+      <Stage
+        heightUnits={
+          phone && questionHeight != null
+            ? questionHeight + RULE_GAP_UNITS + 6
+            : statementWrapped
+            ? STAGE_HEIGHT_TWO_LINE
+            : STAGE_HEIGHT_ONE_LINE
+        }
+        className="overflow-visible"
+      >
         <Place x={36} y={0} className="z-10">
           <StatementFitText
             lead={lead}
             emphasis={emphasis}
             tail={tail}
             maxWidthUnits={1841}
-            fontSizeUnits={105}
+            /* 2026-08-25, phones: "Double the size of the lead-in question."
+               Raising this alone does nothing, which is worth recording: the
+               component shrinks the type until the whole question fits on ONE
+               line of `maxWidthUnits`, so a bigger ceiling just means a
+               smaller scale factor and an identical rendered size. The size
+               only takes effect once the one-line rule is dropped — hence
+               `fitToWidth={false}`, which lets it wrap and keeps it at 210. */
+            fontSizeUnits={phone ? 210 : 105}
+            fitToWidth={!phone}
+            onHeightChange={setQuestionHeight}
             className="leading-[1] tracking-tight"
             onWrapChange={setStatementWrapped}
           />
         </Place>
-        <Place x={36} y={statementWrapped ? RULE_Y_TWO_LINE : RULE_Y_ONE_LINE} w={1841} className="z-0">
+        <Place
+          x={36}
+          y={
+            phone && questionHeight != null
+              ? questionHeight + RULE_GAP_UNITS
+              : statementWrapped
+              ? RULE_Y_TWO_LINE
+              : RULE_Y_ONE_LINE
+          }
+          w={1841}
+          className="z-0"
+        >
           <div style={{ height: RULE_WEIGHT_CSS, background: "var(--color-ink)" }} />
         </Place>
       </Stage>
@@ -683,7 +785,11 @@ export function ProjectStatement({
               key={i}
               className={`m-0 ${i > 0 ? "mt-[1em]" : ""}`}
               style={{
-                fontSize: "calc(var(--text-lead) * 1.5)",
+                /* ...and "Reduce the descriptive text size down by 1/3."
+                   1.5 -> 1.0 of --text-lead, which is that two-thirds. */
+                fontSize: phone
+                  ? "var(--text-lead)"
+                  : "calc(var(--text-lead) * 1.5)",
                 fontFamily: "var(--font-sans)",
                 lineHeight: "1.38125",
               }}

@@ -125,6 +125,23 @@ export const RULE_WEIGHT_CSS = `calc(var(--u) * ${RULE_WEIGHT_UNITS})`;
 // the same 1920u page: new margin = (1920 - 1564) / 2 = 178u. This grid no
 // longer matches the homepage grid's width 1:1.
 const GRID_MARGIN_UNITS = 178;
+/*
+ * PHONE (2026-08-25). Noah: "For the project grid, stack any images/videos
+ * that are side by side vertically. Decrease the margin around the sides of
+ * the grid to a much smaller size."
+ *
+ * BOTH DONE IN CSS, in globals.css, rather than through the `useIsPhone`
+ * hook every other part of this pass uses. This component is a SERVER
+ * component — calling a hook here fails the build outright, which is how
+ * that was found — and neither change actually needs one: a column count and
+ * a margin are values, not structure. The margin is a custom property this
+ * file reads as `var(--grid-margin)`, and the single column is a class the
+ * media query can reach (`js-project-row`).
+ *
+ * For the record, since the numbers live over there now: 178 units is 9.3% of
+ * the width a side, which is a generous editorial margin on a desktop and
+ * 36px of a 390px screen — leaving the images barely over half the phone.
+ */
 // Fixed vertical padding above/below every group's section — replaces the
 // old viewport-relative py-[8vh], which produced gap sizes that didn't
 // match the grid-editor tool's preview. See SECTION SPACING note above.
@@ -391,6 +408,7 @@ export function ProjectGroup({
    * STACKING SCROLL note below. */
   stackIndex?: number;
 }) {
+
   /* STACKING SCROLL (2026-08-20, per Noah): "when the user scrolls down to
    * the section title, I want a small space above the title, the title
    * itself, and the bar immediately below it to be sticky... the content of
@@ -471,8 +489,8 @@ export function ProjectGroup({
           inset at the normal margin. */}
       <div
         style={{
-          marginLeft: `calc(var(--u) * -${GRID_MARGIN_UNITS})`,
-          marginRight: `calc(var(--u) * -${GRID_MARGIN_UNITS})`,
+          marginLeft: "calc(var(--u) * var(--grid-margin) * -1)",
+          marginRight: "calc(var(--u) * var(--grid-margin) * -1)",
         }}
       >
         <Rule />
@@ -500,6 +518,9 @@ export function ProjectGroup({
             // are already used as pixel-dimension fallbacks for aspect
             // ratio (see MediaCell type + the Cell renderer above).
             const hasCustomWidths = row.cells.some((c) => "colWidth" in c && c.colWidth != null);
+            // ONE COLUMN ON A PHONE — see PHONE_GRID_MARGIN_UNITS. Any
+            // declared column widths are ignored there for the same reason:
+            // they describe how to divide a row that no longer exists.
             const gridTemplateColumns = hasCustomWidths
               ? row.cells.map((c) => `${"colWidth" in c && c.colWidth != null ? c.colWidth : 1}fr`).join(" ")
               : `repeat(${row.cells.length}, minmax(0, 1fr))`;
@@ -549,7 +570,7 @@ export function ProjectGroup({
                   }}
                 >
                   <div
-                    className="grid"
+                    className="grid js-project-row"
                     style={{
                       gridTemplateColumns,
                       columnGap: `calc(var(--u) * ${GAP_UNITS})`,
@@ -578,7 +599,7 @@ export function ProjectGroup({
                 </div>
               ) : (
                 <div
-                  className="grid"
+                  className="grid js-project-row"
                   style={{ gridTemplateColumns, alignItems: gridAlignItems }}
                 >
                   {row.cells.map((cell, j) => (

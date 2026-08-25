@@ -208,6 +208,60 @@ html {
   scroll-behavior: auto;
 }
 
+/*
+ * PAGE-HEADER GEOMETRY (2026-08-25).
+ *
+ * Kept as custom properties rather than TypeScript constants because the
+ * phone override is a pure media query and nothing about it is structural —
+ * see components/project/headerLayout.ts, which now just names these. The
+ * 767px line is the same one src/lib/useIsPhone.ts draws.
+ *
+ * On a phone the header is exactly one screen tall and the rule sits near
+ * its foot, per Noah: "Make the black bar where all the header icons fall at
+ * the bottom of the phone screen upon opening." On every other size it keeps
+ * the 94.4dvh / 92.5% it has had since the header moved onto viewport units.
+ */
+/*
+ * PROJECT GRID, PHONE (2026-08-25). Noah: "stack any images/videos that are
+ * side by side vertically. Decrease the margin around the sides of the grid
+ * to a much smaller size."
+ *
+ * Here rather than in ProjectGroup.tsx because that is a SERVER component —
+ * a hook call in it fails the build — and neither of these needs one: a
+ * column count and a margin are values, not structure.
+ *
+ * `!important` on the columns is deliberate and is the only way this can
+ * work: the row writes its own `grid-template-columns` as an INLINE style,
+ * computed per row from the cells' declared widths, and an inline style beats
+ * any stylesheet selector. Overriding it is the point — those widths describe
+ * how to divide a row that, on a phone, no longer exists.
+ */
+:root {
+  --grid-margin: 178;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --grid-margin: 30;
+  }
+
+  .js-project-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+:root {
+  --header-height: max(94.4dvh, 29rem);
+  --header-rule-pct: 92.5%;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --header-height: 100dvh;
+    --header-rule-pct: 94%;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

@@ -1,7 +1,7 @@
 import { chromium } from "playwright-core";
 const SP = process.argv[2], name = process.argv[3], route = process.argv[4];
 const browser = await chromium.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 await page.request.post("http://localhost:3000/api/unlock", { data: { pass: "TopSecret!" } });
 await page.goto("http://localhost:3000" + route, { waitUntil: "networkidle", timeout: 60000 });

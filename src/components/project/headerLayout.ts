@@ -53,7 +53,10 @@ const HEADER_HEIGHT_VH = 94.4;
 export const HEADER_MIN_HEIGHT = "29rem";
 
 /** The whole expression, so the two pages can't disagree about it. */
-export const HEADER_HEIGHT_CSS = `max(${HEADER_HEIGHT_VH}dvh, ${HEADER_MIN_HEIGHT})`;
+/* Both of these are declared in globals.css so a phone can override them
+ * with a media query — see the block there. The values above are kept as the
+ * record of where the desktop numbers came from; globals.css repeats them. */
+export const HEADER_HEIGHT_CSS = "var(--header-height)";
 
 /**
  * Where the rule sits: 90% down the header, unchanged from the original
@@ -70,7 +73,7 @@ export const HEADER_HEIGHT_CSS = `max(${HEADER_HEIGHT_VH}dvh, ${HEADER_MIN_HEIGH
 /* 90% -> 92.5% (2026-08-23: "move the horizontal line on the project
  * headers down just slightly"). Composed with HEADER_HEIGHT_VH that puts
  * the rule at ~87.3dvh, i.e. 12.7% up from the bottom rather than 15%. */
-export const HEADER_RULE_PCT = "92.5%";
+export const HEADER_RULE_PCT = "var(--header-rule-pct)";
 
 /** Rule weight — the same 6u the home page's grid rules are drawn at. */
 export const HEADER_RULE_UNITS = 6;
