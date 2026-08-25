@@ -37,7 +37,18 @@ def assemble(src_dir, out_path, prefix, frames):
     for i, n in enumerate(frames):
         f = np.array(Image.open(os.path.join(src_dir, f'{prefix}{n}.png')).convert('RGBA'))
         resized = Image.fromarray(premultiplied_resize(f, (CW, CH)), 'RGBA')
-        sheet.paste(resized, ((i % COLS) * CW, (i // COLS) * CH), resized)
+        # NO MASK. Passing the tile as its own mask asks PIL to COMPOSITE it
+        # over the sheet, and the sheet starts as transparent black — so the
+        # result is rgb*a + 0*(1-a) = rgb*a for the colour while the alpha is
+        # left at a. That is premultiplication baked into a file that is then
+        # composited again by the browser, and it shows as a dark rim on every
+        # semi-transparent edge pixel: measured on the dark sheet, the outer
+        # shell read luminance 50 against an interior of 116, at alpha 90.
+        #
+        # The tiles are laid out on a grid and cannot overlap, so there is
+        # nothing to compose with in the first place. A plain paste copies all
+        # four channels straight in, which is what was meant all along.
+        sheet.paste(resized, ((i % COLS) * CW, (i // COLS) * CH))
     sheet.save(out_path, 'WEBP', quality=88, method=6)
     return sheet.size, len(frames), round(os.path.getsize(out_path) / 1024)
 
