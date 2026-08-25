@@ -59,12 +59,19 @@ import {
  * canvas (see tools/behind-head/build_behind.py), so a fixed canvas width is
  * what keeps them growing about a fixed point instead of drifting.
  */
+// 2026-08-24, Noah: "shift both the animation and 'noah cousineau graphic
+// design' over to the right a bit to make it centered." Applied to the head
+// in Hero.tsx (HERO_SHIFT_X, same value) and to every cx here — these are
+// absolute artboard positions, not nested inside the head's own Place, so
+// shifting only the head would separate it from its own stars/pencil marks.
+const SHIFT_X = 30;
+
 // Centred on the head's own MEAN ink centre over a full rotation, measured
 // live at (473.8, 524.6) — the per-frame centre only wanders 467..476 x and
 // 521..528 y, so one fixed anchor holds for the whole turntable.
 //
 // 960 -> 720, 2026-08-23: "Let's reduce the side of the yellow star by 25%."
-const YELLOW = { cx: 474, cy: 525, w: 720 };
+const YELLOW = { cx: 474 + SHIFT_X, cy: 525, w: 720 };
 // Both stars sit ON the yellow star's edge, half-tucked behind it, the way
 // they do in Noah's sketches — 2026-08-23: "let's have the red star somewhat
 // behind the yellow start like the sketches. Let's also move the blue star
@@ -73,11 +80,11 @@ const YELLOW = { cx: 474, cy: 525, w: 720 };
 // were set against the bigger star. Each centre is now placed a little
 // inside the yellow's own radius (360u from its centre at 474,525) along the
 // direction it already sat in, so it overlaps rather than floats.
-const RED = { cx: 260, cy: 274, w: 271 };
+const RED = { cx: 260 + SHIFT_X, cy: 274, w: 271 };
 // 330 -> 264, 2026-08-24: "Let's reduce the side of the blue star by 20%."
 // `place()` centres each element on its own (cx, cy), so shrinking w alone
 // keeps the centre fixed and only pulls the edges in.
-const BLUE = { cx: 744, cy: 778, w: 264 };
+const BLUE = { cx: 744 + SHIFT_X, cy: 778, w: 264 };
 
 /**
  * How the two growing stars behave, 2026-08-23: "Let's make the blue star not
@@ -113,10 +120,17 @@ const BLUE = { cx: 744, cy: 778, w: 264 };
  * frames to return to the same relative state, so the group does not settle
  * into a visible pulse.
  */
+// (902,168) -> (750,240), 2026-08-24 — Noah sent a screenshot of the live
+// page with the marks circled in red at their new spot: closer in, touching
+// the yellow star's rim the way the red/blue stars do, rather than floating
+// past its edge. Measured off his screenshot as an offset from the star's
+// own centre (474,525) in star-radii (star w=720, r=360): the marks moved
+// from 1.19r/-0.99r out to about 1.10r at a slightly steeper angle
+// (-46 deg against the old -40), i.e. dx=274,dy=-286 from the star's centre.
 const PENCIL = {
   mark: 1, // "just be the second grouping"
-  cx: 902,
-  cy: 168,
+  cx: 750 + SHIFT_X,
+  cy: 240,
   w: 108,
   rot: 34,
   /** per stroke: [frames to draw, frames to wait first, frames held down] */
