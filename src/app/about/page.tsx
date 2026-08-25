@@ -403,13 +403,13 @@ export default function About() {
             near its midpoint into the two columns the design calls for on
             desktop; single column on narrow viewports. */}
         <div
-          // Two columns from md up, one below. The column count lives in
-          // classes rather than an inline gridTemplateColumns because the
-          // inline value won a specificity fight against the responsive
-          // classes and pinned the grid to two columns at every width — at
-          // 390px that gave ~146px columns, which the enlarged copy (now
-          // matched to the project pages) overflowed by 6px.
-          className="relative z-10 mt-16 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 text-left"
+          // ONE COLUMN, 2026-08-24: "For the about me text, have the text in
+          // one wide column instead of two short ones." Was one column below
+          // md and two above. The column count still lives in classes rather
+          // than an inline gridTemplateColumns, because an inline value won a
+          // specificity fight against the responsive classes once before and
+          // pinned the grid to two columns at every width.
+          className="relative z-10 mt-16 grid grid-cols-1 gap-y-6 text-left"
           style={{
             maxWidth: "calc(var(--u) * 1600)",
             overflowWrap: "break-word",
@@ -472,16 +472,28 @@ export default function About() {
                 ~543.5u, so its vertical centre is ~472u.
 
                 SPOTS mirror the sketch: a pair outside each edge of the
-                card (x260/1420, comfortably clear of x630-1050), one high
-                and one low on each side so all four converge on the card
-                from its four corners rather than stacking on one axis. */}
+                card (comfortably clear of x630-1050), one high and one low
+                on each side so all four converge on the card from its four
+                corners rather than stacking on one axis.
+
+                RE-MEASURED AGAINST THE SKETCH, 2026-08-24: "the ones on the
+                left are too close while the ones on the right are too far
+                away. Have them more in the positions that I had on the
+                sketch. Please also make them a tad larger." Both notes point
+                the same way — the whole set was sitting right of where he
+                drew it. Reading his sketch as fractions of its own width and
+                converting to this wrapper's units puts the left pair near
+                x150/175 and the right pair near x1455/1480; they were at
+                150/230 and 1530/1450, so the inner-left one came in 55u too
+                far and the outer-right one sat 75u too wide. Widths up ~15%
+                for "a tad larger". */}
             <ResumeArrows
               target={{ x: 840, y: 472 }}
               spots={[
-                { x: 150, y: 260, w: 130 },
-                { x: 230, y: 640, w: 115 },
-                { x: 1530, y: 240, w: 120 },
-                { x: 1450, y: 660, w: 128 },
+                { x: 150, y: 250, w: 150 },
+                { x: 178, y: 655, w: 132 },
+                { x: 1458, y: 240, w: 138 },
+                { x: 1482, y: 668, w: 147 },
               ]}
             />
             <a

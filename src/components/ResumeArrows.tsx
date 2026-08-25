@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Place } from "./Stage";
+import Parallax from "./Parallax";
 import { RESUME_ARROWS, type ResumeArrow } from "@/lib/resumeArrows";
 
 /*
@@ -38,6 +39,13 @@ import { RESUME_ARROWS, type ResumeArrow } from "@/lib/resumeArrows";
  */
 
 export type ResumeArrowSpot = { x: number; y: number; w: number };
+
+/** How far each drifts against the scroll, artboard units — "the slightest
+ *  amount of parallax" (2026-08-24). Deliberately unequal and deliberately
+ *  tiny: four layers at the same rate would read as one sheet sliding, and
+ *  anything past ~20u starts pulling the arrows off the card they are
+ *  supposed to be aiming at by the time the section leaves the screen. */
+const PARALLAX_UNITS = [14, -9, 11, -13];
 
 /** How far each nudges along its own aim, in the caller's own units, and how
  *  long it takes. Deliberately small — "shouldn't be dramatic". Same four
@@ -142,6 +150,11 @@ export default function ResumeArrows({
             // the link columns they sit beside.
             className="pointer-events-none select-none z-10"
           >
+            {/* Parallax OUTSIDE the rotation, so the drift is vertical on the
+                page rather than along whichever way this arrow happens to be
+                aiming — which is what makes four of them read as four depths
+                rather than four arrows sliding along their own shafts. */}
+            <Parallax units={PARALLAX_UNITS[i]}>
             <div style={{ transform: `rotate(${deg}deg)` }}>
               <div
                 className="js-resume-arrow"
@@ -163,6 +176,7 @@ export default function ResumeArrows({
                 />
               </div>
             </div>
+            </Parallax>
           </Place>
         );
       })}

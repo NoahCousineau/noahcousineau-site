@@ -4,6 +4,7 @@ import { Stage, Place } from "./Stage";
 import HeroLockup from "./HeroLockup";
 import RotatingHead from "../RotatingHead";
 import BehindHead from "./BehindHead";
+import Parallax from "../Parallax";
 import { useTheme } from "../ThemeProvider";
 
 /**
@@ -88,12 +89,17 @@ export default function Hero() {
             (sprite-sheet-dark-staggered.webp), which is registered frame by
             frame against the light one, so the rotation doesn't jump when
             the theme is switched mid-spin. */}
-        <RotatingHead
-          isDarkMode={theme === "dark"}
-          variant="staggered"
-          autoRotateSpeed={130}
-          containerClassName="w-auto h-auto"
-        />
+        {/* The head's own plane, between the yellow star behind it and the
+            blue star in front — see PARALLAX in BehindHead.tsx, whose values
+            this sits between and has to stay ordered with. */}
+        <Parallax units={2}>
+          <RotatingHead
+            isDarkMode={theme === "dark"}
+            variant="staggered"
+            autoRotateSpeed={130}
+            containerClassName="w-auto h-auto"
+          />
+        </Parallax>
       </Place>
 
       {/* "noah cousineau / graphic design" lockup — embedded from Noah's exact

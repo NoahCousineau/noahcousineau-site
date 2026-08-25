@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Place } from "./Stage";
+import Parallax from "../Parallax";
 import { BEHIND_SETS, PENCIL_MARKS } from "@/lib/behindHead";
 import {
   getHeadTick,
@@ -66,6 +67,25 @@ import {
 // shifting only the head would separate it from its own stars/pencil marks.
 const SHIFT_X = 30;
 
+/**
+ * How far each layer drifts against the scroll, artboard units (2026-08-24).
+ *
+ * Noah: "add some parallax scrolling on the head spin animation. Not tons,
+ * just enough to make the viewer realize they're on separate planes."
+ *
+ * Ordered by the depth this component already establishes with z-index —
+ * red furthest back, then yellow, then the head (Hero.tsx, which uses
+ * HEAD_PARALLAX and has to agree with these), then blue, then the pencil
+ * marks in front. Back layers lag the scroll and front ones lead it, which
+ * is the direction that reads as depth rather than as drift.
+ *
+ * Kept small on purpose. These are not independent objects: the yellow star
+ * is positioned on the head's own measured ink centre, and the red and blue
+ * sit tucked against the yellow's rim. Enough separation to notice is a few
+ * units; enough to admire would visibly break the composition apart.
+ */
+const PARALLAX = { red: 14, yellow: 8, blue: -7, pencil: -13 };
+
 // Centred on the head's own MEAN ink centre over a full rotation, measured
 // live at (473.8, 524.6) — the per-frame centre only wanders 467..476 x and
 // 521..528 y, so one fixed anchor holds for the whole turntable.
@@ -127,11 +147,16 @@ const BLUE = { cx: 744 + SHIFT_X, cy: 778, w: 264 };
 // own centre (474,525) in star-radii (star w=720, r=360): the marks moved
 // from 1.19r/-0.99r out to about 1.10r at a slightly steeper angle
 // (-46 deg against the old -40), i.e. dx=274,dy=-286 from the star's centre.
+// 2026-08-24, second pass: "shrink the size of the pencil marks to half the
+// size they are now. I also feel like it would be better if they were moved
+// up and right by just a tad." Halving w alone shrinks about the group's own
+// centre (see `place()`), so the nudge is applied on top of that rather than
+// being an artefact of it.
 const PENCIL = {
   mark: 1, // "just be the second grouping"
-  cx: 750 + SHIFT_X,
-  cy: 240,
-  w: 108,
+  cx: 775 + SHIFT_X,
+  cy: 215,
+  w: 54,
   rot: 34,
   /** per stroke: [frames to draw, frames to wait first, frames held down] */
   strokes: [
@@ -246,19 +271,25 @@ export default function BehindHead() {
     <>
       {/* Furthest back, behind even the yellow star. */}
       <Place x={rp.x} y={rp.y} w={rp.w} className="z-0 pointer-events-none">
-        <FrameStack set={red} index={starFrame(tick, RED_GAIT)} sizes="25vw" />
+        <Parallax units={PARALLAX.red}>
+          <FrameStack set={red} index={starFrame(tick, RED_GAIT)} sizes="25vw" />
+        </Parallax>
       </Place>
 
       {/* The big shape the head sits on — what the old placeholder starburst
           stood in for. */}
       <Place x={yp.x} y={yp.y} w={yp.w} className="z-[1] pointer-events-none">
-        <FrameStack set={yellow} index={pingPong(tick, yellow.frames.length)} sizes="55vw" />
+        <Parallax units={PARALLAX.yellow}>
+          <FrameStack set={yellow} index={pingPong(tick, yellow.frames.length)} sizes="55vw" />
+        </Parallax>
       </Place>
 
       {/* ...the head is here, at z-10, rendered by Hero... */}
 
       <Place x={bp.x} y={bp.y} w={bp.w} className="z-20 pointer-events-none">
-        <FrameStack set={blue} index={starFrame(tick, BLUE_GAIT)} sizes="25vw" />
+        <Parallax units={PARALLAX.blue}>
+          <FrameStack set={blue} index={starFrame(tick, BLUE_GAIT)} sizes="25vw" />
+        </Parallax>
       </Place>
 
       {/* Frontmost: the pencil cluster, each stroke on its own clock. Black
@@ -274,6 +305,7 @@ export default function BehindHead() {
             w={PENCIL.w}
             className="z-30 pointer-events-none"
           >
+            <Parallax units={PARALLAX.pencil}>
             <div
               className="relative w-full"
               style={{
@@ -312,6 +344,7 @@ export default function BehindHead() {
                 );
               })}
             </div>
+            </Parallax>
           </Place>
         );
       })()}
