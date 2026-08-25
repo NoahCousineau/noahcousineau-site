@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { Stage, Place, uFont } from "./Stage";
 import PeekingHead from "./PeekingHead";
-import ResumeArrows from "./ResumeArrows";
 import FallenHand from "./FallenHand";
 import { useRef } from "react";
 import { THIRD_COLUMN_X } from "./footerLayout";
@@ -212,11 +211,6 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
               />
             </Link>
           </Place>
-
-          {/* Clay arrows aimed at the résumé link. Inside the Stage so they
-              share its artboard units; pointer-events off so they can never
-              intercept a click meant for the links. */}
-          <ResumeArrows />
 
           {/* Five link columns, each 2 stacked links + rule, positioned at
               their exact sketch x-coordinates. */}

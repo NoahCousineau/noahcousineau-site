@@ -6,6 +6,7 @@ import { ArcText } from "@/components/ArcText";
 import RagdollHead from "@/components/about/RagdollHead";
 import ParallaxPhotos from "@/components/about/ParallaxPhotos";
 import ApproachOnScroll from "@/components/about/ApproachOnScroll";
+import ResumeArrows from "@/components/ResumeArrows";
 import {
   HEADER_HEIGHT_CSS,
   HEADER_RULE_PCT,
@@ -394,9 +395,13 @@ export default function About() {
           </span>
         </div>
 
-        {/* Body paragraph — placeholder copy, Noah will replace. Split
-            into two columns per the design, on desktop; single column
-            on narrow viewports. */}
+        {/* Body paragraph — Noah's placeholder copy (2026-08-24: "the about
+            me paragraph is one of the last things I have to work on. For
+            now, please use this placeholder text... I'll give more attention
+            to the about me paragraph... later"), not a lorem stand-in —
+            real text, subject to a later pass. Split at a sentence boundary
+            near its midpoint into the two columns the design calls for on
+            desktop; single column on narrow viewports. */}
         <div
           // Two columns from md up, one below. The column count lives in
           // classes rather than an inline gridTemplateColumns because the
@@ -418,17 +423,23 @@ export default function About() {
           }}
         >
           <p className="m-0">
-            Placeholder copy — this is where the About Me paragraph will go.
             Being silly is serious work. This is not only a strong personal
             belief, but a reason why I switched careers from engineering to
-            graphic design.
+            graphic design. As an engineer, I worked on serious projects
+            where miscalculation could cost hundreds of thousands of
+            dollars, or worse, an accident or injury. When I attended my
+            masters program at ArtCenter College of Design, I was confused
+            to see designers uphold themselves to similar levels of
+            severity.
           </p>
           <p className="m-0">
-            As an engineer, I worked on projects where miscalculation could
-            cost real money or worse — an accident. In design school I
-            leaned the opposite direction: work should connect, and connection
-            often needs a little humor and levity. Placeholder text, to be
-            replaced.
+            In a discipline where we need to connect to audiences, why be so
+            incredibly grave and stark with our work? Why not be a little
+            more human have some fun with it? I create work with humor,
+            levity, and joy not only because I enjoy doing so, but because
+            it resonates with audiences. In a somber and increasingly less
+            human design landscape, there’s nothing more serious than
+            having some fun.
           </p>
         </div>
       </section>
@@ -444,7 +455,35 @@ export default function About() {
             and closing out the page, which is the "natural conclusion"
             Noah described. */}
         <ApproachOnScroll>
-          <div className="w-full flex flex-col items-center">
+          <div className="relative w-full flex flex-col items-center">
+            {/* Clay arrows aimed at the résumé CARD, per Noah's own sketch
+                of this placement (2026-08-24: "The clay arrows shouldn't be
+                in the footer at all. The only place it should appear is on
+                the resume section in the 'about me' area. Look at the
+                sketch for where I would like the arrows to point to.") —
+                moved here wholesale from the footer, see ResumeArrows.tsx.
+
+                TARGET is the card's own centre: the arc-text link occupies
+                y0-330 in this wrapper's 1680u-wide content box (section
+                padding is 120u each side of the main's 1920u), the card
+                sits below it at width 420u (centred, so x630-1050) with a
+                -130u marginTop pulling it up under the arc text, giving it
+                a top of 200u and — at its 1700/2200 aspect — a height of
+                ~543.5u, so its vertical centre is ~472u.
+
+                SPOTS mirror the sketch: a pair outside each edge of the
+                card (x260/1420, comfortably clear of x630-1050), one high
+                and one low on each side so all four converge on the card
+                from its four corners rather than stacking on one axis. */}
+            <ResumeArrows
+              target={{ x: 840, y: 472 }}
+              spots={[
+                { x: 150, y: 260, w: 130 },
+                { x: 230, y: 640, w: 115 },
+                { x: 1530, y: 240, w: 120 },
+                { x: 1450, y: 660, w: 128 },
+              ]}
+            />
             <a
               href="/assets/_documents/noah-cousineau-resume.pdf"
               target="_blank"

@@ -16,10 +16,18 @@ import { RESUME_ARROWS, type ResumeArrow } from "@/lib/resumeArrows";
  * fantastic if the arrow selection was randomized each time the page loaded.
  * The user won't be able to click or drag these arrows."
  *
+ * MOVED OFF THE FOOTER (2026-08-24) — Noah: "The clay arrows shouldn't be in
+ * the footer at all. The only place it should appear is on the resume
+ * section in the 'about me' area." `target` and `spots` used to be constants
+ * fixed to the footer's résumé LINK; they're now props so the same component
+ * can aim at whatever it's actually pointing at from wherever it's actually
+ * mounted — see about/page.tsx for the current call, sized against the
+ * résumé CARD per Noah's own sketch of the new placement.
+ *
  * AIMING IS ONE SUBTRACTION, because every arrow is exported already pointing
  * right (see tools/resume-arrows/build_arrows.py). The bearing from an
- * arrow's own spot to the résumé link IS its rotation, so moving either the
- * link or an arrow needs no other change.
+ * arrow's own spot to the target IS its rotation, so moving either needs no
+ * other change.
  *
  * THE NUDGE RUNS IN THE ARROW'S OWN FRAME. The wrapper carries the rotation
  * and an inner element carries a plain translateX, so "forward and back"
@@ -29,23 +37,12 @@ import { RESUME_ARROWS, type ResumeArrow } from "@/lib/resumeArrows";
  * things all pointing at the same spot.
  */
 
-/** The résumé link's middle, in the footer Stage's own units — the column at
- *  x1409.32 (RULE_WIDTH 204.22 wide), second row, text at y402.5. */
-const TARGET = { x: 1409.32 + 204.22 / 2, y: 412 };
+export type ResumeArrowSpot = { x: number; y: number; w: number };
 
-/** Where the four go, in footer units: two well to the left of the link and
- *  two out to its right, all clear of the wordmark above and the peeking head
- *  at the bottom. `w` varies a little so they don't read as four stamps of
- *  the same object. */
-const SPOTS = [
-  { x: 330, y: 452, w: 132 },
-  { x: 700, y: 505, w: 108 },
-  { x: 1806, y: 250, w: 116 },
-  { x: 1772, y: 498, w: 124 },
-];
-
-/** How far each nudges along its own aim, in footer units, and how long it
- *  takes. Deliberately small — "shouldn't be dramatic". */
+/** How far each nudges along its own aim, in the caller's own units, and how
+ *  long it takes. Deliberately small — "shouldn't be dramatic". Same four
+ *  regardless of where the arrows are mounted; only position and aim change
+ *  per caller. */
 const NUDGE = [
   { px: 15, s: 2.3, delay: 0 },
   { px: 12, s: 2.9, delay: 0.45 },
@@ -83,7 +80,15 @@ function pickFour(rand: () => number): ResumeArrow[] {
   return chosen.slice(0, 4);
 }
 
-export default function ResumeArrows() {
+export default function ResumeArrows({
+  target,
+  spots,
+}: {
+  /** What the arrows aim at, in the caller's own artboard units. */
+  target: { x: number; y: number };
+  /** Where the four arrows sit, same units. Length 4, matching NUDGE. */
+  spots: [ResumeArrowSpot, ResumeArrowSpot, ResumeArrowSpot, ResumeArrowSpot];
+}) {
   /* Randomised once per page load, and hydration-safe by the same route the
    * project header's icon sizes use: React calls getServerSnapshot for BOTH
    * the server render and the client's pre-hydration render, so those agree
@@ -112,7 +117,7 @@ export default function ResumeArrows() {
         }
       `}</style>
       {arrows.map((a, i) => {
-        const spot = SPOTS[i];
+        const spot = spots[i];
         const n = NUDGE[i];
         const h = spot.w * (a.height / a.width);
         // Bearing from this arrow to the link. Screen coords (y down), which
@@ -124,7 +129,7 @@ export default function ResumeArrows() {
         // the same angle. Fixing the precision makes both sides emit the same
         // string.
         const deg = (
-          (Math.atan2(TARGET.y - spot.y, TARGET.x - spot.x) * 180) / Math.PI
+          (Math.atan2(target.y - spot.y, target.x - spot.x) * 180) / Math.PI
         ).toFixed(2);
         return (
           <Place
