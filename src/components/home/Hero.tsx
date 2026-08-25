@@ -26,6 +26,17 @@ export default function Hero() {
   // Right column caps at the artboard margin (x1877), starting at x990 -> 887 units max
   const RIGHT_MAX_W = 887;
 
+  // 2026-08-24, Noah: "shift both the animation and 'noah cousineau graphic
+  // design' over to the right a bit to make it centered." Measured live
+  // (yellow star's left edge to the lockup's right edge — the true visual
+  // span, not the Place boxes, which carry transparent margin): the
+  // composition's centre sat 31 units left of the viewport's actual centre.
+  // Applied here AND to every BehindHead constant (see that file), since
+  // the stars and pencil marks are positioned in absolute artboard units,
+  // not nested inside this Place — shifting only the head would separate
+  // it from them.
+  const HERO_SHIFT_X = 30;
+
   return (
     /* ONE VIEWPORT TALL, AND THE COMPOSITION CENTRED IN IT (2026-08-23, per
      * Noah: "Make sure the whole interaction and the 'noah cousineau graphic
@@ -71,7 +82,7 @@ export default function Hero() {
       <BehindHead />
 
       {/* Rotating head animation — interactive drag-to-spin */}
-      <Place x={150} y={50} w={650} h={950} className="z-10 flex items-center justify-center overflow-hidden">
+      <Place x={150 + HERO_SHIFT_X} y={50} w={650} h={950} className="z-10 flex items-center justify-center overflow-hidden">
         {/* isDarkMode now follows the site theme rather than being pinned
             off — in dark mode this loads the sunglasses turntable
             (sprite-sheet-dark-staggered.webp), which is registered frame by
@@ -90,7 +101,7 @@ export default function Hero() {
           column, capped at the artboard's right margin (x1877) so it can
           never bleed off-screen; aspect ratio locked to the source SVG.
           Sized ~15% smaller per feedback. */}
-      <Place x={990} y={360} w={RIGHT_MAX_W * 0.85} className="z-10">
+      <Place x={990 + HERO_SHIFT_X} y={360} w={RIGHT_MAX_W * 0.85} className="z-10">
         <HeroLockup />
       </Place>
     </Stage>
