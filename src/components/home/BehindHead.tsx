@@ -74,7 +74,10 @@ const YELLOW = { cx: 474, cy: 525, w: 720 };
 // inside the yellow's own radius (360u from its centre at 474,525) along the
 // direction it already sat in, so it overlaps rather than floats.
 const RED = { cx: 260, cy: 274, w: 271 };
-const BLUE = { cx: 744, cy: 778, w: 330 };
+// 330 -> 264, 2026-08-24: "Let's reduce the side of the blue star by 20%."
+// `place()` centres each element on its own (cx, cy), so shrinking w alone
+// keeps the centre fixed and only pulls the edges in.
+const BLUE = { cx: 744, cy: 778, w: 264 };
 
 /**
  * How the two growing stars behave, 2026-08-23: "Let's make the blue star not
