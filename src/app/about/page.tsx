@@ -6,7 +6,7 @@ import { ArcText } from "@/components/ArcText";
 import RagdollHead from "@/components/about/RagdollHead";
 import ParallaxPhotos from "@/components/about/ParallaxPhotos";
 import ApproachOnScroll from "@/components/about/ApproachOnScroll";
-import ResumeArrows from "@/components/ResumeArrows";
+import ResumeArrows, { type ResumeArrowSpot } from "@/components/ResumeArrows";
 import {
   HEADER_HEIGHT_CSS,
   HEADER_RULE_PCT,
@@ -287,6 +287,38 @@ function DraggableResumeCard({
   );
 }
 
+/**
+ * Where the résumé card sits and where the arrows go, in the RESUME section's
+ * own coordinate space — which is the full 1920-unit page width, since the
+ * section is `w-full` and absolute children position against its padding box.
+ *
+ * The card is centred on the page (x960) and its vertical extent was measured
+ * live rather than derived, because the arc-text link above it and the card's
+ * own negative top margin make its position an accumulation rather than a
+ * number anyone wrote down.
+ *
+ * SPOTS come off Noah's sketch read as fractions of its width: the left pair
+ * sits around 7-21% across and the right pair around 75-92%, which at 1920
+ * units puts their centres near x273/294 and x1574/1600. One high and one low
+ * on each side, so all four converge on the card from its corners rather than
+ * stacking on one axis.
+ */
+// Measured live in section units: the card occupies y515-886 and its centre
+// — which is what the arrows aim at, and what its zoom scales about, so it
+// holds still while the card grows — sits at (960, 700).
+const RESUME_CARD_CENTRE = { x: 960, y: 700 };
+const RESUME_ARROW_SPOTS: [
+  ResumeArrowSpot,
+  ResumeArrowSpot,
+  ResumeArrowSpot,
+  ResumeArrowSpot,
+] = [
+  { x: 273, y: 560, w: 150 },
+  { x: 294, y: 850, w: 132 },
+  { x: 1574, y: 555, w: 138 },
+  { x: 1600, y: 862, w: 147 },
+];
+
 export default function About() {
   // The header doubles as the ragdoll head's physics arena. That arena is
   // NOT the whole section: it is the box above the rule, which is what makes
@@ -446,9 +478,36 @@ export default function About() {
 
       {/* ================= RESUME DOWNLOAD ================= */}
       <section
-        className="w-full flex flex-col items-center"
+        className="relative w-full flex flex-col items-center"
         style={{ padding: "calc(var(--u) * 260) calc(var(--u) * 120) calc(var(--u) * 340)", marginBottom: "calc(var(--u) * 200)" }}
       >
+        {/* Clay arrows aimed at the résumé card, per Noah's sketch of this
+            placement (2026-08-24: "The clay arrows shouldn't be in the footer
+            at all. The only place it should appear is on the resume section
+            in the 'about me' area. Look at the sketch for where I would like
+            the arrows to point to.") — moved here wholesale from the footer,
+            see ResumeArrows.tsx.
+
+            OUTSIDE ApproachOnScroll, WHICH IS WHY THEY WORK (2026-08-25).
+            They started inside it, which broke them twice over. That wrapper
+            carries the scroll-driven zoom, so the arrows grew with the card —
+            against "Have the arrows stay the same size, but keep the resume
+            and 'download my resume' text grow as it is" — and, less visibly,
+            it is not full width: it shrinks to its widest child, the 1050u
+            arc-text link. So `--u` measured inside it came out at 0.537
+            against the page's 0.787, and coordinates written for a 1680u
+            content box landed a third too far right, running the right-hand
+            pair off the edge of the window.
+
+            Positioned against the SECTION instead, which is the full 1920u
+            page width — the same space Noah's sketch is drawn in, so his
+            fractions convert directly. Being outside the zoom is also what
+            keeps the parallax legible: two transforms fighting over the same
+            element read as neither. */}
+        <ResumeArrows
+          target={RESUME_CARD_CENTRE}
+          spots={RESUME_ARROW_SPOTS}
+        />
         {/* Headline and card travel toward the viewer together as this
             section scrolls in — see ApproachOnScroll. Wrapping BOTH (rather
             than the card alone) is what makes it read as one object arriving
@@ -456,46 +515,6 @@ export default function About() {
             Noah described. */}
         <ApproachOnScroll>
           <div className="relative w-full flex flex-col items-center">
-            {/* Clay arrows aimed at the résumé CARD, per Noah's own sketch
-                of this placement (2026-08-24: "The clay arrows shouldn't be
-                in the footer at all. The only place it should appear is on
-                the resume section in the 'about me' area. Look at the
-                sketch for where I would like the arrows to point to.") —
-                moved here wholesale from the footer, see ResumeArrows.tsx.
-
-                TARGET is the card's own centre: the arc-text link occupies
-                y0-330 in this wrapper's 1680u-wide content box (section
-                padding is 120u each side of the main's 1920u), the card
-                sits below it at width 420u (centred, so x630-1050) with a
-                -130u marginTop pulling it up under the arc text, giving it
-                a top of 200u and — at its 1700/2200 aspect — a height of
-                ~543.5u, so its vertical centre is ~472u.
-
-                SPOTS mirror the sketch: a pair outside each edge of the
-                card (comfortably clear of x630-1050), one high and one low
-                on each side so all four converge on the card from its four
-                corners rather than stacking on one axis.
-
-                RE-MEASURED AGAINST THE SKETCH, 2026-08-24: "the ones on the
-                left are too close while the ones on the right are too far
-                away. Have them more in the positions that I had on the
-                sketch. Please also make them a tad larger." Both notes point
-                the same way — the whole set was sitting right of where he
-                drew it. Reading his sketch as fractions of its own width and
-                converting to this wrapper's units puts the left pair near
-                x150/175 and the right pair near x1455/1480; they were at
-                150/230 and 1530/1450, so the inner-left one came in 55u too
-                far and the outer-right one sat 75u too wide. Widths up ~15%
-                for "a tad larger". */}
-            <ResumeArrows
-              target={{ x: 840, y: 472 }}
-              spots={[
-                { x: 150, y: 250, w: 150 },
-                { x: 178, y: 655, w: 132 },
-                { x: 1458, y: 240, w: 138 },
-                { x: 1482, y: 668, w: 147 },
-              ]}
-            />
             <a
               href="/assets/_documents/noah-cousineau-resume.pdf"
               target="_blank"

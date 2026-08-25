@@ -56,23 +56,48 @@ export default function LoadingWorm() {
   const step = WORM_STEPS[((tick % n) + n) % n];
   const cycles = Math.floor(tick / n);
 
-  /* WRAPS RATHER THAN WALKING OFF. The load is capped at 8s but can finish
-   * in a fraction of that, and the worm covers about a seventh of the frame
-   * per cycle, so a slow load would otherwise leave an empty screen with the
-   * worm somewhere off to the right. It re-enters from the left instead:
-   * the travel is taken modulo the frame plus one worm length, offset so
-   * the FIRST pass still begins exactly where Noah placed it — "The worm
-   * will start slightly left of middle" — and only later laps wrap. */
-  const wormW = step.w;
-  const span = WORM_VIEWBOX.w + wormW;
-  const behind = wormW + step.x; // distance from fully-off-left to the start
-  const travel = ((cycles * WORM_CYCLE_ADVANCE + behind) % span) - behind;
-
   const bandH = WORM_BAND.y1 - WORM_BAND.y0;
   const first = WORM_STEPS[0];
   const centre0 = first.x + first.w / 2;
   const shift = START_CENTRE * WORM_VIEWBOX.w - centre0;
   const floor = WORM_BAND.y1;
+
+  /* WRAPS RATHER THAN WALKING OFF, and the wrap is worked out in SCREEN
+   * space (2026-08-24).
+   *
+   * Noah: "the worm on the loading screen doesn't make it all the way to the
+   * right side of the page. It feels like the worm crawls 3/4 of the page and
+   * then teleports to the left. Have this more of a seamless loop."
+   *
+   * Both halves of that are the same bug. The wrap used to be taken modulo
+   * `viewBox + this step's width`, offset by `this step's width + x` — three
+   * quantities that all change every single frame, because each of the ten
+   * poses is a different size as the worm scrunches and stretches (w runs
+   * 267..431, x runs 615..886). So the distance at which it wrapped was not a
+   * property of the screen at all, and simulating it puts the jump at a left
+   * edge of 1187 and a right edge of 1532 in a 1920-wide frame: three
+   * quarters across, exactly as described, and visibly mid-stride.
+   *
+   * Wrapping is a question about where the worm is ON SCREEN, so it is asked
+   * there. The transform chain below is a shift and a scale about the worm's
+   * own footing, which composes to a plain screen-left = A·x + B; taking the
+   * modulo of THAT, against a span fixed by the widest pose, makes the wrap
+   * happen at one fixed place instead of ten. That place is chosen as "left
+   * edge has reached the right side of the frame", which puts the worm fully
+   * out of sight at the instant it moves — so it leaves as a shrinking sliver
+   * on the right and returns as a growing one on the left, with no frame in
+   * between where it is visible in two places or in neither. */
+  const A = SCALE;
+  const B = shift + centre0 * (1 - SCALE);
+  const maxScreenW = A * Math.max(...WORM_STEPS.map((st) => st.w));
+  const span = WORM_VIEWBOX.w + maxScreenW;
+
+  const absLeft = A * (step.x + cycles * WORM_CYCLE_ADVANCE) + B;
+  const wrappedLeft =
+    (((absLeft + maxScreenW) % span) + span) % span - maxScreenW;
+  // Back into the worm's own pre-scale units, which is what the <g> below
+  // translates by.
+  const travel = (wrappedLeft - absLeft) / A;
 
   return (
     <div

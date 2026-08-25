@@ -5,23 +5,30 @@ import { useTheme } from "./ThemeProvider";
 /**
  * The dark-mode switch.
  *
- * It's a pair of sunglasses because that's the joke Noah asked for — in dark
- * mode both heads put shades on ("I want this to have a humorous twist as
- * well... where I have sunglasses"), so the control shows the thing that's
- * about to happen. Filled lenses when they're on, empty frames when they're
- * off.
+ * A PLAIN TOGGLE, AND UNLABELLED ON PURPOSE (2026-08-24). Noah: "Let's change
+ * the sunglasses icon to a horizontal toggle switch. The switch should just be
+ * a black circle in an outlined pill shape (colors reversed when in dark
+ * mode). I don't want any descriptive text by the switch, this should be an
+ * easter egg that users find."
  *
- * PLACEMENT is the one part of this that's a guess. The site has no global
- * nav to hang it off, so it sits fixed in the top-right — conventional,
- * out of the way of every page's composition, and clear of the footer's
- * link columns. It's deliberately a single self-contained component with no
- * layout dependencies, so moving it is a one-line change: drop it into the
- * footer's Stage, or give it different inset values, and nothing else has
- * to move.
+ * It used to be a pair of sunglasses, which was the joke — in dark mode both
+ * heads put shades on, so the control showed the thing about to happen. That
+ * is the opposite of an easter egg: it announced itself. A switch that says
+ * nothing about what it switches is the ask, so the `title` tooltip is gone
+ * too — it was the last thing that would have told anyone what this does
+ * before they pressed it. `aria-label` stays: it is not visible, and a
+ * control with no accessible name is not a secret, it is a bug.
  *
- * mix-blend-difference means it stays legible against whatever is behind it
- * — white type over the black project grid, black over paper — without
- * needing to know what page it's on. It's the same trick Nav.tsx uses.
+ * "COLORS REVERSED WHEN IN DARK MODE" comes free from `mix-blend-difference`,
+ * which is what this already used and why it survives the redesign. The
+ * outline and the knob are both `currentColor` over white, and difference
+ * blending inverts them against whatever is actually behind — black on the
+ * light pages, white in dark mode, and still legible over the project grid's
+ * black field, which a theme-branched fill would not be.
+ *
+ * PLACEMENT mirrors HomeLink's inset so the two corner controls stay a
+ * matched pair. Unlike HomeLink it keeps its own vertical position: the
+ * 2026-08-24 "shift the 'c' logo up" was about that mark specifically.
  */
 export default function ThemeToggle() {
   const { theme, toggle, hydrated } = useTheme();
@@ -33,13 +40,6 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       aria-pressed={dark}
-      title={dark ? "Lights on" : "Lights off"}
-      // Mirrors HomeLink's inset (see the note there) so the two corner
-      // controls stay a matched pair; Noah asked for the mark to move, and
-      // leaving this one at a flat 20px would just make them look misaligned
-      // with each other instead of with the page. Unlike HomeLink, this one
-      // keeps its own top-5 — 2026-08-24's "shift the 'c' logo up" was about
-      // that mark specifically, not this one.
       className="fixed top-5 z-[60] mix-blend-difference text-white
                  p-2 -m-2 cursor-pointer select-none
                  transition-opacity duration-200 hover:opacity-60
@@ -48,10 +48,10 @@ export default function ThemeToggle() {
         // /20 -> /40, 2026-08-24: "move both the home page and the
         // sunglasses icon closer to the border of the browser window."
         right: "calc(min(100vw, 1920px) / 40)",
-        // Until the stored preference is known the icon would be guessing,
-        // and a visible flip on hydration reads as a glitch. Holding it
-        // invisible for that one tick costs nothing — the control is
-        // decorative until clicked.
+        // Until the stored preference is known the knob would be guessing
+        // which end to sit at, and a visible slide on hydration reads as a
+        // glitch. Holding it invisible for that one tick costs nothing — the
+        // control is decorative until clicked.
         opacity: hydrated ? undefined : 0,
       }}
     >
@@ -63,27 +63,30 @@ export default function ThemeToggle() {
         aria-hidden="true"
         focusable="false"
       >
-        {/* Brow bar + bridge */}
-        <path
-          d="M1 3.2h32M14.6 5.4c1.6-.9 3.2-.9 4.8 0"
+        {/* Inset by half the stroke so the outline sits INSIDE the 34x16 box
+            rather than straddling its edge and getting clipped. */}
+        <rect
+          x="0.8"
+          y="0.8"
+          width="32.4"
+          height="14.4"
+          rx="7.2"
           stroke="currentColor"
           strokeWidth="1.6"
-          strokeLinecap="round"
         />
-        {/* Two aviator lenses. Filled when dark mode is on. */}
-        <path
-          d="M2.2 4.2h12.2l-1.5 7.2c-.4 2-2.1 3.4-4.1 3.4H7.2c-2.2 0-4-1.6-4.3-3.7L2.2 4.2Z"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-          fill={dark ? "currentColor" : "none"}
-        />
-        <path
-          d="M19.6 4.2h12.2l-.7 6.9c-.3 2.1-2.1 3.7-4.3 3.7h-1.6c-2 0-3.7-1.4-4.1-3.4l-1.5-7.2Z"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-          fill={dark ? "currentColor" : "none"}
+        {/* Transformed rather than having its `cx` animated: CSS transitions
+            on SVG geometry attributes are newer and patchier than transitions
+            on `transform`, and this has to be right in every browser that
+            gets as far as finding the thing. */}
+        <circle
+          cx="8.6"
+          cy="8"
+          r="4.4"
+          fill="currentColor"
+          style={{
+            transform: dark ? "translateX(16.8px)" : "translateX(0px)",
+            transition: "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
         />
       </svg>
     </button>

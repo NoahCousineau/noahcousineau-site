@@ -53,19 +53,51 @@ export default function HomeLink() {
       href="/"
       aria-label="Back to home"
       title="Home"
-      style={{ left: "calc(min(100vw, 1920px) / 40)", top: "8px" }}
+      style={{
+        left: "calc(min(100vw, 1920px) / 40)",
+        // See the note below: the artboard unit spelled out, because `--u`
+        // lives on <main> and this is fixed outside it.
+        top: "max(0px, calc(min(100vw, 1920px) / 1920 * 28.25 - 14.75px))",
+      }}
       /* 2026-08-24, Noah: "move both the home page and the sunglasses icon
          closer to the border of the browser window to make them not
          conflict with any content on the page." /20 (matching the
          page-title column) -> /40, roughly halving the inset — 75.6px down
          to 37.8px at a 1512 viewport.
-         Also, Noah: "shift the 'c' logo up a bit so it's center aligned
-         with the section titles." Measured live at 1512: the sticky
-         section title's own text (not its padded wrapper) sits y12.6-33.6,
-         centre 23. This mark's hit-box is 46 tall with the -m-2 trick below
-         pulling it up 8px from whatever `top` says, so `top: 8px` lands its
-         box at 0-46, centre 23 — matching, not `top-5` (20px), which centred
-         it at 35, well below the title. */
+
+         VERTICALLY IT IS TIED TO THE ARTBOARD UNIT, not to a pixel, and that
+         is the whole fix (2026-08-25). Noah: "Let's just make sure the C
+         aligns better... The C should be aligned to the red line", drawn
+         through a section title. A first pass set a flat `top: 8px` after
+         measuring against a 1512 viewport, where it lands within half a
+         pixel — and it is still half a pixel out at 1512 today. It was wrong
+         everywhere else: the section title's size is
+         `clamp(0.63rem, calc(var(--u) * 26.67), 2rem)` and its sticky
+         wrapper's padding is `calc(var(--u) * 16)`, so the line he drew
+         MOVES DOWN THE PAGE as the window widens while a fixed pixel offset
+         stays put. Two numbers cannot agree at more than one width.
+
+         So the title's own centreline is derived instead. Pinned at top:0
+         the title's box starts at 16u and is one font-size tall (leading-none
+         gives line-height 1); measuring the rendered ink puts its optical
+         centre 0.0405 of a font-size above that box's centre, because caps
+         and x-height sit high in an em box that also has to hold descenders.
+         That is 16u + 0.4595 x 26.67u = 28.25u. This mark's own ink centre
+         sits 22.75px below its border box, and `-m-2` pulls the box 8px above
+         whatever `top` says — hence 28.25u - 22.75 + 8.
+
+         Verified by pixel measurement rather than by arithmetic: the C's ink
+         and the title's ink share a centreline to within a quarter pixel at
+         1280, 1512 and 1920.
+
+         The `max(0px, ...)` floor is what stops the expression pulling the
+         mark off the top of the window on a narrow one. It only engages below
+         about 1002px, which is where the C's own ink would otherwise cross
+         y=0; alignment gives way there rather than the mark being clipped,
+         and phone layouts are handled separately. A 6px floor was tried first
+         and was wrong for a reason worth keeping: it engages below 1410px,
+         well inside the range people actually use, and threw the alignment
+         out by nearly 4px at 1280 while looking correct in the source. */
       className="fixed z-[60]
                  p-2 -m-2 cursor-pointer select-none
                  transition-opacity duration-200 hover:opacity-60

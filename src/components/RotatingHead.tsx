@@ -28,7 +28,7 @@ export default function RotatingHead({
   isDarkMode = false,
   variant = 'staggered',
   autoRotateSpeed = 100,
-  resumeRotationDelay = 3000,
+  resumeRotationDelay = 5000,
   dragSensitivity = 20,
   containerClassName = '',
 }: RotatingHeadProps) {
@@ -36,9 +36,22 @@ export default function RotatingHead({
   const spriteSheetRef = useRef<HTMLImageElement | null>(null);
 
   const [currentFrame, setCurrentFrame] = useState(0);
-  const [isAutoRotating, setIsAutoRotating] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [velocity, setVelocity] = useState(0);
+
+  /* WHEN THE HEAD CAME TO REST AFTER A SPIN, or null if it is simply
+   * turning on its own (2026-08-24). Noah: "If the user spins the head, the
+   * head should only stay still for five seconds before slowly accelerating
+   * back to its original speed."
+   *
+   * A ref, not state, because the auto-rotation loop below reads it every
+   * animation frame and must not be torn down and rebuilt when it changes —
+   * which is exactly what a dependency would do, resetting the ramp on the
+   * frame it started. */
+  const pausedAtRef = useRef<number | null>(null);
+  /** Whether the current stillness is the end of a drag rather than the
+   *  page having just loaded — only the former should wait and ramp. */
+  const spunRef = useRef(false);
 
   // Constants - web-optimized (0.4x scale)
   //
@@ -55,6 +68,10 @@ export default function RotatingHead({
   // exactly; nothing needed remapping, dark just stops one short.
   const TOTAL_FRAMES = variant === 'smooth' ? 59 : isDarkMode ? 30 : 31;
   const GRID_COLS = variant === 'smooth' ? 8 : 6;
+  /** How long the head takes to get back up to speed once the wait is over.
+   *  Long enough that the acceleration is legible as acceleration; short
+   *  enough that it is back to normal before anyone wonders if it is. */
+  const RESUME_RAMP_MS = 2600;
   const FRAME_WIDTH = 960;
   const FRAME_HEIGHT = 1440;
   // The canvas BACKING STORE, in device-independent pixels — how much detail
@@ -158,16 +175,76 @@ export default function RotatingHead({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDarkMode, variant, drawFrame]);
 
-  // Auto-rotation loop
+  /* Auto-rotation, and the wait-then-ramp back to it after a spin.
+   *
+   * A requestAnimationFrame loop rather than the setInterval this used to be,
+   * because the rate is no longer constant: "slowly accelerating back to its
+   * original speed" needs a speed that can be a fraction of the cruise rate
+   * and change every frame, and setInterval only offers whole-millisecond
+   * periods reset by tearing the timer down. Driving it off elapsed time also
+   * means the head turns at the same real-world rate whatever the display's
+   * refresh rate, which the old one-frame-per-tick timer did not guarantee.
+   *
+   * `currentFrame` is fractional and already was — drag momentum has always
+   * written fractional frames into it, and drawFrame rounds — so advancing by
+   * a fractional amount per animation frame needs nothing else to change.
+   *
+   * Suppressed entirely while a drag is in progress or momentum is still
+   * carrying the head, so there is only ever one thing writing the frame. */
   useEffect(() => {
-    if (!isAutoRotating) return;
+    if (isDragging || velocity !== 0) return;
 
-    const interval = setInterval(() => {
-      setCurrentFrame((prev) => (prev + 1) % TOTAL_FRAMES);
-    }, autoRotateSpeed);
+    const framesPerSec = 1000 / autoRotateSpeed;
+    let raf = 0;
+    let last: number | null = null;
 
-    return () => clearInterval(interval);
-  }, [isAutoRotating, autoRotateSpeed, TOTAL_FRAMES]);
+    const step = (t: number) => {
+      const dt = last === null ? 0 : (t - last) / 1000;
+      last = t;
+
+      let rate = 1;
+      const pausedAt = pausedAtRef.current;
+      if (pausedAt !== null) {
+        const since = t - pausedAt;
+        if (since < resumeRotationDelay) {
+          rate = 0; // "stay still for five seconds"
+        } else {
+          // Quadratic rather than linear: a linear ramp leaves the head at
+          // half speed halfway through, which reads as it already being back
+          // to normal. Squaring keeps the first half of the ramp genuinely
+          // slow, so the acceleration is the thing you notice.
+          const p = Math.min(1, (since - resumeRotationDelay) / RESUME_RAMP_MS);
+          rate = p * p;
+          if (p >= 1) pausedAtRef.current = null;
+        }
+      }
+
+      if (rate > 0) {
+        setCurrentFrame((prev) => (prev + framesPerSec * rate * dt) % TOTAL_FRAMES);
+      }
+      raf = requestAnimationFrame(step);
+    };
+
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [isDragging, velocity, autoRotateSpeed, resumeRotationDelay, TOTAL_FRAMES]);
+
+  /* Start the five-second wait at the moment the head actually stops, which
+   * is when momentum has run out — not when the pointer came up. Releasing a
+   * fast flick and having the clock start there would spend most of the wait
+   * on a head that is still visibly spinning. */
+  useEffect(() => {
+    if (isDragging) {
+      spunRef.current = true;
+      pausedAtRef.current = null;
+      return;
+    }
+    if (velocity !== 0) return;
+    if (spunRef.current) {
+      spunRef.current = false;
+      pausedAtRef.current = performance.now();
+    }
+  }, [isDragging, velocity]);
 
   // Momentum/inertia animation
   useEffect(() => {
@@ -226,7 +303,6 @@ export default function RotatingHead({
   // Drag handler
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
-    setIsAutoRotating(false);
     setVelocity(0); // Reset velocity when starting new drag
 
     const startX = e.clientX;
@@ -265,7 +341,6 @@ export default function RotatingHead({
   // Touch handler
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
-    setIsAutoRotating(false);
     setVelocity(0);
 
     const startX = e.touches[0].clientX;
@@ -294,7 +369,7 @@ export default function RotatingHead({
       setIsDragging(false);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
-      // Don't resume auto-rotation
+      // Auto-rotation resumes on its own — see the wait-then-ramp above.
     };
 
     document.addEventListener('touchmove', handleTouchMove);
