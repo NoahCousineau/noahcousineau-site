@@ -10,7 +10,7 @@
  * the position Noah's demo file puts the artwork.
  */
 
-export const HAND_BOX = {"x": 595.3, "y": 105.2, "w": 884.8, "h": 830.2};
+export const HAND_BOX = {"x": 595.3, "y": 105.2, "w": 701.4, "h": 793.1};
 
 /**
  * Where the UNCROPPED 1500x1200 artwork's top-left sits, same units. The
@@ -40,4 +40,4 @@ export const HAND_FRAMES: string[] = [
 ];
 
 /** Natural pixel size of every frame, for next/image. */
-export const HAND_PIXELS = { width: 1200, height: 1126 };
+export const HAND_PIXELS = { width: 1200, height: 1357 };

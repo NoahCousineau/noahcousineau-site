@@ -134,7 +134,63 @@ def corrections(frames):
     p = np.array(path)
     t = np.arange(N, dtype=float)
     fit = np.stack([np.polyval(np.polyfit(t, p[:, k], 2), t) for k in (0, 1)], 1)
-    return np.rint(fit - p).astype(int)
+    # The fitted path is returned too: it is where each frame's content ends
+    # up once corrected, which is what the wrist cut has to follow. See
+    # `wrist_cut`.
+    return np.rint(fit - p).astype(int), fit
+
+
+# --- the wrist -------------------------------------------------------------
+#
+# 2026-08-24, Noah: "notice how I cropped off my wrist in the sketch/demo.
+# Make sure that you crop off the wrist at a consistent point so the wrist/arm
+# doesn't grow at all during the animation."
+#
+# Measuring frame by frame says he is right and says why. The arm's width
+# where it meets the bottom of the canvas runs 369, 379, 397, 426, 479, 516
+# pixels across the first six poses — it does not grow because he moved, it
+# grows because a rotating arm crossing a FIXED horizontal crop line presents
+# more of itself to that line as it swings, the same way a pencil laid across
+# a ruler covers more of it as you turn the pencil.
+#
+# So the cut cannot be fixed on the canvas; it has to be fixed on the ARM. It
+# is defined once in frame 1's coordinates — a straight line across the wrist,
+# perpendicular to the forearm — and then carried through each frame by the
+# same rotation and translation the registration already establishes for that
+# frame. That is what "a consistent point" means when the thing being cut is
+# turning: consistent relative to the wrist, not to the frame.
+#
+# CUT_FROM_TIP is how far down the arm the cut sits, as a fraction of the
+# hand's own height in frame 1, measured from the fingertips. 0.86 leaves the
+# heel of the palm and a short stub of wrist and takes the rest.
+CUT_FROM_TIP = 0.86
+CUT_ANGLE_DEG = 0.0   # the cut is square across the arm in frame 1
+
+
+def wrist_cut(shape, angle_deg, offset, tip_y, hand_h, centre):
+    """Boolean mask of everything to KEEP for one frame.
+
+    `angle_deg` is that frame's pose angle and `offset` the translation the
+    registration puts it at, so the line follows the arm rather than the
+    canvas. The rotation is about the image centre because that is the axis
+    ndi.rotate used when the offsets were measured — a cut rotated about any
+    other point would be a different line by the time it reached the edge.
+    """
+    h, w = shape
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    # Into the frame-1 reference: undo this frame's translation, then its
+    # rotation about the centre.
+    xx -= offset[0]
+    yy -= offset[1]
+    cx, cy = centre
+    th = np.deg2rad(angle_deg)
+    ct, st = np.cos(th), np.sin(th)
+    rx = ct * (xx - cx) + st * (yy - cy) + cx
+    ry = -st * (xx - cx) + ct * (yy - cy) + cy
+    cut_y = tip_y + CUT_FROM_TIP * hand_h
+    a = np.deg2rad(CUT_ANGLE_DEG)
+    # Keep everything above the line (in frame-1 space).
+    return (ry - cut_y) * np.cos(a) - (rx - cx) * np.sin(a) < 0
 
 
 def main():
@@ -145,7 +201,7 @@ def main():
 
     print(f"  loading {N} PSDs")
     frames = load_frames()
-    corr = corrections(frames)
+    corr, trend = corrections(frames)
     print("  correction to trend (px):")
     for i, (dx, dy) in enumerate(corr):
         flag = "  <-- outlier" if max(abs(dx), abs(dy)) > 20 else ""
@@ -161,6 +217,23 @@ def main():
         if dx > 0: a[:, :dx] = 0
         elif dx < 0: a[:, dx:] = 0
         shifted.append(a)
+
+    # Frame 1's hand, which the cut is defined against.
+    m0 = shifted[0][..., 3] > ALPHA_MIN
+    ys0, _ = np.where(m0)
+    tip_y, hand_h = float(ys0.min()), float(ys0.max() - ys0.min())
+    centre = (shifted[0].shape[1] / 2.0, shifted[0].shape[0] / 2.0)
+    print(f"  wrist cut at {CUT_FROM_TIP:.2f} of the hand's height below the "
+          f"fingertips (y={tip_y + CUT_FROM_TIP * hand_h:.0f} in frame 1)")
+
+    before = [int((a[..., 3] > ALPHA_MIN).sum()) for a in shifted]
+    for i, a in enumerate(shifted):
+        keep = wrist_cut(a.shape[:2], POSE_ANGLE[i], trend[i] - trend[0],
+                         tip_y, hand_h, centre)
+        a[~keep] = 0
+    after = [int((a[..., 3] > ALPHA_MIN).sum()) for a in shifted]
+    print("  arm removed per frame (px): " +
+          " ".join(str(b - c) for b, c in zip(before, after)))
 
     # One crop box for all fifteen, so the component places them identically.
     union = np.zeros(shifted[0].shape[:2], bool)

@@ -51,11 +51,21 @@ import { HAND_BOX, HAND_FRAMES, HAND_PIXELS } from "@/lib/passwordHand";
  */
 type Phase = "enter" | "ask" | "go";
 
-/** Fly-in, relative to where the hand lands: the demo goes
- *  translate(90.83 45.61) rotate(-12.57) scale(0) -> translate(43.01 9.54)
- *  rotate(0) scale(.07), i.e. it starts small, tilted, down and to the right. */
-const ENTER_FROM = { x: 478.2, y: 360.7, rotate: -12.57, scale: 0 };
-const ENTER_SECONDS = 0.62;
+/** Fly-in. The demo goes translate(90.83 45.61) rotate(-12.57) scale(0) ->
+ *  translate(43.01 9.54) rotate(0) scale(.07) — small, tilted, down and to
+ *  the right of where it lands.
+ *
+ *  THE TRANSLATION IS GONE, 2026-08-25. Noah: "let's also make sure the hand
+ *  comes from the center of the page and rotates from its starting point."
+ *  Setting the transform origin to the page's centre was necessary and not
+ *  sufficient: with a 478x361 unit offset still on the tween, the hand grew
+ *  from a point that far off centre and slid into place, which is the sliding
+ *  he could still see. At x/y 0 it scales up from the origin itself, so the
+ *  origin IS the starting point and the rotation happens about it. */
+const ENTER_FROM = { x: 0, y: 0, rotate: -12.57, scale: 0 };
+// 0.62 -> 0.85: "The animation of the hand coming up from the back can be
+// just a tad longer in time as well."
+const ENTER_SECONDS = 0.85;
 
 /** 2026-08-24, Noah: "When the hand is showing up, I want it to spin/grow
  *  more from the center of the page." Was the uncropped artwork's own
@@ -65,32 +75,92 @@ const ENTER_SECONDS = 0.62;
  *  full 1920x1080 artboard, so (960,540) is the page's true centre. */
 const PAGE_CENTER = { x: 960, y: 540 };
 
-/** Noah's copy, positioned by its baselines. `dy` is measured down from the
- *  first line's baseline, `dx` across from where it starts. */
-const COPY_ANCHOR = { x: 775.3, y: 574.5, rot: -3.77, size: 68.3 };
+/**
+ * Noah's copy, positioned by its baselines. `dy` is measured down from the
+ * first line's baseline, `dx` across from where it starts.
+ *
+ * SHRUNK 15% AND MOVED 30 UNITS LEFT, 2026-08-25. Noah: "The text and the
+ * typing box should still be more on the palm. Move the text and box to the
+ * left and shrink it down a bit to better fit on the palm."
+ *
+ * Not judged by eye. The palm was isolated out of frame 1's alpha — the
+ * LEFTMOST contiguous run of opaque pixels on each row, which excludes the
+ * thumb, since the thumb is a separate run further right on exactly the rows
+ * where it juts out and text drifting onto it is part of what reads as
+ * off-the-palm. Every line and the box were then measured against that mask.
+ * At the old numbers "woah, pal!" was 87% covered and the box 98%; the
+ * search says 0.85 scale is safe anywhere from 20 to 40 units left, so it
+ * sits at 30 — the middle of the band rather than its edge.
+ *
+ * `dx`/`dy` scale with the type (COPY_SCALE), because they are the line
+ * spacing Noah drew at the original size.
+ */
+const COPY_SCALE = 0.85;
+const COPY_SHIFT_X = -30;
+const COPY_ANCHOR = {
+  x: 775.3 + COPY_SHIFT_X,
+  y: 584.5,
+  rot: -3.77,
+  size: 68.3 * COPY_SCALE,
+};
 const COPY_LINES = [
   { dx: 0, dy: 0, text: "woah, pal!" },
-  { dx: 11.2, dy: 83.6, text: "what’s the" },
-  { dx: -1.5, dy: 146.2, text: "password?" },
+  { dx: 11.2 * COPY_SCALE, dy: 83.6 * COPY_SCALE, text: "what’s the" },
+  { dx: -1.5 * COPY_SCALE, dy: 146.2 * COPY_SCALE, text: "password?" },
 ];
 /** Akzidenz sits its baseline about this far below the top of a line box at
  *  line-height 1; the demo positions type by baseline, CSS by box top. */
 const BASELINE_RATIO = 0.75;
 const COPY_FADE = 0.25;
 
-/** The entry box, from the demo's <rect>: centre, size and tilt, in units. */
-const FIELD = { cx: 948.4, cy: 773.6, w: 327.3, h: 61.3, rot: -3.97, stroke: 3 };
+/** The entry box, from the demo's <rect>: centre, size and tilt, in units,
+ *  shrunk and moved with the copy above. */
+const FIELD = {
+  cx: 948.4 + COPY_SHIFT_X,
+  cy: 779.6,
+  w: 327.3 * COPY_SCALE,
+  h: 61.3 * COPY_SCALE,
+  rot: -3.97,
+  stroke: 3 * COPY_SCALE,
+};
 
 /**
- * The demo's `<line x1="79.48" y1="76.03" x2="79.81" y2="80.81"/>` — a short
- * hand-drawn cursor mark inside the box, near its left edge. 2026-08-24,
- * Noah: "The text formatting should be the same as well as the thickness of
- * the box used and the location of the typing line" — this was missing
- * entirely; only the box existed. Unlike FIELD, the demo gives this no
- * transform of its own, so it is drawn at these raw coordinates (already
- * ×10 into artboard units) with no rotation applied.
+ * How the typed password is drawn (2026-08-25).
+ *
+ * Noah: "the password dots should be sized to fill up the type box when the
+ * correct password is entered. Since 'TopSecret!' would be 10 characters, the
+ * password dots should be sized to allow a maximum of 10 dots in the box."
+ *
+ * DRAWN, NOT TYPED. The dots used to be whatever bullet the font puts in a
+ * `type="password"` input, spaced by a letter-spacing guess — which cannot be
+ * made to satisfy "exactly ten fit" for any particular box width, because the
+ * bullet's own advance is a property of the typeface and changes with it. So
+ * the input is still the real control and still holds the real value, but it
+ * is transparent, and the dots are circles positioned at a stride of exactly
+ * one tenth of the box's inner width. Ten fit because ten is what the
+ * arithmetic divides by.
  */
-const TYPING_LINE = { x1: 794.8, y1: 760.3, x2: 798.1, y2: 808.1 };
+const MAX_DOTS = 10;
+/** Inset from the box's inner edge, so the first and last dot don't touch it. */
+const FIELD_PAD = 9 * COPY_SCALE;
+
+/**
+ * The caret, from the demo's `<line x1="79.48" y1="76.03" x2="79.81"
+ * y2="80.81"/>` — a short hand-drawn mark inside the box near its left edge,
+ * which 2026-08-24 added as static artwork.
+ *
+ * IT NOW MOVES, 2026-08-25. Noah: "I noticed there was a line added to the
+ * inside of the type box. This is good, but I would like this line to
+ * actually function as the text cursor. It should start on the left and go
+ * to the right when the user is typing."
+ *
+ * Only its length and its slight lean survive from the demo — 3.3 units of
+ * drift over 47.8 of height, which is what makes it read as drawn by hand
+ * rather than as a rule. Its position is now one dot-stride per character.
+ * Expressed as fractions of the box so it keeps that proportion when the box
+ * is resized, which it just was.
+ */
+const CARET = { hFrac: 0.78, leanFrac: 0.069, w: 3 * COPY_SCALE };
 
 // 0.25 -> 0.5, 2026-08-24: "Let's double the amount of time until we get to
 // the thumbs up."
@@ -219,6 +289,10 @@ export default function PasswordHand({
 
   /* ---- checking as they type ------------------------------------------ */
 
+  /** One tenth of the box's inner width, so exactly MAX_DOTS fit. */
+  const dotStride = (FIELD.w - FIELD_PAD * 2) / MAX_DOTS;
+  const caretX = FIELD_PAD + dotStride * Math.min(value.length, MAX_DOTS);
+
   const refused = useRef(new Set<string>());
   /* Checks are QUEUED BEHIND EACH OTHER rather than skipped while one is in
    * flight, and the difference is a password that silently does nothing. Type
@@ -346,6 +420,12 @@ export default function PasswordHand({
             ))}
           </div>
 
+          {/* THE WHOLE FIELD IN ONE ROTATED FRAME. The outline used to be
+              drawn in a page-space SVG with its own matching rotate, which
+              worked while it was the only thing in the box; now that the
+              dots and the caret have to line up inside it to a fraction of a
+              unit, one rotation shared by all three is the only way they
+              cannot drift apart. */}
           <div
             className="absolute"
             style={{
@@ -356,6 +436,52 @@ export default function PasswordHand({
               transform: `rotate(${FIELD.rot}deg)`,
             }}
           >
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              viewBox={`0 0 ${FIELD.w} ${FIELD.h}`}
+              aria-hidden="true"
+            >
+              {/* Inset by half the stroke so the outline sits inside the box
+                  rather than straddling its edge. An SVG stroke rather than a
+                  CSS border: a border-width snaps to whole device pixels,
+                  which thickens or thins it depending on which way the
+                  rounding falls, while this scales with the viewBox exactly
+                  as the demo's own vector does. */}
+              <rect
+                x={FIELD.stroke / 2}
+                y={FIELD.stroke / 2}
+                width={FIELD.w - FIELD.stroke}
+                height={FIELD.h - FIELD.stroke}
+                fill="none"
+                stroke={HAND_INK}
+                strokeWidth={FIELD.stroke}
+              />
+              {Array.from({ length: Math.min(value.length, MAX_DOTS) }, (_, i) => (
+                <circle
+                  key={i}
+                  cx={FIELD_PAD + dotStride * (i + 0.5)}
+                  cy={FIELD.h / 2}
+                  r={dotStride * 0.26}
+                  fill={HAND_INK}
+                />
+              ))}
+              {/* Sits AFTER the last dot, and stops advancing once the box is
+                  full — there is nowhere further right for it to go. */}
+              <line
+                x1={caretX}
+                y1={(FIELD.h * (1 - CARET.hFrac)) / 2}
+                x2={caretX + FIELD.h * CARET.leanFrac}
+                y2={FIELD.h - (FIELD.h * (1 - CARET.hFrac)) / 2}
+                stroke={HAND_INK}
+                strokeWidth={CARET.w}
+              />
+            </svg>
+
+            {/* The real control, and invisible. It still owns the value, the
+                focus and the keystrokes; everything above is a drawing of
+                what it contains. `color` and `caretColor` transparent rather
+                than `opacity: 0` on the element, so it stays hit-testable and
+                focusable in every browser without any doubt about it. */}
             <input
               ref={inputRef}
               type="password"
@@ -370,52 +496,15 @@ export default function PasswordHand({
               autoComplete="off"
               spellCheck={false}
               aria-label="Password"
-              className="w-full h-full bg-transparent outline-none text-center"
+              className="absolute inset-0 w-full h-full bg-transparent outline-none"
               style={{
-                color: HAND_INK,
+                color: "transparent",
+                caretColor: "transparent",
                 fontSize: uFont(FIELD.h * 0.62),
-                letterSpacing: "calc(var(--u) * 6)",
               }}
             />
           </div>
 
-          {/* The box and its typing-line mark, drawn as real SVG rather than
-              a CSS border — a CSS border-width snaps to whole device pixels,
-              which either thickens or thins it depending on rounding
-              direction; an SVG stroke scales continuously with the viewBox,
-              matching the demo's own vector rendering exactly. rotate(deg,
-              cx, cy) rotates the rect about its own centre directly, which
-              is what the demo's translate+rotate achieves by a roundabout
-              route (translate(-51.3,67.5) is a hand-placed approximation of
-              "rotate about this centre" — the two are the same rotation to
-              within a hundredth of a unit). The viewBox is the full
-              1920x1080 Stage, so these are the same raw units as everywhere
-              else here — no separate calc(var(--u) * …) needed. */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            viewBox="0 0 1920 1080"
-            aria-hidden="true"
-          >
-            <rect
-              x={FIELD.cx - FIELD.w / 2}
-              y={FIELD.cy - FIELD.h / 2}
-              width={FIELD.w}
-              height={FIELD.h}
-              rx={0}
-              fill="none"
-              stroke={HAND_INK}
-              strokeWidth={FIELD.stroke}
-              transform={`rotate(${FIELD.rot} ${FIELD.cx} ${FIELD.cy})`}
-            />
-            <line
-              x1={TYPING_LINE.x1}
-              y1={TYPING_LINE.y1}
-              x2={TYPING_LINE.x2}
-              y2={TYPING_LINE.y2}
-              stroke={HAND_INK}
-              strokeWidth={FIELD.stroke}
-            />
-          </svg>
         </div>
       </Stage>
 
