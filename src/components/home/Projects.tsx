@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { Stage, Place } from "./Stage";
+import { useIsPhone } from "@/lib/useIsPhone";
 import { HOVER_VIDEO } from "@/lib/projects";
 import ProjectFrameAnimation from "./ProjectFrameAnimation";
 import { PROJECT_OBJECTS } from "@/lib/projectObjects";
@@ -73,6 +74,39 @@ const RIGHT_W = CELL_WIDTH;  // 918u (same width as left)
 const GRID_LOCAL_HEIGHT = 1575; // same span the sketch's grid occupied (reduced to avoid the line above footer)
 const ROW_H = GRID_LOCAL_HEIGHT / 3;
 const RULES = [0, 1, 2].map((i) => i * ROW_H); // Only 3 rules (top of each row), not 4
+
+/*
+ * ONE CELL PER ROW ON A PHONE (2026-08-25).
+ *
+ * Noah: "Have the grid content stacked vertically, so only one cell each.
+ * Scale the content in the grids accordingly."
+ *
+ * A phone gets six rows instead of three, no centre divider, and cells that
+ * run nearly the full artboard width. The row height is the part that has to
+ * be chosen rather than derived: `--u` is the viewport width over 1920, so on
+ * a 390px screen the whole artboard is 390px wide and a cell at 1844 units is
+ * 375px across. 1300 units of height makes each tile 264px tall — a landscape
+ * card at roughly 1.42:1, which is what "scale the content accordingly" needs
+ * to mean when the artboard and the screen are the same width. Halving the
+ * row height to keep the desktop proportion would give 66px tall tiles.
+ */
+/*
+ * ...ON A NARROWER ARTBOARD, which is what makes "scale the content
+ * accordingly" a single change rather than a dozen. Every size inside a tile
+ * — the 75-unit title, the 20-unit disciplines line, the clay object, the
+ * white box's 80%/60% — is in artboard units, so declaring the phone
+ * artboard to be 1000 units instead of 1920 enlarges all of them together
+ * and in proportion. Stacking the cells on the 1920 artboard and leaving it
+ * there was tried first: the tiles were the right shape and the titles came
+ * out at 15px in a 264px-tall cell, mostly empty.
+ *
+ * Matches the hero, which reaches for the same 1000 for the same reason —
+ * see heroLayout.ts.
+ */
+const PHONE_ARTBOARD = 1000;
+const PHONE_MARGIN = 20;
+const PHONE_CELL_W = PHONE_ARTBOARD - PHONE_MARGIN * 2;
+const PHONE_ROW_H = 680;
 
 function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: number; heightUnits: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -188,8 +222,17 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
 }
 
 export default function Projects() {
-  return (
-    <Stage heightUnits={GRID_LOCAL_HEIGHT} className="overflow-hidden">
+  const phone = useIsPhone();
+  const rowH = phone ? PHONE_ROW_H : ROW_H;
+  const rowCount = phone ? CELLS.length : 3;
+  const gridHeight = phone ? rowH * rowCount : GRID_LOCAL_HEIGHT;
+  // A rule at the top of every row, as on desktop — six of them now, not
+  // three — plus one at the very bottom so the last cell is closed off
+  // rather than running into the footer.
+  const rules = Array.from({ length: rowCount }, (_, i) => i * rowH);
+
+  const stage = (
+    <Stage heightUnits={gridHeight} className="overflow-hidden">
       {/* red-note annotation is a NOTE and intentionally NOT rendered */}
 
       {/* Horizontal rules, FULL BLEED. Noah: "extend the horizontal grid
@@ -200,26 +243,29 @@ export default function Projects() {
           The cells themselves are unchanged — only the rules run out to the
           artboard edge, which IS the window edge at every width up to the
           1920 cap the whole page shares. */}
-      {RULES.map((y) => (
-        <Place key={y} x={0} y={y} w={1920} className="z-20">
+      {rules.map((y) => (
+        <Place key={y} x={0} y={y} w={phone ? PHONE_ARTBOARD : 1920} className="z-20">
           <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
         </Place>
       ))}
       {/* Vertical center divider spanning the full grid height — the grid's
           content (cells) fills the Stage exactly (GRID_LOCAL_HEIGHT), so
           this reaches the footer bar's top edge with zero gap. */}
-      <Place x={DIVIDER_X} y={0} w={6} h={GRID_LOCAL_HEIGHT} className="z-20">
-        <div className="w-full h-full" style={{ background: "var(--color-ink)" }} />
-      </Place>
+      {/* No centre divider on a phone — there is only one column to divide. */}
+      {!phone && (
+        <Place x={DIVIDER_X} y={0} w={6} h={GRID_LOCAL_HEIGHT} className="z-20">
+          <div className="w-full h-full" style={{ background: "var(--color-ink)" }} />
+        </Place>
+      )}
 
       {/* Cells */}
       {CELLS.map((cell, i) => {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
-        const x = col === 0 ? LEFT_X : RIGHT_X;
-        const w = col === 0 ? LEFT_W : RIGHT_W;
-        const y = RULES[row];  // Start at the rule line, no offset
-        const h = ROW_H;  // Full row height, no reduction
+        const col = phone ? 0 : i % 2;
+        const row = phone ? i : Math.floor(i / 2);
+        const x = phone ? PHONE_MARGIN : col === 0 ? LEFT_X : RIGHT_X;
+        const w = phone ? PHONE_CELL_W : col === 0 ? LEFT_W : RIGHT_W;
+        const y = rules[row];  // Start at the rule line, no offset
+        const h = phone ? PHONE_ROW_H : ROW_H;  // Full row height, no reduction
         return (
           <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
@@ -229,5 +275,15 @@ export default function Projects() {
         );
       })}
     </Stage>
+  );
+
+  if (!phone) return stage;
+  // Redeclaring `--u` on a wrapper keeps it local: the Description section
+  // above and the footer below still inherit main's own 1920-based unit,
+  // which is what their coordinates expect.
+  return (
+    <div style={{ ["--u" as string]: `calc(100cqw / ${PHONE_ARTBOARD})` }}>
+      {stage}
+    </div>
   );
 }

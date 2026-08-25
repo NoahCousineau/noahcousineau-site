@@ -4,6 +4,8 @@ import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Place } from "./Stage";
 import Parallax from "../Parallax";
+import { useIsPhone } from "@/lib/useIsPhone";
+import { HERO_DESKTOP, HERO_PHONE } from "./heroLayout";
 import { BEHIND_SETS, PENCIL_MARKS } from "@/lib/behindHead";
 import {
   getHeadTick,
@@ -60,12 +62,13 @@ import {
  * canvas (see tools/behind-head/build_behind.py), so a fixed canvas width is
  * what keeps them growing about a fixed point instead of drifting.
  */
-// 2026-08-24, Noah: "shift both the animation and 'noah cousineau graphic
-// design' over to the right a bit to make it centered." Applied to the head
-// in Hero.tsx (HERO_SHIFT_X, same value) and to every cx here — these are
-// absolute artboard positions, not nested inside the head's own Place, so
-// shifting only the head would separate it from its own stars/pencil marks.
-const SHIFT_X = 30;
+/* Every position below is an offset from the head's own, applied as `shiftX`
+ * and `dy` — see heroLayout.ts, which this file and Hero.tsx both read so the
+ * head and the paper around it can never be moved independently. These are
+ * absolute artboard positions, not nested inside the head's Place, so moving
+ * the head alone would tear the composition apart. On a phone the head is
+ * centred rather than sitting in the left column and the whole cluster comes
+ * with it. */
 
 /**
  * How far each layer drifts against the scroll, artboard units (2026-08-24).
@@ -91,7 +94,9 @@ const PARALLAX = { red: 14, yellow: 8, blue: -7, pencil: -13 };
 // 521..528 y, so one fixed anchor holds for the whole turntable.
 //
 // 960 -> 720, 2026-08-23: "Let's reduce the side of the yellow star by 25%."
-const YELLOW = { cx: 474 + SHIFT_X, cy: 525, w: 720 };
+function geometry(shiftX: number, dy: number) {
+  return {
+    YELLOW: { cx: 474 + shiftX, cy: 525 + dy, w: 720 },
 // Both stars sit ON the yellow star's edge, half-tucked behind it, the way
 // they do in Noah's sketches — 2026-08-23: "let's have the red star somewhat
 // behind the yellow start like the sketches. Let's also move the blue star
@@ -100,11 +105,11 @@ const YELLOW = { cx: 474 + SHIFT_X, cy: 525, w: 720 };
 // were set against the bigger star. Each centre is now placed a little
 // inside the yellow's own radius (360u from its centre at 474,525) along the
 // direction it already sat in, so it overlaps rather than floats.
-const RED = { cx: 260 + SHIFT_X, cy: 274, w: 271 };
+    RED: { cx: 260 + shiftX, cy: 274 + dy, w: 271 },
 // 330 -> 264, 2026-08-24: "Let's reduce the side of the blue star by 20%."
 // `place()` centres each element on its own (cx, cy), so shrinking w alone
 // keeps the centre fixed and only pulls the edges in.
-const BLUE = { cx: 744 + SHIFT_X, cy: 778, w: 264 };
+    BLUE: { cx: 744 + shiftX, cy: 778 + dy, w: 264 },
 
 /**
  * How the two growing stars behave, 2026-08-23: "Let's make the blue star not
@@ -152,19 +157,21 @@ const BLUE = { cx: 744 + SHIFT_X, cy: 778, w: 264 };
 // up and right by just a tad." Halving w alone shrinks about the group's own
 // centre (see `place()`), so the nudge is applied on top of that rather than
 // being an artefact of it.
-const PENCIL = {
-  mark: 1, // "just be the second grouping"
-  cx: 775 + SHIFT_X,
-  cy: 215,
-  w: 54,
-  rot: 34,
-  /** per stroke: [frames to draw, frames to wait first, frames held down] */
-  strokes: [
-    { draw: 5, delay: 0, hold: 6 },
-    { draw: 8, delay: 3, hold: 4 },
-    { draw: 11, delay: 7, hold: 9 },
-  ],
-};
+    PENCIL: {
+      mark: 1, // "just be the second grouping"
+      cx: 775 + shiftX,
+      cy: 215 + dy,
+      w: 54,
+      rot: 34,
+      /** per stroke: [draw frames, wait frames, hold frames] */
+      strokes: [
+        { draw: 5, delay: 0, hold: 6 },
+        { draw: 8, delay: 3, hold: 4 },
+        { draw: 11, delay: 7, hold: 9 },
+      ],
+    },
+  };
+}
 
 /**
  * How much of one stroke is showing, 0..1 from its base.
@@ -251,6 +258,13 @@ export default function BehindHead() {
     subscribeHeadTick,
     getHeadTick,
     headTickServerSnapshot
+  );
+
+  const phone = useIsPhone();
+  const L = phone ? HERO_PHONE : HERO_DESKTOP;
+  const { YELLOW, RED, BLUE, PENCIL } = geometry(
+    L.shiftX,
+    L.headY - HERO_DESKTOP.headY
   );
 
   const yellow = BEHIND_SETS.yellow;

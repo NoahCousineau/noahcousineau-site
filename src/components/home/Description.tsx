@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
+import { useIsPhone } from "@/lib/useIsPhone";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "./Stage";
 import { FitText } from "./FitText";
@@ -38,6 +39,22 @@ const LINE4_TOP_UNITS = 1387;
  *  make this number load-bearing for containment is gone (see the note at
  *  the Stage below), so this is purely a spacing choice now. */
 const STAGE_HEIGHT_UNITS = 1500;
+/*
+ * PHONE (2026-08-25). Noah: "Increase the size of the arrow hand. Bring up
+ * the grid content to be closer to the arrow hand."
+ *
+ * The hand is scaled rather than repositioned: it rests with its tip on the
+ * rule and its fall is measured live at the moment it is thrown, so both
+ * follow the size automatically. 0.75 -> 1.5 doubles it, which on a 390px
+ * screen takes it from a 90px prop to a 180px one.
+ *
+ * The run-out is the Stage height, which is document space reserved after
+ * the pin releases and before Projects begins — nothing is drawn in it. On a
+ * phone that is a whole screen of blank scrolling between the hand landing
+ * and the first tile, so it comes down to just past the rule at y1528.
+ */
+const PHONE_HAND_SCALE = 1.5;
+const PHONE_STAGE_HEIGHT_UNITS = 1580;
 /** Where that line comes to rest, as a fraction of viewport height from the
  *  top. Noah: "stop scroll about 3/4 up the page" — three quarters of the way
  *  UP is a quarter of the way DOWN — then, once he saw it: "let's shift the
@@ -52,6 +69,7 @@ const LINE4_TARGET_TOP = 0.17;
 const HAND_TIP = { xPct: 32.5, yPct: 0.85 };
 
 export default function Description() {
+  const phone = useIsPhone();
   const root = useRef<HTMLDivElement>(null);
   /** Carries the fall. Unrotated, so its `y` is plain screen-space travel. */
   const handDropRef = useRef<HTMLDivElement>(null);
@@ -326,7 +344,7 @@ export default function Description() {
     // (1512x900) never showed this: that aspect ratio puts Stage's frozen
     // top ABOVE y=0 (i.e., already above the viewport) with room to spare.
     <div ref={pinRef}>
-    <Stage heightUnits={STAGE_HEIGHT_UNITS}>
+    <Stage heightUnits={phone ? PHONE_STAGE_HEIGHT_UNITS : STAGE_HEIGHT_UNITS}>
       <div ref={root} className="absolute inset-0">
         {/* Lines 1–3. Each is wrapped in an overflow-hidden mask so it can
             rise out from behind its own rule on scroll — see the LINE
@@ -417,7 +435,10 @@ export default function Description() {
           <div ref={handDropRef} className="w-full js-desc-hand-drop">
             <div
               className="w-full"
-              style={{ transform: "scale(0.75) rotate(180deg)", transformOrigin: "50% 50%" }}
+              style={{
+                transform: `scale(${phone ? PHONE_HAND_SCALE : 0.75}) rotate(180deg)`,
+                transformOrigin: "50% 50%",
+              }}
             >
               <div
                 ref={handTwangRef}
