@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Stage, Place, uFont } from "./Stage";
-import {
-  HAND_BOX,
-  HAND_ART_ORIGIN,
-  HAND_FRAMES,
-  HAND_PIXELS,
-} from "@/lib/passwordHand";
+import { HAND_BOX, HAND_FRAMES, HAND_PIXELS } from "@/lib/passwordHand";
 
 /*
  * THE PASSWORD HAND (2026-08-23).
@@ -62,6 +57,14 @@ type Phase = "enter" | "ask" | "go";
 const ENTER_FROM = { x: 478.2, y: 360.7, rotate: -12.57, scale: 0 };
 const ENTER_SECONDS = 0.62;
 
+/** 2026-08-24, Noah: "When the hand is showing up, I want it to spin/grow
+ *  more from the center of the page." Was the uncropped artwork's own
+ *  corner (Noah's demo's own transform origin) — that grows the hand from a
+ *  point near its own base, which reads as it unfurling from itself rather
+ *  than bursting in from the middle of the screen. The Stage here is the
+ *  full 1920x1080 artboard, so (960,540) is the page's true centre. */
+const PAGE_CENTER = { x: 960, y: 540 };
+
 /** Noah's copy, positioned by its baselines. `dy` is measured down from the
  *  first line's baseline, `dx` across from where it starts. */
 const COPY_ANCHOR = { x: 775.3, y: 574.5, rot: -3.77, size: 68.3 };
@@ -78,7 +81,20 @@ const COPY_FADE = 0.25;
 /** The entry box, from the demo's <rect>: centre, size and tilt, in units. */
 const FIELD = { cx: 948.4, cy: 773.6, w: 327.3, h: 61.3, rot: -3.97, stroke: 3 };
 
-const TURN_SECONDS = 0.25;   // "about a quarter second"
+/**
+ * The demo's `<line x1="79.48" y1="76.03" x2="79.81" y2="80.81"/>` — a short
+ * hand-drawn cursor mark inside the box, near its left edge. 2026-08-24,
+ * Noah: "The text formatting should be the same as well as the thickness of
+ * the box used and the location of the typing line" — this was missing
+ * entirely; only the box existed. Unlike FIELD, the demo gives this no
+ * transform of its own, so it is drawn at these raw coordinates (already
+ * ×10 into artboard units) with no rotation applied.
+ */
+const TYPING_LINE = { x1: 794.8, y1: 760.3, x2: 798.1, y2: 808.1 };
+
+// 0.25 -> 0.5, 2026-08-24: "Let's double the amount of time until we get to
+// the thumbs up."
+const TURN_SECONDS = 0.5;
 const HOLD_SECONDS = 1;      // "hold on the thumbs up for about a second"
 const BACKDROP_FADE = 0.3;   // "while the homepage fades away"
 const LEAVE_SECONDS = 0.45;
@@ -287,10 +303,10 @@ export default function PasswordHand({
             ref={handRef}
             className="w-full h-full"
             style={{
-              // The fly-in turns and grows about the UNCROPPED artwork's
-              // corner, which is where Noah's demo puts its transform. The
-              // crop starts inside that, hence the negative offset.
-              transformOrigin: `calc(var(--u) * ${HAND_ART_ORIGIN.x - HAND_BOX.x}) calc(var(--u) * ${HAND_ART_ORIGIN.y - HAND_BOX.y})`,
+              // The fly-in turns and grows about the PAGE'S centre — see
+              // PAGE_CENTER. Expressed relative to this div's own box (which
+              // sits at HAND_BOX), same as the old artwork-corner origin was.
+              transformOrigin: `calc(var(--u) * ${PAGE_CENTER.x - HAND_BOX.x}) calc(var(--u) * ${PAGE_CENTER.y - HAND_BOX.y})`,
             }}
           >
             <canvas
@@ -338,7 +354,6 @@ export default function PasswordHand({
               width: `calc(var(--u) * ${FIELD.w})`,
               height: `calc(var(--u) * ${FIELD.h})`,
               transform: `rotate(${FIELD.rot}deg)`,
-              border: `calc(var(--u) * ${FIELD.stroke}) solid ${HAND_INK}`,
             }}
           >
             <input
@@ -363,6 +378,44 @@ export default function PasswordHand({
               }}
             />
           </div>
+
+          {/* The box and its typing-line mark, drawn as real SVG rather than
+              a CSS border — a CSS border-width snaps to whole device pixels,
+              which either thickens or thins it depending on rounding
+              direction; an SVG stroke scales continuously with the viewBox,
+              matching the demo's own vector rendering exactly. rotate(deg,
+              cx, cy) rotates the rect about its own centre directly, which
+              is what the demo's translate+rotate achieves by a roundabout
+              route (translate(-51.3,67.5) is a hand-placed approximation of
+              "rotate about this centre" — the two are the same rotation to
+              within a hundredth of a unit). The viewBox is the full
+              1920x1080 Stage, so these are the same raw units as everywhere
+              else here — no separate calc(var(--u) * …) needed. */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox="0 0 1920 1080"
+            aria-hidden="true"
+          >
+            <rect
+              x={FIELD.cx - FIELD.w / 2}
+              y={FIELD.cy - FIELD.h / 2}
+              width={FIELD.w}
+              height={FIELD.h}
+              rx={0}
+              fill="none"
+              stroke={HAND_INK}
+              strokeWidth={FIELD.stroke}
+              transform={`rotate(${FIELD.rot} ${FIELD.cx} ${FIELD.cy})`}
+            />
+            <line
+              x1={TYPING_LINE.x1}
+              y1={TYPING_LINE.y1}
+              x2={TYPING_LINE.x2}
+              y2={TYPING_LINE.y2}
+              stroke={HAND_INK}
+              strokeWidth={FIELD.stroke}
+            />
+          </svg>
         </div>
       </Stage>
 
