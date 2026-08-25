@@ -108,17 +108,59 @@ export default function Description() {
        * costs nothing to measure the real distance at the moment it is needed. */
       if (handDropRef.current) gsap.set(handDropRef.current, { autoAlpha: 0 });
 
+      /* FIRES AGAIN ON THE WAY BACK UP (2026-08-25).
+       *
+       * Noah: "it's odd to see it appear once again when the user scrolls
+       * down to the projects and then back up. Have it so if the user scrolls
+       * back up to the 'Noah Cousineau is a graphic designer...' text, then
+       * the hand arrow animation replays."
+       *
+       * The throw is not part of the scrubbed timeline — it is a separate
+       * timeline that `tl.call` starts, so it plays at its own speed rather
+       * than being dragged by the scroll wheel. `tl.call` DOES fire in both
+       * directions as the playhead crosses it, so what stopped the replay was
+       * this one-shot flag, and the fix is to clear it whenever the reader
+       * leaves the pinned section: cross back up and the call point fires
+       * again with a clean flag.
+       *
+       * Cleared on the way DOWN too (onLeave), which is what makes the return
+       * trip replay, and the hand is left visible there — it has landed, and
+       * hiding it as the reader scrolls away from something they just watched
+       * arrive would be its own kind of odd. Going up past the START hides it
+       * instead, because at that point it has not been thrown yet.
+       */
       let handFired = false;
+      let handShot: gsap.core.Timeline | null = null;
+      const resetHand = (hide: boolean) => {
+        handFired = false;
+        // ONLY THE HIDING PATH KILLS THE THROW. Leaving downward happens a
+        // fraction of a second after the call point — the throw is still in
+        // the air — and killing it there left the hand stranded 773px above
+        // its resting place and fully visible, which is worse than the
+        // problem being fixed. Clearing the flag is all the downward exit
+        // needs; the landing can finish on its own.
+        if (!hide) return;
+        handShot?.kill();
+        handShot = null;
+        if (handDropRef.current) {
+          gsap.set(handDropRef.current, { autoAlpha: 0, y: 0 });
+        }
+      };
       const fireHand = () => {
         if (handFired || !handDropRef.current) return;
         handFired = true;
         const el = handDropRef.current;
+        // A fast scrub can cross the call point again before the previous
+        // throw has finished; without this they would run on top of one
+        // another and fight over `y`.
+        handShot?.kill();
         // Measure where it is about to land, then start from just past the
         // top of the window — whatever that distance happens to be at this
         // viewport and this point in the timeline.
         gsap.set(el, { y: 0, autoAlpha: 1 });
         const from = -(el.getBoundingClientRect().bottom + 40);
         const shot = gsap.timeline();
+        handShot = shot;
         // Accelerating into the landing: an arrow is fastest at the moment
         // it hits, which is what sells the stop.
         shot.fromTo(el, { y: from }, { y: 0, duration: 0.4, ease: "power3.in" });
@@ -187,6 +229,10 @@ export default function Description() {
           anticipatePin: 1,
           scrub: 0.6,
           invalidateOnRefresh: true,
+          // See the note on fireHand: clearing the flag at the boundaries is
+          // what lets the throw play again rather than only ever once.
+          onLeave: () => resetHand(false),
+          onLeaveBack: () => resetHand(true),
         },
       });
 

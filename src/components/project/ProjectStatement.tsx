@@ -376,6 +376,9 @@ export function ProjectStatement({
    * static ScrollTrigger position can't express.
    */
   const handStickyRef = useRef<HTMLDivElement>(null);
+  /** The sticky wrapper's own style attribute, saved while the fall pins it
+   *  to the viewport so it can be handed back afterwards. */
+  const restoreSticky = useRef<string | null>(null);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (!handRef.current || !paragraphRef.current || !handStickyRef.current) return;
@@ -459,8 +462,59 @@ export function ProjectStatement({
          * doesn't feel natural" — so it is one option on this timeline plus
          * a standalone module, and removing it is deleting these two
          * callbacks. */
-        onStart: () => lockScroll(),
-        onComplete: releaseScroll,
+        /* PINNED TO THE VIEWPORT FOR THE DURATION (2026-08-25).
+         *
+         * Noah: "When the scrolling/falling hand rotates downwards on the
+         * project pages, about half of it is not visible. Make it so the full
+         * hand can be seen, then it falls down."
+         *
+         * Measured mid-swing: the hand's box sits at top -155 in a 900px
+         * window, so 139 of its ~300px show. The cause is that by the time
+         * this trigger fires — deliberately late, once the last line of copy
+         * has cleared the top of the screen — the sticky wrapper's own
+         * containing block has ALSO ended, so the hand is no longer stuck. It
+         * has gone back to being an ordinary in-flow element and scrolled up
+         * with the page, and where it lands is wherever the reader's scroll
+         * left it. (This is the same mechanism the `visibility: hidden` at the
+         * end of the timeline exists to defend against, at the other end.)
+         *
+         * Extending the sticky range far enough to still be stuck here would
+         * work and would cost 800-odd units of extra page height, all of it
+         * blank. Fixing the hand to the viewport instead makes the position
+         * deterministic rather than a consequence of scroll — and is safe
+         * precisely here, because `lockScroll` means the page cannot move
+         * while it plays.
+         *
+         * The top is computed rather than picked: a 90-degree rotation about
+         * a 22%/50% origin puts the artwork's box from 0.5H - 0.22W to
+         * 0.5H + 0.78W below the element's own top, so its height is W and
+         * its offset is 0.5H - 0.22W. Centring THAT in the window is what
+         * guarantees the whole hand is on screen at any window size. */
+        onStart: () => {
+          lockScroll();
+          const el = handStickyRef.current;
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          const W = r.width;
+          const H = (W * 1490) / 2696; // the artwork's own aspect
+          const rotTop = 0.5 * H - 0.22 * W;
+          restoreSticky.current = el.getAttribute("style");
+          Object.assign(el.style, {
+            position: "fixed",
+            top: `${Math.max(16, (window.innerHeight - W) / 2 - rotTop)}px`,
+            left: `${r.left}px`,
+            width: `${W}px`,
+          });
+        },
+        onComplete: () => {
+          releaseScroll();
+          // The hand has hidden itself by now; put the wrapper back so there
+          // is no fixed-position element left over on the page.
+          const el = handStickyRef.current;
+          if (el && restoreSticky.current !== null) {
+            el.setAttribute("style", restoreSticky.current);
+          }
+        },
       });
 
       tl.to(handRef.current, {
