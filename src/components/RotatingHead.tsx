@@ -324,15 +324,19 @@ export default function RotatingHead({
          * the container is 132px wide and the canvas was still 900, so the
          * home page showed a 132px window onto the middle of the head. An ear.
          *
-         * 1200 x 1800 units is exactly 900 x 1350 at the desktop `--u` of
-         * 0.75, so this is a no-op at the widths the design was built at and
-         * only takes effect as the viewport narrows. The px fallback keeps the
-         * old behaviour if this is ever mounted outside an artboard.
+         * 1200 x 1800 units was exactly 900 x 1350 at the desktop `--u` of
+         * 0.75 — a no-op at the widths the design was built at, only taking
+         * effect as the viewport narrows. 2026-08-24, Noah: "reduce the size
+         * of the spinning head by 15%" — 1020 x 1530 (x0.85) now DOES
+         * downscale the 900x1350 backing store a hair at desktop widths,
+         * which is fine (shrinking a bitmap loses nothing the way enlarging
+         * one would). The px fallback keeps the old behaviour if this is
+         * ever mounted outside an artboard.
          */
         style={{
           background: 'transparent',
-          width: 'calc(var(--u, 0.75px) * 1200)',
-          height: 'calc(var(--u, 0.75px) * 1800)',
+          width: 'calc(var(--u, 0.6375px) * 1020)',
+          height: 'calc(var(--u, 0.6375px) * 1530)',
         }}
       />
     </div>
