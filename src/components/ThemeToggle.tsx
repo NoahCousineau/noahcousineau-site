@@ -37,13 +37,17 @@ export default function ThemeToggle() {
       // Mirrors HomeLink's inset (see the note there) so the two corner
       // controls stay a matched pair; Noah asked for the mark to move, and
       // leaving this one at a flat 20px would just make them look misaligned
-      // with each other instead of with the page.
+      // with each other instead of with the page. Unlike HomeLink, this one
+      // keeps its own top-5 — 2026-08-24's "shift the 'c' logo up" was about
+      // that mark specifically, not this one.
       className="fixed top-5 z-[60] mix-blend-difference text-white
                  p-2 -m-2 cursor-pointer select-none
                  transition-opacity duration-200 hover:opacity-60
                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
       style={{
-        right: "calc(min(100vw, 1920px) / 20)",
+        // /20 -> /40, 2026-08-24: "move both the home page and the
+        // sunglasses icon closer to the border of the browser window."
+        right: "calc(min(100vw, 1920px) / 40)",
         // Until the stored preference is known the icon would be guessing,
         // and a visible flip on hydration reads as a glitch. Holding it
         // invisible for that one tick costs nothing — the control is
