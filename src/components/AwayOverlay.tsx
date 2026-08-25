@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import MickeyWatch from "./MickeyWatch";
 import { ArcText, BottomArcText } from "./ArcText";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 /*
  * AWAY SCREEN — full-viewport ink panel carrying the clock lockup and
@@ -122,6 +123,7 @@ const BOTTOM_ARC_R = TEXT_INNER_R + ARC_FONT * CAP_RATIO;
 export const AWAY_SCREEN_SHOWN = "nc:away-screen-shown";
 
 export default function AwayOverlay() {
+  const phone = useIsPhone();
   // Always starts hidden, including in server-rendered HTML, so a page
   // opened in a background tab hydrates clean.
   const [away, setAway] = useState(false);
@@ -253,7 +255,13 @@ export default function AwayOverlay() {
     display: "block",
     whiteSpace: "nowrap",
     fontFamily: "var(--font-sans)",
-    fontSize: "clamp(0.62rem, calc(var(--u) * 21), 1.1rem)",
+    /* 2026-08-25, phones: "Have the clock in the center of the screen with
+       the contact type larger and now center aligned above and below."
+       Roughly double, and no longer clamped small — there is room for it once
+       the two groups stop flanking the clock and stack instead. */
+    fontSize: phone
+      ? "clamp(0.95rem, calc(var(--u) * 46), 1.5rem)"
+      : "clamp(0.62rem, calc(var(--u) * 21), 1.1rem)",
     letterSpacing: "0.02em",
     borderBottom: "2px solid var(--color-paper)",
     paddingBottom: "0.32em",
@@ -286,17 +294,33 @@ export default function AwayOverlay() {
           also center the clock in the center of the page"). A flex row with
           justify-center would instead centre the row as a whole, letting the
           wider left group push the clock off-centre. */}
+      {/* PHONE: one column, clock in the middle, contacts stacked above and
+          below it and centred — "Have the clock in the center of the screen
+          with the contact type larger and now center aligned above and
+          below." The desktop `1fr auto 1fr` exists to hold the clock dead
+          centre regardless of how wide either contact group is; stacked, the
+          clock is centred by the column itself and the same guarantee comes
+          for free. */}
       <div
-        className="grid items-center w-full"
+        className={`grid w-full ${phone ? "justify-items-center" : "items-center"}`}
         style={{
-          gridTemplateColumns: "1fr auto 1fr",
-          gap: "clamp(1.25rem, calc(var(--u) * 132), 8rem)",
+          gridTemplateColumns: phone ? "minmax(0, 1fr)" : "1fr auto 1fr",
+          /* Generous, and it has to be: the arc type is drawn INSIDE the
+             clock's own square box, right at its top and bottom edges, so
+             the visible gap between "CONTACT NOAH" and the row beneath it is
+             this value minus however much of that box is empty corner. At
+             1.5rem the links landed on top of the arc. */
+          gap: phone
+            ? "clamp(2.25rem, calc(var(--u) * 150), 4.5rem)"
+            : "clamp(1.25rem, calc(var(--u) * 132), 8rem)",
         }}
       >
         {/* Email and phone side by side, per Noah, and pushed toward the
             clock so both groups read as flanking it. */}
         <div
-          className="flex flex-wrap items-center justify-end"
+          className={`flex flex-wrap items-center ${
+            phone ? "justify-center" : "justify-end"
+          }`}
           style={{ gap: "clamp(1rem, calc(var(--u) * 76), 4.25rem)" }}
         >
           {CONTACT_LEFT.map((c) => (
@@ -308,7 +332,14 @@ export default function AwayOverlay() {
 
         <div
           className="relative flex items-center justify-center shrink-0"
-          style={{ width: "min(calc(var(--u) * 520), 52vh)", aspectRatio: "1/1" }}
+          style={{
+            // Bigger on a phone as a share of the screen, since it is no
+            // longer sharing a row with anything.
+            width: phone
+              ? "min(calc(var(--u) * 1320), 34vh)"
+              : "min(calc(var(--u) * 520), 52vh)",
+            aspectRatio: "1/1",
+          }}
         >
           {/* White circle backdrop, clipping the oversized watch to a clean edge */}
           <div className="absolute inset-0 rounded-full bg-[color:var(--color-paper)] overflow-hidden">
@@ -353,7 +384,9 @@ export default function AwayOverlay() {
         </div>
 
         <div
-          className="flex flex-wrap items-center justify-start"
+          className={`flex flex-wrap items-center ${
+            phone ? "justify-center" : "justify-start"
+          }`}
           style={{ gap: "clamp(1rem, calc(var(--u) * 76), 4.25rem)" }}
         >
           {CONTACT_RIGHT.map((c) => (
