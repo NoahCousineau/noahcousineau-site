@@ -87,7 +87,7 @@ import {
  * sit tucked against the yellow's rim. Enough separation to notice is a few
  * units; enough to admire would visibly break the composition apart.
  */
-const PARALLAX = { red: 14, yellow: 8, blue: -7, pencil: -13 };
+const PARALLAX = { red: 26, yellow: 15, blue: -13, pencil: -24 };
 
 // Centred on the head's own MEAN ink centre over a full rotation, measured
 // live at (473.8, 524.6) — the per-frame centre only wanders 467..476 x and
@@ -159,8 +159,12 @@ function geometry(shiftX: number, dy: number) {
 // being an artefact of it.
     PENCIL: {
       mark: 1, // "just be the second grouping"
-      cx: 775 + shiftX,
-      cy: 215 + dy,
+      // 2026-08-25: "nudge these a bit closer to the yellow star edge." As
+      // an offset from the star's own centre (474, 525) they sat 432 units
+      // out against its 360-unit radius — 72 units clear of the rim. Pulled
+      // in along the same bearing to 382, so they just clear it.
+      cx: 740 + shiftX,
+      cy: 251 + dy,
       w: 54,
       rot: 34,
       /** per stroke: [draw frames, wait frames, hold frames] */

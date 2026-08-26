@@ -22,6 +22,7 @@ the average because premultiplied, it doesn't have one.
 """
 import numpy as np
 from PIL import Image
+from scipy import ndimage as ndi
 
 
 def premultiplied_resize(rgba: np.ndarray, size, resample=Image.LANCZOS) -> np.ndarray:
@@ -41,4 +42,48 @@ def premultiplied_resize(rgba: np.ndarray, size, resample=Image.LANCZOS) -> np.n
     rgb_r = np.clip(rgb_r, 0, 255)
 
     out = np.dstack([rgb_r, alpha_r]).astype(np.uint8)
+    return out
+
+
+BLEED_BELOW = 8
+
+
+def bleed_edges(rgba: np.ndarray, alpha_min: int = BLEED_BELOW) -> np.ndarray:
+    """Give invisible pixels a plausible colour, so later filtering can't
+    pull black out of them.
+
+    2026-08-25, Noah: "Let's also work on removing the border line around the
+    head."
+
+    `premultiplied_resize` above divides the premultiplied colour back out by
+    `max(alpha, 1)`, which is right for every pixel that has any coverage and
+    leaves every pixel that has NONE at RGB (0,0,0). Measured on the shipped
+    sheets, all 39 million fully transparent pixels are black. That is
+    invisible in the file and stays invisible however it is composited — but
+    it is not invisible to a RESIZE, and the sprite sheet is resized once more
+    after it ships: the component draws each 960x1440 cell into a 900x1350
+    canvas, and the browser's own filter averages those black neighbours into
+    the silhouette's edge. Hence a dark rim that is nowhere in the asset and
+    appears only on screen, which is why it survived the earlier fix to how
+    the sheet is assembled.
+
+    The standard remedy, and the one here: flood the nearest real colour
+    outward into the transparent region. `distance_transform_edt` with
+    `return_indices` gives, for every pixel, the coordinates of the closest
+    solid one in a single pass. ALPHA IS NOT TOUCHED — nothing about what
+    composites changes; only what a filter samples when it reaches past the
+    edge.
+
+    The threshold is a low alpha rather than exactly zero because the
+    un-premultiply amplifies quantisation badly down there: at alpha 1 it
+    multiplies a rounded 8-bit value by 255, so those pixels carry noise
+    rather than colour. They contribute at most 3% coverage, so replacing them
+    is imperceptible and removes the noise from the filter's input too.
+    """
+    solid = rgba[..., 3] >= alpha_min
+    if not solid.any():
+        return rgba
+    _, (iy, ix) = ndi.distance_transform_edt(~solid, return_indices=True)
+    out = rgba.copy()
+    out[..., :3] = rgba[iy, ix, :3]
     return out

@@ -102,9 +102,27 @@ export default function LoadingWorm() {
   const absLeft = A * (step.x + cycles * WORM_CYCLE_ADVANCE) + B;
   const wrappedLeft =
     (((absLeft + maxScreenW) % span) + span) % span - maxScreenW;
-  // Back into the worm's own pre-scale units, which is what the <g> below
-  // translates by.
-  const travel = (wrappedLeft - absLeft) / A;
+  /* THE WHOLE TRAVEL, NOT A CORRECTION TO IT — 2026-08-25, Noah: "The worm
+   * isn't crawling from one side of the screen to the other. It's getting
+   * stuck in the middle."
+   *
+   * This was `(wrappedLeft - absLeft) / A`, which reads as "the distance the
+   * wrap moved him" and is wrong for one reason: the <g> below translates by
+   * this ON TOP OF the pose's own `step.x`, so what actually renders is
+   * A·(step.x + travel) + B. Substitute the old expression into that and the
+   * cycle advance appears twice with opposite signs and cancels:
+   *
+   *     A·step.x + wrappedLeft − absLeft + B  =  wrappedLeft − A·cycles·ADV
+   *
+   * and since wrappedLeft is itself absLeft until it wraps, the whole thing
+   * collapses to A·step.x + B. The worm was oscillating between the poses'
+   * own x range — 615 to 886, so 308px to 524px on screen — and never
+   * advancing at all. Stuck in the middle, exactly.
+   *
+   * Solving the render expression for the translation it needs, rather than
+   * describing a delta, is what makes that impossible to get wrong:
+   * `A·(step.x + travel) + B = wrappedLeft`. */
+  const travel = (wrappedLeft - B) / A - step.x;
 
   return (
     <div

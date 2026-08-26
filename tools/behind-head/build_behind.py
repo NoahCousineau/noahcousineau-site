@@ -45,10 +45,53 @@ render time (see BehindHead.tsx), not a set of frames.
 import json
 import os
 import re
+import sys
 
 import numpy as np
 from PIL import Image
 from psd_tools import PSDImage
+
+# One implementation of both, shared with the head-sprite pipeline.
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                 "dark-head-pipeline"),
+)
+from imgutil import bleed_edges, premultiplied_resize  # noqa: E402
+
+
+def clean_resize(im, size):
+    """Resize an RGBA cut-out without dragging black out of its own
+    transparent background.
+
+    2026-08-25, Noah: "Let's also work on removing the border line around the
+    head." The line is not on the head — it is on the paper cut-outs
+    immediately around it, and this is where it was made.
+
+    PIL resizes RGB and alpha as independent channels, and everything here is
+    composited onto `Image.new("RGBA", ..., (0, 0, 0, 0))` — transparent
+    BLACK. So every pixel outside the artwork holds RGB (0,0,0), and LANCZOS
+    happily averages that into the edge, which is what put a dark rim along
+    the yellow star's spikes. Premultiplying first means a transparent pixel
+    contributes nothing rather than contributing black.
+
+    Bleeding afterwards handles the SECOND resize, the one this tool does not
+    perform: the browser scales these to whatever the artboard unit makes
+    them, and would find black outside the shape all over again. See
+    imgutil.bleed_edges.
+    """
+    return Image.fromarray(
+        bleed_edges(premultiplied_resize(np.array(im.convert("RGBA")), size)),
+        "RGBA",
+    )
+
+
+def save_clean(im, path, quality):
+    """Bleed, then write. For images that are saved at their natural size —
+    no resize here, but the browser still does one."""
+    Image.fromarray(bleed_edges(np.array(im.convert("RGBA"))), "RGBA").save(
+        path, **webp(quality)
+    )
 
 SRC = "/Users/noahcousineau/Desktop/portfolio/Home and About Animations/Edited/Behind Head"
 SITE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -166,7 +209,7 @@ def build_set(name, folder, out_w, normalise, quality):
         cx, cy = s["cx"] * k, s["cy"] * k
         canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
         canvas.alpha_composite(im, (int(round(half_w - cx)), int(round(half_h - cy))))
-        canvas = canvas.resize((out_w, out_h), Image.LANCZOS)
+        canvas = clean_resize(canvas, (out_w, out_h))
         canvas.save(os.path.join(dst, f"{i}.webp"), **webp(quality))
 
     kb = sum(os.path.getsize(os.path.join(dst, f)) for f in os.listdir(dst)) // 1024
@@ -213,7 +256,7 @@ def build_pencils():
         s = stats(im)
         crop = im.crop((s["x0"], s["y0"], s["x1"] + 1, s["y1"] + 1))
         h = int(round(crop.height * out_w / crop.width))
-        crop = crop.resize((out_w, h), Image.LANCZOS)
+        crop = clean_resize(crop, (out_w, h))
         crop.save(os.path.join(dst, f"{i}.webp"), **webp(quality))
 
         # ...and each stroke on its own, positioned inside the cluster box.
@@ -225,7 +268,7 @@ def build_pencils():
                            s["x0"] + bx1 + 1, s["y0"] + by1 + 1))
             sw = max(1, round(sub.width * out_w / cw))
             sh = max(1, round(sub.height * out_w / cw))
-            sub.resize((sw, sh), Image.LANCZOS).save(
+            clean_resize(sub, (sw, sh)).save(
                 os.path.join(dst, f"{i}-{k}.webp"), **webp(quality))
             strokes.append(dict(
                 src=f"{i}-{k}.webp", width=sw, height=sh,

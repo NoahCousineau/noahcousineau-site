@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from imgutil import premultiplied_resize  # noqa: E402
+from imgutil import bleed_edges, premultiplied_resize  # noqa: E402
 
 COLS = 6
 CW, CH = 960, 1440
@@ -49,6 +49,10 @@ def assemble(src_dir, out_path, prefix, frames):
         # nothing to compose with in the first place. A plain paste copies all
         # four channels straight in, which is what was meant all along.
         sheet.paste(resized, ((i % COLS) * CW, (i // COLS) * CH))
+    # Flood real colour into the transparent region before encoding, so the
+    # browser's own downscale of each cell cannot average black into the
+    # silhouette's edge. See imgutil.bleed_edges.
+    sheet = Image.fromarray(bleed_edges(np.array(sheet)), 'RGBA')
     sheet.save(out_path, 'WEBP', quality=88, method=6)
     return sheet.size, len(frames), round(os.path.getsize(out_path) / 1024)
 
