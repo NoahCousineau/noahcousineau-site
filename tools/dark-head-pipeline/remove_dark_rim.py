@@ -38,6 +38,45 @@ only a defect where it shows, which is exactly where the interior is skin.
 So this deliberately fixes the rim around the neck, jaw and ear and leaves
 the hairline untouched — matching what Noah can actually see.
 
+2026-08-25 — AND IT WAS DOING ALMOST NOTHING. Noah, a third time: "I'm still
+noticing that small border/shadow around the rotating head animation."
+
+The rim was still there, measured on the shipped sheet: opaque pixels 0.5-3.5px
+inside the silhouette average luminance 93 against an interior that plateaus at
+112 from 5px in — an 18-luminance band about 4px deep, which at the head's
+rendered size is the ~3px brown line you can see hugging the ear and jaw
+against the yellow star.
+
+The pass above ran and left it, because BOTH of its gates were calibrated on
+one bright frame's neck and neither generalises:
+
+    w_skin: SKIN_LO/HI 95..165 against `lum_ref` computed as a plain MEAN of
+            R,G,B. The interior actually averages RGB(138,102,89) -> mean 110,
+            which that ramp scores 0.11.
+    w_dark: 0.40 at the measured deficit.
+
+    combined weight 0.11 x 0.40 = 0.046 — a 4.6% correction to an 18-luminance
+    defect. It has never been visible in the output.
+
+THE GATE THAT ACTUALLY SEPARATES THE TWO CASES is not "is the interior light"
+but "is this edge a scissor cut or is it hair" — which is what the two tests
+above were both trying to approximate through colour. It can be measured
+directly: hair is a wide band of SEMI-transparent pixels, a cut is a hard
+alpha step, so the local density of partial-alpha pixels tells them apart.
+Blurring that mask with sigma 4 and reading it back over the rim band on frame 1:
+
+    density 0.05-0.15   n=4084   rim is 28.5 LUMA DARKER than its interior,
+                                 interior luma 125 -> lit skin. THE DEFECT.
+    density 0.15-0.30   n=2268   rim is 5.7 luma BRIGHTER, interior luma 55
+    density 0.30-0.60   n=1020   rim is 10.1 luma BRIGHTER, interior luma 58
+
+The defect lives entirely in the low-density band, and the hair bands carry no
+dark rim at all to correct — so gating on this both fixes the rim and makes
+bleaching the hairline impossible, rather than trading one against the other.
+`w_skin` is kept as a second safety but recalibrated onto that same
+measurement (skin 125 / hair 55, so 70..110) and onto real luminance rather
+than a mean of the channels.
+
 `inward` is built by taking the colour of the nearest pixel that is both
 opaque and at least RIM_PX inside the edge — a distance transform gives that
 directly, and it is exactly "what this bit of the head looks like once you
@@ -86,14 +125,35 @@ DARK_RATIO = 0.90
 # pixels away had been cleaned. The seam between treated and untreated was
 # itself the defect. Ramping means the correction fades out where the head
 # stops being obviously skin, so there is no edge to see.
-SKIN_LO = 95.0
-SKIN_HI = 165.0
+# Measured across the whole sheet rather than on one frame's neck: the cut
+# edge's interior reads luma 125 (skin) and the hairline's reads 55 (hair),
+# so the ramp sits between them. See the 2026-08-25 note above for why the
+# old 95..165 scored real skin at 0.11 and disabled the whole pass.
+SKIN_LO = 70.0
+SKIN_HI = 110.0
+# THE PRIMARY GATE (2026-08-25): local density of semi-transparent pixels,
+# which is what actually distinguishes a scissor cut from hair. Blur sigma in
+# px; the ramp bounds come straight off the table in the note above, where the
+# defect sits below 0.15 and hair above it.
+HAIR_SIGMA = 4.0
+HAIR_LO = 0.12
+HAIR_HI = 0.26
 # How far either side of the cut gets the antialiasing blur, in px.
 FEATHER_PX = 2
 # Blur radius for that antialiasing. Around a pixel: enough to turn a
 # whole-pixel staircase into a ramp, not enough to soften the silhouette
 # itself into a glow.
 FEATHER_SIGMA = 0.9
+
+
+# Rec.601 luma. The old code used a plain mean of R,G,B, which reads the
+# head's warm skin about 15 too low and is half the reason the skin gate
+# never opened.
+LUMA = np.array([0.299, 0.587, 0.114], dtype=np.float32)
+
+
+def _luma(rgb):
+    return rgb @ LUMA
 
 
 def _ramp(v, lo, hi):
@@ -124,8 +184,17 @@ def remove_rim(rgba, rim_px=RIM_PX, dark_ratio=DARK_RATIO):
     )
     inward = a[..., :3][tuple(idx)]
 
-    lum_now = a[..., :3].mean(axis=2)
-    lum_ref = inward.mean(axis=2)
+    lum_now = _luma(a[..., :3])
+    lum_ref = _luma(inward)
+
+    # IS THIS A SCISSOR CUT OR IS IT HAIR — the gate that carries this pass
+    # (see the 2026-08-25 note at the top). Hair is a wide band of partially
+    # transparent pixels; a cut is a hard alpha step with almost none. The
+    # blurred density of partial-alpha pixels reads that difference directly,
+    # where the two colour tests below could only approximate it.
+    partial = (alpha > 20) & (alpha < 235)
+    hairiness = ndimage.gaussian_filter(partial.astype(np.float32), HAIR_SIGMA)
+    w_cut = 1.0 - _ramp(hairiness, HAIR_LO, HAIR_HI)
 
     # The band to consider: inside the shape (any alpha at all) but not yet
     # deep. Semi-transparent hair is included — a dark rim can ride on it too
@@ -143,7 +212,7 @@ def remove_rim(rgba, rim_px=RIM_PX, dark_ratio=DARK_RATIO):
 
     # Only inside the shape and only within the contaminated depth.
     in_band = ((alpha > 0) & (depth < rim_px)).astype(np.float32)
-    w = (w_skin * w_dark * in_band)[..., None]
+    w = (w_cut * w_skin * w_dark * in_band)[..., None]
 
     out = a.copy()
     out[..., :3] = a[..., :3] * (1.0 - w) + inward * w
@@ -155,7 +224,7 @@ def remove_rim(rgba, rim_px=RIM_PX, dark_ratio=DARK_RATIO):
     d_in = ndimage.distance_transform_edt(inside)
     d_out = ndimage.distance_transform_edt(~inside)
     near_edge = (d_in <= FEATHER_PX) | (d_out <= FEATHER_PX)
-    wf = w_skin * near_edge.astype(np.float32)
+    wf = w_cut * w_skin * near_edge.astype(np.float32)
     if wf.max() > 0:
         smoothed = ndimage.gaussian_filter(alpha, FEATHER_SIGMA)
         new_alpha = alpha * (1.0 - wf) + smoothed * wf
