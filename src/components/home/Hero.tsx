@@ -101,7 +101,10 @@ export default function Hero() {
         {/* The head's own plane, between the yellow star behind it and the
             blue star in front — see PARALLAX in BehindHead.tsx, whose values
             this sits between and has to stay ordered with. */}
-        <Parallax units={4}>
+        {/* Part of BehindHead's PARALLAX ladder — see the note there. Must
+            stay between yellow (27) and blue (-23) or the head changes
+            depth. 4 -> 7 on 2026-08-25 with the rest of the stack. */}
+        <Parallax units={7}>
           <RotatingHead
             isDarkMode={theme === "dark"}
             variant="staggered"

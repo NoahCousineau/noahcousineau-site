@@ -44,8 +44,13 @@ const STEP_MS = 130;
 const SCALE = 0.8;
 /* 2026-08-25, phones only: "Have the worm be double the size he is now."
  * Taken about his footing like the desktop scale, so he grows without
- * lifting off the floor, and his stride grows with him. */
-const PHONE_SCALE = 1.6;
+ * lifting off the floor, and his stride grows with him.
+ *
+ * ...and again the same day: "on mobile, let's increase the worm loading by
+ * 1.5x." 1.6 -> 2.4. His stride grows with him, so he still crosses the
+ * screen in the same number of steps — see the wrapper's `overflowX: clip`,
+ * which is what keeps a wider swing from widening the document. */
+const PHONE_SCALE = 1.6 * 1.5;
 /** Where his middle starts, as a fraction across the frame. */
 const START_CENTRE = 0.25;
 

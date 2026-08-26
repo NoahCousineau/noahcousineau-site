@@ -78,13 +78,20 @@ const PHONE_ARTBOARD = 1000;
  * of the screen height away from the bottom of the hand."
  *
  * The artwork is 308 units wide in its Place and 1597x2719 native, so 524
- * tall; the scale is taken about the box's own centre, so at 2.25 it renders
- * 693 x 1179 centred on that point. Everything below is derived from those
- * two numbers rather than typed in, because the last round's version had the
- * hand ABOVE the closer once the closer moved down a screen — positions that
- * are written out separately drift apart the moment one of them moves.
+ * tall; the scale is taken about the box's own centre. Everything below is
+ * derived from those two numbers rather than typed in, because the last
+ * round's version had the hand ABOVE the closer once the closer moved down a
+ * screen — positions that are written out separately drift apart the moment
+ * one of them moves.
+ *
+ * 2026-08-25: "on mobile the arrow hand is too large, let's reduce it by
+ * 75%." 2.25 x 0.25. At 2.25 the hand was 693 units wide, which on the
+ * 1000-unit phone artboard is 69% of the screen — the reduction is as large
+ * as it is because the starting point was that far out. It lands at 173
+ * units, 17% of the screen, against the desktop hand's 12% of a 1512 window:
+ * the same kind of accent at each size rather than the phone's centrepiece.
  */
-const PHONE_HAND_SCALE = 1.5 * 1.5;
+const PHONE_HAND_SCALE = 2.25 * 0.25;
 const HAND_BOX_W = 308;
 const HAND_BOX_H = 524;
 /** Where the hand's own centre sits. Clear of the closer's last rule, which
@@ -193,21 +200,55 @@ export default function Description() {
        * arrive would be its own kind of odd. Going up past the START hides it
        * instead, because at that point it has not been thrown yet.
        */
+      /* THE THROW IS ONCE PER VISIT FROM THE TOP (2026-08-25).
+       *
+       * Noah: "the arrow hand interaction is better. It's still reappearing a
+       * bit too soon. Let's only have it fall again if the user scrolls all
+       * the way to the top of the page."
+       *
+       * Until now the one-shot flag was cleared on BOTH exits from the pinned
+       * section, so any scroll that left the section and came back threw the
+       * hand again — a few hundred pixels of travel was enough to re-arm it,
+       * which is the "too soon" he is describing. Clearing it is now the job
+       * of one trigger at the very top of the document and nothing else.
+       *
+       * That splits what used to be a single `resetHand(hide)` into three
+       * separate things, because the old function conflated them and the
+       * whole bug was that arming came along for free with hiding:
+       *
+       *   hideHand   — take it off the screen, LEAVING the flag set
+       *   showLanded — put it back in its landed pose, no throw
+       *   armHand    — the only thing that lets it fall again
+       *
+       * showLanded is what stops "no replay" from meaning "no hand": coming
+       * back up into the section after it has already fallen, the hand is
+       * simply there, at rest, the way it was left. The reader sees the
+       * arrival gesture once per trip down the page, and the composition is
+       * never missing a piece in between. */
       let handFired = false;
       let handShot: gsap.core.Timeline | null = null;
-      const resetHand = (hide: boolean) => {
-        handFired = false;
-        // Killing a throw mid-flight used to strand the hand 773px above its
-        // resting place and fully VISIBLE, which is why the downward exit
-        // once avoided doing it. Hiding in the same breath is what makes it
-        // safe: an interrupted throw that is also invisible has nothing to
-        // strand. Both exits take this path now.
-        if (!hide) return;
+      // Killing a throw mid-flight used to strand the hand 773px above its
+      // resting place and fully VISIBLE. Hiding in the same breath is what
+      // makes it safe: an interrupted throw that is also invisible has
+      // nothing to strand.
+      const hideHand = () => {
         handShot?.kill();
         handShot = null;
         if (handDropRef.current) {
           gsap.set(handDropRef.current, { autoAlpha: 0, y: 0 });
         }
+      };
+      const showLanded = () => {
+        handShot?.kill();
+        handShot = null;
+        if (handDropRef.current) {
+          gsap.set(handDropRef.current, { autoAlpha: 1, y: 0 });
+        }
+        if (handTwangRef.current) gsap.set(handTwangRef.current, { rotate: 0 });
+      };
+      const armHand = () => {
+        handFired = false;
+        hideHand();
       };
       const fireHand = () => {
         if (handFired || !handDropRef.current) return;
@@ -312,8 +353,13 @@ export default function Description() {
            * which is still a run-out short of the project grid — hiding here
            * made the hand vanish at the very moment it is supposed to be
            * pointing at what comes next. */
-          onLeave: () => resetHand(false),
-          onLeaveBack: () => resetHand(true),
+          /* Neither exit re-arms any more — see the note on armHand above.
+             Going DOWN past the pin's end the hand is left exactly where it
+             landed, because that run-out is where it is pointing at the grid.
+             Going UP past the pin's start it has no business being on screen,
+             so it is hidden — but the flag stays set, so coming back down
+             shows it landed rather than throwing it again. */
+          onLeaveBack: hideHand,
         },
       });
 
@@ -386,8 +432,25 @@ export default function Description() {
         // it says: the section, run-out included, has left upward.
         trigger: pinRef.current,
         start: "bottom top",
-        onEnter: () => resetHand(true),
-        onLeaveBack: () => resetHand(true),
+        onEnter: hideHand,
+        // Back into view from below: restore the landed pose rather than
+        // re-throwing, which is the whole point of the 2026-08-25 change.
+        onLeaveBack: () => {
+          if (handFired) showLanded();
+        },
+      });
+
+      /* THE ONLY THING THAT RE-ARMS THE THROW: being at the top of the page.
+       *
+       * An absolute scroll position rather than an element, because "the top
+       * of the page" is not any one element's edge — it is scroll zero. The
+       * 2px start is what makes `onLeaveBack` mean "came back to rest at the
+       * very top" instead of firing on sub-pixel jitter around 0 while Lenis
+       * settles. */
+      ScrollTrigger.create({
+        trigger: document.documentElement,
+        start: "top top-=2",
+        onLeaveBack: armHand,
       });
 
       tl.call(fireHand);

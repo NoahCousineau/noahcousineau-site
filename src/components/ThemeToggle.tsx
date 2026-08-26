@@ -40,7 +40,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       aria-pressed={dark}
-      className="fixed top-5 z-[60] mix-blend-difference text-white
+      className="fixed z-[60] mix-blend-difference text-white
                  p-2 -m-2 cursor-pointer select-none
                  transition-opacity duration-200 hover:opacity-60
                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
@@ -48,6 +48,13 @@ export default function ThemeToggle() {
         // /20 -> /40, 2026-08-24: "move both the home page and the
         // sunglasses icon closer to the border of the browser window."
         right: "calc(min(100vw, 1920px) / 40)",
+        /* `top-5` spelled out so --chrome-drop can be added to it (2026-08-25:
+           "move the 'c' and toggle down by a small amount"). The variable is
+           0 on a desktop, so this is the same 1.25rem it has always been;
+           HomeLink's floor adds the identical term, which is what keeps the
+           two marks on the shared centreline they were aligned to earlier
+           today. See --chrome-drop in globals.css. */
+        top: "calc(1.25rem + var(--chrome-drop))",
         // Until the stored preference is known the knob would be guessing
         // which end to sit at, and a visible slide on hydration reads as a
         // glitch. Holding it invisible for that one tick costs nothing — the

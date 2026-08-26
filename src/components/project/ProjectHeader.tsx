@@ -68,11 +68,25 @@ const ICON_SCALE = 0.72;
  * a second doubling on top of the first. One multiplier on the scale every
  * icon is measured against, so the hero icon stays the largest and the
  * relative sizes are untouched. */
-const PHONE_ICON_SCALE = 4;
+/* 4 -> 8, 2026-08-25: "On the project grid pages, please also make sure we
+ * double the size of all the header icons." Read as phones, since it arrives
+ * in the middle of a run of mobile notes and immediately after "for the
+ * mobile project pages" — the desktop header has not been called too small.
+ * Same single multiplier as the two doublings before it. */
+const PHONE_ICON_SCALE = 8;
 /* ...and "Move the title down as to not conflict with the 'C' logo." The
  * mark is fixed near the top-left; the header's own inset is 40 units, which
- * on a 390px screen is 8px and puts the title straight under it. */
-const PHONE_TITLE_TOP_UNITS = 300;
+ * on a 390px screen is 8px and puts the title straight under it.
+ *
+ * 300 -> 345, 2026-08-25, because the C moved (--chrome-drop in globals.css,
+ * "move the 'c' and toggle down by a small amount"). The mark now has to
+ * thread between two things: the section-title rule, which sits at y27-28.6
+ * whenever a section header is stuck to the top, and this title. Measured on
+ * a 390px screen at the drop that clears the rule, the C's ring ended at
+ * 63.3 against a title starting at 65 — 1.7px, which is a collision with a
+ * rounding error in it. 45 units is 9.1px there, and puts the title at 74.1
+ * so the mark has ~5px above it and ~11px below. */
+const PHONE_TITLE_TOP_UNITS = 345;
 
 /** Where the project's own icon comes down. */
 const ICON_X = 0.807;

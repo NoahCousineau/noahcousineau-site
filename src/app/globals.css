@@ -251,12 +251,30 @@ html {
        338px, which is 235 and 1664 in artboard units — a 250-unit margin
        clears both with a little air. */
     --grid-margin: 250;
-    /* "Please also double the size of the section title type on mobile." */
-    --descriptor-scale: 2;
+    /* "Please also double the size of the section title type on mobile."
+       ...and again: "for the mobile project pages, let's double the size of
+       the section titles again." 2 -> 4. */
+    --descriptor-scale: 4;
   }
 
   .js-project-row {
     grid-template-columns: minmax(0, 1fr) !important;
+    /* A WHITE LINE BETWEEN STACKED IMAGES (2026-08-25). Noah: "let's also
+       make sure that all the images that are stacked on one another in the
+       grid have a horizontal white grid line."
+
+       Collapsing every row to one column left the cells butting straight
+       into each other — two photographs touching, with nothing between them,
+       because the only divider a row has ever had is the VERTICAL seam that
+       the rule below switches off. This is the grid's own gutter turned
+       horizontal: 48 units is GAP_UNITS, the same measure the poster rows
+       already put between cells on a desktop, so the white line reads as
+       part of the same grid rather than as an ad-hoc margin.
+
+       A gap rather than a drawn element, so what shows through is the page
+       itself — which is what makes it white — and so it collapses to nothing
+       on the rows that only have one cell. */
+    row-gap: calc(var(--u) * 48);
   }
 
   /* "On the mobile grid, there should only be horizontal lines that separate
@@ -275,6 +293,19 @@ html {
   /* The floor under HomeLink's derived `top` — see that file. Zero on a
      desktop, where the derived value is what should win. */
   --home-mark-top-floor: 0px;
+  /* HOW FAR THE TWO FIXED CONTROLS SIT BELOW WHERE THEY WOULD OTHERWISE BE
+     (2026-08-25). Noah: "for the mobile site entirely, please move the 'c'
+     and toggle down by a small amount, right now they're conflicting with
+     the line used on the project grid section titles."
+
+     ONE variable feeding BOTH, which is the only way this stays fixed: the
+     two are positioned by completely different rules — the C's `top` is
+     derived from a section title's centreline and clamped by
+     --home-mark-top-floor, the toggle's is a flat offset — and they were
+     brought into alignment with each other by hand earlier today. Dropping
+     them by separate amounts would silently undo that. Zero here, so the
+     desktop is untouched; the phone value is in the media query below. */
+  --chrome-drop: 0px;
 }
 
 @media (max-width: 767px) {
@@ -288,7 +319,11 @@ html {
        screen evaluates to -9 and lands on this floor instead. Its own ink
        centre sits 22.75 below its border box, so matching the toggle's 28
        wants a top of 28 - 22.75 + 8 = 13.25. */
-    --home-mark-top-floor: 13.25px;
+    --home-mark-top-floor: calc(13.25px + var(--chrome-drop));
+    /* The drop itself. Sized against what it has to clear: the project
+       grid's section-title rule. Measured on a 390px screen — see the note
+       on --chrome-drop above for why both controls read the same value. */
+    --chrome-drop: 20px;
   }
 }
 

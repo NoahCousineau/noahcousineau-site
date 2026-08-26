@@ -116,15 +116,22 @@ const GAP_UNITS = 48; // measured off the artboard's poster-row seam
 // single number in one single place.
 export const RULE_WEIGHT_UNITS = 8;
 export const RULE_WEIGHT_CSS = `calc(var(--u) * ${RULE_WEIGHT_UNITS})`;
-// Grid width — --u-unit left/right margin on the project-page grid
-// section. Originally set to 40u to match the homepage project grid's
+// Grid width — the --u-unit left/right margin on the project-page grid
+// section, which lives in globals.css as `--grid-margin` so a media query can
+// widen it for phones. THE VALUE IS NOT DUPLICATED HERE: it was, as a
+// `GRID_MARGIN_UNITS = 178` constant that this file passed to the section's
+// padding while the full-bleed rule under each section title read the
+// variable, and on 2026-08-25 those two silently disagreed on a phone (178
+// against 250) and pushed 15px of horizontal overflow into the document. One
+// name, one place.
+//
+// Where 178 came from: originally 40u, to match the homepage project grid's
 // width exactly (see components/home/Projects.tsx). Per Noah (2026-08-20):
 // "decrease the width of the grid by 15%, keeping all of the grid contents
 // the same" — margin increased so the grid's content width (previously
 // 1920 - 2*40 = 1840u) shrinks by exactly 15% to 1564u, still centered in
 // the same 1920u page: new margin = (1920 - 1564) / 2 = 178u. This grid no
 // longer matches the homepage grid's width 1:1.
-const GRID_MARGIN_UNITS = 178;
 /*
  * PHONE (2026-08-25). Noah: "For the project grid, stack any images/videos
  * that are side by side vertically. Decrease the margin around the sides of
@@ -507,7 +514,23 @@ export function ProjectGroup({
       <StackedSection
         stackIndex={stackIndex}
         surface={surface}
-        paddingXUnits={GRID_MARGIN_UNITS}
+        /* THE VARIABLE, NOT THE CONSTANT (2026-08-25). These two have to be
+           the same number, because the full-bleed rule under the section
+           title cancels this padding with a negative margin of
+           `var(--grid-margin)` — and on a phone the media query moves that
+           variable to 250 while this stayed on the 178 constant. The rule
+           then reached 72 units PAST the section's edge on each side, which
+           is the 15px of horizontal document overflow measured at a 390px
+           viewport (scrollWidth 405 against innerWidth 390).
+
+           It also meant last round's "shrink the grid enough where the 'c'
+           logo and the toggle switch can cleanly fit" never actually moved
+           the grid: content stayed at 178u (36.2px on a 390px screen) while
+           the C's ring ends at 39.8px, so they still overlapped. Reading the
+           variable here is what applies that change to the content it was
+           written for. GRID_MARGIN_UNITS remains the desktop value the
+           variable is initialised to. */
+        paddingXUnits="var(--grid-margin)"
         paddingBottomUnits={SECTION_PADDING_UNITS}
         header={header}
       >

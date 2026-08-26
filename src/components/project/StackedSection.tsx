@@ -126,7 +126,11 @@ export default function StackedSection({
 }: {
   stackIndex: number;
   surface: string;
-  paddingXUnits: number;
+  /** Artboard units, or a CSS expression that resolves to them. Passed
+   *  through into `calc(var(--u) * ...)`, so `var(--grid-margin)` is a valid
+   *  value and is what ProjectGroup sends — the phone widens that margin with
+   *  a media query and the padding has to follow it. */
+  paddingXUnits: number | string;
   paddingBottomUnits: number;
   /** The section's sticky title header — rendered OUTSIDE the recede
    * scale's transform on purpose. See HEADER PLACEMENT above. */

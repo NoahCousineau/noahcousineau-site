@@ -437,6 +437,13 @@ export function ProjectStatement({
    * the browser resolves `calc(var(--u) * 100)` to right now, which a
    * static ScrollTrigger position can't express.
    */
+/** How far the pointing fingertip sits below the hand box's own top, as a
+ *  fraction of the box's WIDTH. Measured off the asset: it is pre-rotated to
+ *  point right at 2696x1490, its rightmost ink is at y 0.322 of the image,
+ *  and the image is 0.5527 as tall as it is wide — 0.322 x 0.5527 = 0.178.
+ *  Expressed against width because that is the dimension the layout sets. */
+const FINGER_TIP_BELOW_TOP = 0.178;
+
   const handStickyRef = useRef<HTMLDivElement>(null);
   /** The sticky wrapper's own style attribute, saved while the fall pins it
    *  to the viewport so it can be handed back afterwards. */
@@ -507,7 +514,39 @@ export function ProjectStatement({
            * the only thing moving. That reading is now superseded: he has seen
            * both and wants the fall tied to the reader's place in the text.
            * The hand pins itself to the viewport for the duration either way
-           * (see onStart), so it is still whole and centred while it plays. */
+           * (see onStart), so it is still whole and centred while it plays.
+           *
+           * ...AND THEN AT THE FINGERTIP (2026-08-25, second pass). Noah:
+           * "the hand is rotating too early. When the pointer finger reaches
+           * the last line, the hand should rotate then fall." He knows this
+           * reverses the paragraph above — "I know that I'm reversing an
+           * earlier decision, I'm proceeding anyway" — and it is a third
+           * distinct answer to the same question, so it is worth being exact
+           * about what makes it different from the first two.
+           *
+           * `bottom bottom-=15%` and `bottom top-=80` are both positions in
+           * the VIEWPORT: one 15% up from its foot, one just off its top.
+           * Neither has anything to do with where the hand is. This is a
+           * position on the HAND — the fingertip — and the hand is stuck near
+           * the top of the screen while the copy travels up past it, so
+           * "the pointer finger reaches the last line" is literally the
+           * moment the paragraph's bottom edge draws level with the tip.
+           *
+           * Both terms are measured rather than guessed:
+           *
+           *   the element's top   `top: calc(var(--u) * 100)` resolves to a
+           *                       different pixel value at every viewport
+           *                       width, so it is read off getComputedStyle.
+           *   the tip within it   the artwork is pre-rotated to point RIGHT,
+           *                       and its rightmost ink sits at 0.322 of the
+           *                       asset's height (2696x1490, so height is
+           *                       0.5527 of width) — 0.178 of the box's WIDTH
+           *                       below its own top, which is the form that
+           *                       survives the box being sized in units.
+           *
+           * Closest in spirit to 2026-08-20's `bottom ${sticky top}px`, which
+           * used the box's top edge; the tip is ~0.178W lower than that, so
+           * this holds the fall a little longer than that version did. */
           start: () => {
             const el = handStickyRef.current;
             // A trigger position past any real document height — a torn-
@@ -515,7 +554,9 @@ export function ProjectStatement({
             // crashing the refresh that every OTHER trigger on the page
             // depends on completing.
             if (!el) return 1e9;
-            return "bottom bottom-=15%";
+            const stickyTop = parseFloat(getComputedStyle(el).top) || 0;
+            const tipY = stickyTop + FINGER_TIP_BELOW_TOP * el.getBoundingClientRect().width;
+            return `bottom ${tipY}px`;
           },
           once: true,
         },

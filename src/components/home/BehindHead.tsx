@@ -86,8 +86,22 @@ import {
  * is positioned on the head's own measured ink centre, and the red and blue
  * sit tucked against the yellow's rim. Enough separation to notice is a few
  * units; enough to admire would visibly break the composition apart.
+ *
+ * 2026-08-25 — "let's make the parallax scroll effect on the homepage star
+ * more apparent." Everything scaled by 1.8, keeping the depth ORDER and the
+ * ratios between the planes exactly as they were: the effect reads as depth
+ * because of how the layers move relative to EACH OTHER, so scaling them
+ * together makes it more apparent without re-staging anything.
+ *
+ * The number that matters is the differential between neighbouring planes,
+ * since that is the separation the eye actually picks up. Head-to-blue was
+ * 17 units and is now 31; drift being 2x `units` (see Parallax.tsx), that is
+ * 62 units of relative travel across the pass, ~49px at a 1512 viewport,
+ * against 27px before. Hero.tsx's own units={4} for the head is part of this
+ * ladder and moved to 7 with the rest — it has to stay between yellow and
+ * blue or the head changes depth.
  */
-const PARALLAX = { red: 26, yellow: 15, blue: -13, pencil: -24 };
+const PARALLAX = { red: 47, yellow: 27, blue: -23, pencil: -43 };
 
 // Centred on the head's own MEAN ink centre over a full rotation, measured
 // live at (473.8, 524.6) — the per-frame centre only wanders 467..476 x and
@@ -163,8 +177,17 @@ function geometry(shiftX: number, dy: number) {
       // an offset from the star's own centre (474, 525) they sat 432 units
       // out against its 360-unit radius — 72 units clear of the rim. Pulled
       // in along the same bearing to 382, so they just clear it.
-      cx: 740 + shiftX,
-      cy: 251 + dy,
+      //
+      // ...and then back out a little, same day: "move the pencil lines just
+      // a smidge further away from the yellow star, just the smallest
+      // amount." 382 -> 400 along that same bearing, which is 40 units of
+      // clearance instead of 22 — about a third of what the pull-in took
+      // away, so the marks still read as sitting against the star's rim
+      // rather than floating off on their own. Moving along the bearing
+      // rather than in x or y is what keeps "further from the star" from
+      // also meaning "further around it".
+      cx: 753 + shiftX,
+      cy: 238 + dy,
       w: 54,
       rot: 34,
       /** per stroke: [draw frames, wait frames, hold frames] */
