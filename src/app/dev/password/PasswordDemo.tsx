@@ -18,6 +18,12 @@ export default function PasswordDemo() {
 
   const check = useCallback(async (pass: string) => {
     try {
+      /* A static review build has no /api/unlock to ask — see the note in
+       * next.config.ts. Only that build sets this, and only that build ships
+       * the password to the browser. */
+      if (process.env.NEXT_PUBLIC_REVIEW_BUILD === "1") {
+        return pass === process.env.NEXT_PUBLIC_REVIEW_PASSWORD;
+      }
       const res = await fetch("/api/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
