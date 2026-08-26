@@ -42,3 +42,6 @@ yarn-error.log*
 # Python bytecode caches from the dark-head-pipeline tools
 __pycache__/
 *.pyc
+
+# Static review export (next build with NEXT_PUBLIC_REVIEW_BUILD=1)
+/out
