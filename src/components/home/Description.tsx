@@ -197,12 +197,11 @@ export default function Description() {
       let handShot: gsap.core.Timeline | null = null;
       const resetHand = (hide: boolean) => {
         handFired = false;
-        // ONLY THE HIDING PATH KILLS THE THROW. Leaving downward happens a
-        // fraction of a second after the call point — the throw is still in
-        // the air — and killing it there left the hand stranded 773px above
-        // its resting place and fully visible, which is worse than the
-        // problem being fixed. Clearing the flag is all the downward exit
-        // needs; the landing can finish on its own.
+        // Killing a throw mid-flight used to strand the hand 773px above its
+        // resting place and fully VISIBLE, which is why the downward exit
+        // once avoided doing it. Hiding in the same breath is what makes it
+        // safe: an interrupted throw that is also invisible has nothing to
+        // strand. Both exits take this path now.
         if (!hide) return;
         handShot?.kill();
         handShot = null;
@@ -293,8 +292,26 @@ export default function Description() {
           anticipatePin: 1,
           scrub: 0.6,
           invalidateOnRefresh: true,
-          // See the note on fireHand: clearing the flag at the boundaries is
-          // what lets the throw play again rather than only ever once.
+          /* BOTH EXITS HIDE IT NOW (2026-08-25). Noah: "the arrow hand is
+           * 'glitching' in and out when we scroll back up. Have it completely
+           * disappear after the user sees the project pages. It only
+           * reappears after the user scrolls all the way back up."
+           *
+           * The previous version cleared the flag on the way down but left
+           * the hand where it landed, on the grounds that hiding something
+           * the reader just watched arrive is its own kind of odd. What that
+           * actually produced is the flicker he is describing: the hand stays
+           * on the page below the fold, and every small scroll near the
+           * boundary re-crosses the call point and throws it again, so it
+           * blinks in and out around the seam. Hiding on exit removes the
+           * thing that can blink — past the section there is nothing to see,
+           * and coming back up plays the throw once, cleanly, from the top. */
+          /* The DOWNWARD exit only clears the flag; hiding is handled by the
+           * separate trigger below, which waits until the section has
+           * genuinely left the screen. This one fires at the END OF THE PIN,
+           * which is still a run-out short of the project grid — hiding here
+           * made the hand vanish at the very moment it is supposed to be
+           * pointing at what comes next. */
           onLeave: () => resetHand(false),
           onLeaveBack: () => resetHand(true),
         },
@@ -347,6 +364,32 @@ export default function Description() {
 
       if (line4) tl.to(line4, { yPercent: 0, duration: REVEAL, ease: "power3.out" });
       // The arrow arrives once the line is standing and readable.
+      /* GONE ONCE THE SECTION IS GONE (2026-08-25). Noah: "the arrow hand is
+       * 'glitching' in and out when we scroll back up. Have it completely
+       * disappear after the user sees the project pages. It only reappears
+       * after the user scrolls all the way back up."
+       *
+       * The flicker came from the hand outliving its own section: it stayed
+       * on the page below the fold, and small scrolls near the pin's boundary
+       * re-crossed the call point and threw it again, so it blinked around
+       * the seam. This hides it the moment the whole section has passed the
+       * top of the window — well after the pin ends, so the hand still gets
+       * to point at the grid on the way out — and re-arms it only when the
+       * reader comes back above that line, which is what "all the way back
+       * up" means. */
+      ScrollTrigger.create({
+        // The PIN, not the inner content box. `root` is absolutely positioned
+        // inside a pinned Stage, so its bottom edge is a fixed-position number
+        // that never passes anything — measured at the foot of the page it
+        // read -1252 while this trigger had never fired. The pinned element
+        // has a real spacer in the document, so "bottom top" on it means what
+        // it says: the section, run-out included, has left upward.
+        trigger: pinRef.current,
+        start: "bottom top",
+        onEnter: () => resetHand(true),
+        onLeaveBack: () => resetHand(true),
+      });
+
       tl.call(fireHand);
       // The beat Noah wants the reader to spend on that line, with the hand
       // landing into it. Long enough to cover the shot and its twang.

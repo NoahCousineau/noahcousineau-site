@@ -161,7 +161,21 @@ const FIELD_PAD = 9 * COPY_SCALE;
  * Expressed as fractions of the box so it keeps that proportion when the box
  * is resized, which it just was.
  */
-const CARET = { hFrac: 0.78, leanFrac: 0.069, w: 3 * COPY_SCALE };
+const CARET = { hFrac: 0.78, leanFrac: 0, w: 3 * COPY_SCALE };
+/*
+ * THE LEAN IS GONE, 2026-08-25. Noah: "The text cursor isn't parallel to the
+ * side of the box, please rotate this a smidge to be parallel."
+ *
+ * It was 0.069 — the demo's own 3.3 units of drift over 47.8 of height, which
+ * is 3.95 degrees off vertical. Faithful, and wrong here, because of WHERE it
+ * is drawn. The demo puts its line in page space, untransformed, next to a box
+ * that carries a -3.97 degree rotation; this draws the caret INSIDE the box's
+ * rotated frame so it can line up with the dots. In that frame the box's sides
+ * are vertical, so the demo's tilt no longer cancels against the box's — it
+ * adds to it, leaving the caret 7.9 degrees off the edge beside it. Vertical in
+ * the local frame IS parallel to the side of the box, which is what was
+ * actually being asked for.
+ */
 
 // 0.25 -> 0.5, 2026-08-24: "Let's double the amount of time until we get to
 // the thumbs up."
@@ -195,6 +209,17 @@ const DEBOUNCE_MS = 140;
  * screen.
  */
 const PHONE_ARTBOARD = 820;
+/*
+ * ...and the height it is centred in — 2026-08-25: "make sure the hand and
+ * animation is more centered in the center of the phone screen."
+ *
+ * The Stage was 1080 scaled by the artboard ratio, which is 461 units — barely
+ * more than half the hand's own 793, so the composition hung out of the bottom
+ * of its own frame and could not be centred by it. Twice the hand's centre
+ * line is the height that puts the hand exactly in the middle by construction,
+ * whatever the crop turns out to be.
+ */
+const PHONE_STAGE_H = HAND_BOX.y * 2 + HAND_BOX.h;
 /** Slide the whole composition left so the hand is centred on the narrower
  *  artboard rather than sitting where a 1920-wide one put it. */
 const PHONE_SHIFT_X =
@@ -203,8 +228,10 @@ const PHONE_SHIFT_X =
 /** The artboard this screen is laid out on, which the PAGE has to agree with
  *  — it owns the `--u` declaration and the wrapper's width. Exported rather
  *  than duplicated so the two cannot drift apart. */
-export function usePasswordArtboard(): number {
-  return useIsPhone() ? PHONE_ARTBOARD : 1920;
+export function usePasswordArtboard(): { w: number; h: number } {
+  return useIsPhone()
+    ? { w: PHONE_ARTBOARD, h: PHONE_STAGE_H }
+    : { w: 1920, h: 1080 };
 }
 
 export default function PasswordHand({
@@ -394,7 +421,7 @@ export default function PasswordHand({
   return (
     <>
       <Stage
-        heightUnits={phone ? 1080 * (artboard / 1920) : 1080}
+        heightUnits={phone ? PHONE_STAGE_H : 1080}
         // The entry box is small, tilted and sitting on a photograph, so it
         // does not read as a click target the way a form field would. Anywhere
         // on this screen puts the cursor in it.

@@ -161,9 +161,14 @@ def corrections(frames):
 # turning: consistent relative to the wrist, not to the frame.
 #
 # CUT_FROM_TIP is how far down the arm the cut sits, as a fraction of the
-# hand's own height in frame 1, measured from the fingertips. 0.86 leaves the
-# heel of the palm and a short stub of wrist and takes the rest.
-CUT_FROM_TIP = 0.86
+# hand's own height in frame 1, measured from the fingertips.
+#
+# 0.86 -> 1.02, 2026-08-25: "For the 'stop' hand on the first frame, it's
+# cropped too close to the palm. Have the crop closer to the wrist." At 0.86
+# the line fell on the heel of the palm itself, so the open hand ended where
+# it stopped being a hand — no wrist at all. A little over one hand-height
+# below the fingertips lands it on the wrist proper.
+CUT_FROM_TIP = 1.02
 CUT_ANGLE_DEG = 0.0   # the cut is square across the arm in frame 1
 
 

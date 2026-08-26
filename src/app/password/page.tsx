@@ -76,15 +76,13 @@ function Gate() {
              see PHONE_ARTBOARD in PasswordHand. The height term still caps
              it on a window too short for the composition. */
           style={{
-            ["--u" as string]: `min(100cqw / ${artboard}, 100dvh / ${
-              (1080 * artboard) / 1920
-            })`,
+            ["--u" as string]: `min(100cqw / ${artboard.w}, 100dvh / ${artboard.h})`,
           }}
         >
           {/* Pinned to the artboard's own width so the hand stays centred on
               a viewport too tall for 16:9, where --u is height-derived and
               the flex parent is wider than 1920 units. */}
-          <div style={{ width: `calc(var(--u) * ${artboard})` }}>
+          <div style={{ width: `calc(var(--u) * ${artboard.w})` }}>
             <PasswordHand onSubmit={check} onFinished={enter} />
           </div>
         </div>

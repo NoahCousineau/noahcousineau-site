@@ -490,20 +490,24 @@ export function ProjectStatement({
           // to a start position that can never be crossed, rather than
           // throwing, means a torn-down trigger is inert instead of
           // poisoning every other trigger's next refresh.
-          /* FIRES ONCE THE COPY HAS LEFT THE SCREEN (2026-08-23, Noah: "I'm
-           * noticing the hand will rotate down on the site and fall, but the
-           * last sentence or so from the description text is still visible.
-           * Let's move the hand down more so its the only thing that can be
-           * seen when its interaction plays.")
+          /* FIRES WHEN THE READER REACHES THE LAST SENTENCE (2026-08-25).
            *
-           * This used to fire when the paragraph's bottom edge reached the
-           * hand's own sticky line, which is near the top of the window — so
-           * the last line or two were still sitting just above the hand as it
-           * swung. Keying off the viewport's top edge instead, with a margin
-           * past it, means the trigger cannot fire until the text is
-           * genuinely gone. The hand's resting line also moves down (see the
-           * sticky wrapper below) so it plays nearer the middle of an empty
-           * screen rather than hard against the top of one. */
+           * Noah: "the scrolling then falling hand is getting messed up.
+           * Let's have it fall right when the user reached the final sentence
+           * in the last paragraph."
+           *
+           * The paragraph's BOTTOM edge is the end of its final sentence, so
+           * the question is where that edge should be on screen when the hand
+           * goes. `bottom bottom-=15%` is the moment it clears the foot of the
+           * window by a sixth of a screen — the last sentence fully in view
+           * and just read, rather than already gone.
+           *
+           * This reverses 2026-08-23's `bottom top-=80`, which held the fall
+           * until the copy had left the screen entirely so the hand would be
+           * the only thing moving. That reading is now superseded: he has seen
+           * both and wants the fall tied to the reader's place in the text.
+           * The hand pins itself to the viewport for the duration either way
+           * (see onStart), so it is still whole and centred while it plays. */
           start: () => {
             const el = handStickyRef.current;
             // A trigger position past any real document height — a torn-
@@ -511,7 +515,7 @@ export function ProjectStatement({
             // crashing the refresh that every OTHER trigger on the page
             // depends on completing.
             if (!el) return 1e9;
-            return "bottom top-=80";
+            return "bottom bottom-=15%";
           },
           once: true,
         },
