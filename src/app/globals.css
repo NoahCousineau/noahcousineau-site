@@ -238,27 +238,68 @@ html {
  */
 :root {
   --grid-margin: 178;
+  --descriptor-scale: 1;
 }
 
 @media (max-width: 767px) {
   :root {
-    --grid-margin: 30;
+    /* 30 -> 250, 2026-08-25: "let's shrink the grid enough where the 'c' logo
+       and the toggle switch can cleanly fit without interacting with the
+       grid." Both controls are FIXED, so grid content scrolls underneath them
+       forever unless the margin is wide enough to hold them. Measured on a
+       390px screen: the C's ring ends at 48px and the toggle's begins at
+       338px, which is 235 and 1664 in artboard units — a 250-unit margin
+       clears both with a little air. */
+    --grid-margin: 250;
+    /* "Please also double the size of the section title type on mobile." */
+    --descriptor-scale: 2;
   }
 
   .js-project-row {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* "On the mobile grid, there should only be horizontal lines that separate
+     project images, no vertical lines." The seams divide CELLS WITHIN a row,
+     and a phone row has one cell — so they have nothing left to divide and
+     would draw a stray line down the side of an image. The horizontal Rule()
+     between rows is untouched. */
+  .js-cell-seam {
+    display: none;
   }
 }
 
 :root {
   --header-height: max(94.4dvh, 29rem);
   --header-rule-pct: 92.5%;
+  /* The floor under HomeLink's derived `top` — see that file. Zero on a
+     desktop, where the derived value is what should win. */
+  --home-mark-top-floor: 0px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    /* 2026-08-25: "please make sure that the 'C' and the toggle switch are
+       center aligned."
+       They were not, and the reason is that each is positioned by a different
+       rule. The toggle sits at a flat top-5, which puts its border box at 12
+       (the -m-2 pulls it up 8) and its 16px-tall mark's centre at 28. The C's
+       `top` is derived from the section title's centreline, which on a 390px
+       screen evaluates to -9 and lands on this floor instead. Its own ink
+       centre sits 22.75 below its border box, so matching the toggle's 28
+       wants a top of 28 - 22.75 + 8 = 13.25. */
+    --home-mark-top-floor: 13.25px;
+  }
 }
 
 @media (max-width: 767px) {
   :root {
     --header-height: 100dvh;
-    --header-rule-pct: 94%;
+    /* 94% -> 98.5%, 2026-08-25: "have the header bar that the icons fall into
+       be on the bottom of the mobile screen." At 94% of a 844px screen the
+       bar sat 50px up from the foot; 98.5% puts it at 13px, which is on the
+       bottom without the 6-unit rule itself being clipped by the edge. */
+    --header-rule-pct: 98.5%;
   }
 }
 

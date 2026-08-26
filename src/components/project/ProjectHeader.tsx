@@ -64,7 +64,11 @@ const ICON_SCALE = 0.72;
 /* 2026-08-25, phones: "Double the size of all the icons respectively." One
  * multiplier on the scale every icon is already measured against, so the
  * hero icon stays the largest and the relative sizes are untouched. */
-const PHONE_ICON_SCALE = 2;
+/* 2 -> 4, 2026-08-25: "Please increase all icon sizes by 2x respectively" —
+ * a second doubling on top of the first. One multiplier on the scale every
+ * icon is measured against, so the hero icon stays the largest and the
+ * relative sizes are untouched. */
+const PHONE_ICON_SCALE = 4;
 /* ...and "Move the title down as to not conflict with the 'C' logo." The
  * mark is fixed near the top-left; the header's own inset is 40 units, which
  * on a 390px screen is 8px and puts the title straight under it. */

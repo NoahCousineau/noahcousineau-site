@@ -194,7 +194,11 @@ const STICKY_TOP_SPACE_UNITS = 16;
  * Clamped at both ends so the title stays legible on a phone and doesn't
  * run away on an ultra-wide monitor. */
 const DESCRIPTOR_SIZE_UNITS = 26.67;
-const DESCRIPTOR_SIZE_CSS = `clamp(0.63rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS}), 2rem)`;
+/* The multiplier is a custom property so the phone can double it with a
+ * media query — this is a server component and cannot read the hook. See
+ * globals.css. */
+const DESCRIPTOR_SIZE_CSS =
+  `clamp(0.63rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS} * var(--descriptor-scale)), calc(2rem * var(--descriptor-scale)))`;
 const DESCRIPTOR_GAP_UNITS = 10;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
@@ -585,7 +589,7 @@ export function ProjectGroup({
                             thin black divider sitting inside the white gap. */}
                         {j < row.cells.length - 1 && (
                           <div
-                            className="absolute top-0 h-full"
+                            className="js-cell-seam absolute top-0 h-full"
                             style={{
                               right: `calc(calc(var(--u) * -${GAP_UNITS / 2}) - calc(${RULE_WEIGHT_CSS} / 2))`,
                               width: RULE_WEIGHT_CSS,
@@ -607,7 +611,7 @@ export function ProjectGroup({
                       <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} />
                       {j > 0 && (
                         <div
-                          className="absolute top-0 left-0 h-full"
+                          className="js-cell-seam absolute top-0 left-0 h-full"
                           style={{ width: RULE_WEIGHT_CSS, background: "var(--color-ink)" }}
                         />
                       )}

@@ -444,6 +444,17 @@ export function ProjectStatement({
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (!handRef.current || !paragraphRef.current || !handStickyRef.current) return;
+    /* NOT ON A PHONE (2026-08-25). Noah: "let's not make the hand fall. Let's
+     * just keep it stuck and pointing at the content."
+     *
+     * The whole gesture — the swing, the fall, and the scroll lock that holds
+     * the page still while they play — is skipped, leaving the hand where the
+     * sticky wrapper puts it, pointing at the copy. Returning before the
+     * context is created means there is nothing to revert and nothing that
+     * could leave `lockScroll` engaged on a device where getting the page
+     * moving again matters more. */
+    if (phone) return;
+
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
@@ -638,7 +649,10 @@ export function ProjectStatement({
       releaseScroll();
       ctx.revert();
     };
-  }, []);
+    /* `phone` is false for the server render and the first client render, so
+     * without it here a phone would build the desktop timeline once and keep
+     * it. */
+  }, [phone]);
 
   // Hand image (pre-rotated 90° so the finger points right — see
   // public/assets/shared/pointing-hand-static-rotated.webp, cropped tight

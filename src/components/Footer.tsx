@@ -226,10 +226,17 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             the phone. Have it larger than it currently is." Dead centre of
             the artboard rather than under the two right-hand link columns,
             and nearly twice the width. */}
-        <PeekingHead
-          centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
-          widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
-        />
+        {/* On a PHONE PROJECT PAGE the hand takes the head's place — 2026-08-25:
+            "On the mobile project page footers, let's remove the head. Have
+            the hand replace the head." `nextProjectHref` is only ever passed
+            on a project page, so it doubles as "is this a project footer",
+            which is exactly the distinction being drawn. */}
+        {!(phone && nextProjectHref) && (
+          <PeekingHead
+            centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
+            widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
+          />
+        )}
         {nextProjectHref && (
           <FallenHand triggerRef={spacerRef} nextHref={nextProjectHref} />
         )}

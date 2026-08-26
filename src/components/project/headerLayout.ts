@@ -37,7 +37,9 @@
  * viewport's HEIGHT everywhere, because it's finally measured against the
  * thing Noah actually specified.
  */
-const HEADER_HEIGHT_VH = 94.4;
+// Kept as prose rather than code since the value moved to globals.css, where
+// a media query can override it for phones: 94.4dvh on desktop, 100dvh on a
+// phone. See the note below and the :root block there.
 
 /**
  * ...but not below this, and the reason is that the TYPE has a floor and the

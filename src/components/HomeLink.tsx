@@ -57,7 +57,7 @@ export default function HomeLink() {
         left: "calc(min(100vw, 1920px) / 40)",
         // See the note below: the artboard unit spelled out, because `--u`
         // lives on <main> and this is fixed outside it.
-        top: "max(0px, calc(min(100vw, 1920px) / 1920 * 28.25 - 14.75px))",
+        top: "max(var(--home-mark-top-floor), calc(min(100vw, 1920px) / 1920 * 28.25 - 14.75px))",
       }}
       /* 2026-08-24, Noah: "move both the home page and the sunglasses icon
          closer to the border of the browser window to make them not
@@ -90,8 +90,10 @@ export default function HomeLink() {
          and the title's ink share a centreline to within a quarter pixel at
          1280, 1512 and 1920.
 
-         The `max(0px, ...)` floor is what stops the expression pulling the
-         mark off the top of the window on a narrow one. It only engages below
+         The floor is what stops the expression pulling the mark off the top
+         of the window on a narrow one, and on a phone it does double duty —
+         see `--home-mark-top-floor` in globals.css, where it is set to the
+         value that puts this mark's centreline on the toggle switch's. It only engages below
          about 1002px, which is where the C's own ink would otherwise cross
          y=0; alignment gives way there rather than the mark being clipped,
          and phone layouts are handled separately. A 6px floor was tried first

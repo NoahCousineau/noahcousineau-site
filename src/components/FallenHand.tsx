@@ -7,6 +7,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { uFont } from "./Stage";
 import { THIRD_COLUMN_X } from "./footerLayout";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 /*
  * FALLEN HAND + NEXT PROJECT (2026-08-20, per Noah: "Let's have the hand on
@@ -66,6 +67,16 @@ const REST_ROTATION = -6;
 const HAND_W_UNITS = 330;
 /** Gap between the hand and the label. */
 const HAND_LABEL_GAP_UNITS = 30;
+
+/* The phone column — see the note at the render. The hand is turned on its
+ * side there, so its rendered HEIGHT is this width times the artwork's
+ * 1490/2696 aspect inverted; 900 units across gives a hand about as tall as
+ * it is wide on a 390px screen. */
+const PHONE_HAND_W_UNITS = 900;
+const PHONE_LABEL_GAP_UNITS = 40;
+const PHONE_LABEL_FONT = 96;
+/** Lifts the whole column off the foot of the screen. */
+const PHONE_BOTTOM_UNITS = 200;
 /** The label's left edge lands at THIRD_COLUMN_X (2026-08-20, per Noah:
  * "Have 'next project' in the same column as 'valley strong credit union'
  * and 'more work'. Shift the hand over as needed to keep it pointing to
@@ -99,6 +110,7 @@ export default function FallenHand({
   /** Destination for the label — the next project in the running order. */
   nextHref: string;
 }) {
+  const phone = useIsPhone();
   const handRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +173,72 @@ export default function FallenHand({
     }, rootRef);
     return () => ctx.revert();
   }, [triggerRef]);
+
+  /*
+   * PHONE (2026-08-25). Noah: "let's remove the head. Have the hand replace
+   * the head. Have it point straight vertical. It should be pointing to 'next
+   * project', which is center aligned just above the hand and takes up 3/4 of
+   * the screen width."
+   *
+   * Desktop lays the hand and its label out as a ROW — hand at the left
+   * margin, finger pointing right at the words beside it. On a phone that
+   * becomes a COLUMN: the label above, the hand below it pointing straight
+   * up. The asset is drawn pointing right, so "straight up" is -90 degrees
+   * from rest, and the rotation happens about the same pivot the fall uses so
+   * the two cannot disagree about where the hand's own centre is.
+   *
+   * The head that used to sit here is dropped by the footer itself — see
+   * Footer.tsx, which is what knows whether it is on a project page.
+   */
+  if (phone) {
+    return (
+      <div
+        ref={rootRef}
+        className="absolute flex flex-col items-center"
+        style={{
+          left: "12.5%", // (100 - 75) / 2, so the block is 3/4 of the screen
+          width: "75%",
+          bottom: `calc(var(--u) * ${PHONE_BOTTOM_UNITS})`,
+          gap: `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
+        }}
+      >
+        <Link
+          href={nextHref}
+          className="lowercase text-center hover:opacity-60 transition-opacity block w-full"
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: uFont(PHONE_LABEL_FONT),
+            borderBottom: "4px solid currentColor",
+            paddingBottom: "calc(var(--u) * 24)",
+          }}
+        >
+          next project
+        </Link>
+        <div
+          ref={handRef}
+          aria-hidden
+          className="pointer-events-none select-none"
+          style={{
+            width: `calc(var(--u) * ${PHONE_HAND_W_UNITS})`,
+            transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
+            // The artwork points RIGHT at rest; a quarter turn anticlockwise
+            // aims it at the label directly above.
+            transform: "rotate(-90deg)",
+            willChange: "transform, opacity",
+          }}
+        >
+          <Image
+            src="/assets/shared/pointing-hand-static-rotated.webp"
+            alt=""
+            width={2696}
+            height={1490}
+            sizes="60vw"
+            className="w-full h-auto"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
