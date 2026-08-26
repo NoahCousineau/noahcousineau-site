@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import HeadWithEyes from "@/components/HeadWithEyes";
 import { useTheme } from "@/components/ThemeProvider";
 import { headAsset } from "@/lib/headAssets";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 /*
  * RAGDOLL HEAD — grab it, drag it, throw it. On release it keeps the
@@ -77,7 +78,11 @@ const BASE_ROTATION_DEG = 42;
 // Designed resting geometry, in artboard units. Width and the right inset
 // were scaled by 0.75 together (from 424.94 / 42.98) so the smaller head
 // still sits flush to the header's right edge.
+/* 2026-08-25, phones: "Please triple the size of the head as well." The
+ * ragdoll's rest position, its arena and its physics are all expressed as
+ * fractions of this, so tripling it moves the whole thing together. */
 const HEAD_WIDTH_UNITS = 318.705;
+const PHONE_HEAD_WIDTH_UNITS = HEAD_WIDTH_UNITS * 3;
 const HEAD_RIGHT_UNITS = 32.235;
 /** Only a starting guess now. The loop solves the true resting offset from
  * the measured silhouette on the first frame (see the SEAT THE DESIGNED
@@ -207,6 +212,8 @@ export default function RagdollHead({
   /** The red header the head is confined to. */
   containerRef: React.RefObject<HTMLElement | null>;
 }) {
+  const phone = useIsPhone();
+  const headWidthUnits = phone ? PHONE_HEAD_WIDTH_UNITS : HEAD_WIDTH_UNITS;
   const wrapRef = useRef<HTMLDivElement>(null);
   const rotationRef = useRef<number>(BASE_ROTATION_DEG);
   const shape = useRef<ShapeData>(defaultShape());
@@ -726,7 +733,7 @@ export default function RagdollHead({
       style={{
         right: `calc(var(--u) * ${HEAD_RIGHT_UNITS})`,
         bottom: `calc(var(--u) * ${HEAD_BOTTOM_UNITS})`,
-        width: `calc(var(--u) * ${HEAD_WIDTH_UNITS})`,
+        width: `calc(var(--u) * ${headWidthUnits})`,
         transform: `rotate(${BASE_ROTATION_DEG}deg)`,
         // Default before the pivot is measured; the load effect overwrites
         // this with the measured centre of area once it's known.

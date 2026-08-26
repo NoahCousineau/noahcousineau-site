@@ -7,6 +7,7 @@ import RagdollHead from "@/components/about/RagdollHead";
 import ParallaxPhotos from "@/components/about/ParallaxPhotos";
 import ApproachOnScroll from "@/components/about/ApproachOnScroll";
 import ResumeArrows, { type ResumeArrowSpot } from "@/components/ResumeArrows";
+import { useIsPhone } from "@/lib/useIsPhone";
 import {
   HEADER_HEIGHT_CSS,
   HEADER_RULE_PCT,
@@ -116,10 +117,13 @@ function DraggableResumeCard({
   frontSrc,
   backSrc,
   rotationSpeedDegPerSec = 75, // Noah: dial back from 100 to 75
+  widthUnits = 420,
 }: {
   frontSrc: string;
   backSrc: string;
   rotationSpeedDegPerSec?: number;
+  /** Doubled on phones — see the call site. */
+  widthUnits?: number;
 }) {
   const [angle, setAngle] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -222,7 +226,7 @@ function DraggableResumeCard({
     <div
       className="relative cursor-grab active:cursor-grabbing select-none"
       style={{
-        width: "calc(var(--u) * 420)",
+        width: `calc(var(--u) * ${widthUnits})`,
         aspectRatio: "1700/2200",
         perspective: "1400px",
         marginTop: "calc(var(--u) * -130)",
@@ -320,6 +324,7 @@ const RESUME_ARROW_SPOTS: [
 ];
 
 export default function About() {
+  const phone = useIsPhone();
   // The header doubles as the ragdoll head's physics arena. That arena is
   // NOT the whole section: it is the box above the rule, which is what makes
   // the head come to rest exactly on the line rather than at the foot of the
@@ -371,7 +376,12 @@ export default function About() {
         <div
           className="absolute z-20 pointer-events-none"
           style={{
-            top: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
+            /* 2026-08-25: "treat the 'about me' title type the same way we
+               are treating project title type on the mobile project pages" —
+               which is doubled, and pushed down clear of the "C" mark. Both
+               numbers are the project header's, so the two pages stay in
+               step. */
+            top: `calc(var(--u) * ${phone ? 300 : HEADER_INSET_UNITS})`,
             left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
             right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           }}
@@ -381,7 +391,9 @@ export default function About() {
             style={{
               padding: "calc(var(--u) * 20) calc(var(--u) * 56)",
               fontFamily: "var(--font-sans)",
-              fontSize: "var(--text-project-title)",
+              fontSize: phone
+                ? "calc(var(--text-project-title) * 2)"
+                : "var(--text-project-title)",
               color: "var(--color-ink)",
             }}
           >
@@ -504,10 +516,11 @@ export default function About() {
             fractions convert directly. Being outside the zoom is also what
             keeps the parallax legible: two transforms fighting over the same
             element read as neither. */}
-        <ResumeArrows
-          target={RESUME_CARD_CENTRE}
-          spots={RESUME_ARROW_SPOTS}
-        />
+        {/* Off on phones for now — 2026-08-25: "Remove the clay arrows from
+            the mobile version for now." */}
+        {!phone && (
+          <ResumeArrows target={RESUME_CARD_CENTRE} spots={RESUME_ARROW_SPOTS} />
+        )}
         {/* Headline and card travel toward the viewer together as this
             section scrolls in — see ApproachOnScroll. Wrapping BOTH (rather
             than the card alone) is what makes it read as one object arriving
@@ -520,7 +533,14 @@ export default function About() {
               target="_blank"
               rel="noreferrer"
               className="block no-underline"
-              style={{ width: "calc(var(--u) * 1050)", height: "calc(var(--u) * 330)" }}
+              /* 2026-08-25, phones: "please double the size of the 'download
+                 my resume' text and paper." The ArcText draws into this box,
+                 so doubling the box doubles the type and its arc together. */
+              style={
+                phone
+                  ? { width: "calc(var(--u) * 1800)", height: "calc(var(--u) * 566)" }
+                  : { width: "calc(var(--u) * 1050)", height: "calc(var(--u) * 330)" }
+              }
             >
               <ArcText
                 id="resume-arc"
@@ -544,6 +564,7 @@ export default function About() {
             <DraggableResumeCard
               frontSrc="/assets/about/resume-preview.jpg"
               backSrc="/assets/about/resume-back.png"
+              widthUnits={phone ? 840 : 420}
             />
           </div>
         </ApproachOnScroll>
