@@ -50,7 +50,10 @@ const HEAD_WIDTH_UNITS = 300;
  * 390px screen is 126px of head against 61px — and everything downstream
  * (the reveal fraction, the eye anchoring, the tracking) is expressed as a
  * fraction of this, so only the one number moves. */
-const PHONE_HEAD_WIDTH_UNITS = 620;
+/* 620 -> 1240, 2026-08-25: "On the mobile footer, double the size of the
+ * head." Everything downstream — the reveal fraction, the eye anchoring, the
+ * tracking radius — is a fraction of this, so only the one number moves. */
+const PHONE_HEAD_WIDTH_UNITS = 1240;
 
 /**
  * Mean eye position for a variant, as a fraction of its own box.

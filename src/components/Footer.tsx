@@ -111,9 +111,26 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
  * The type more than doubles, 17.9 -> 40 units, and the rules widen to match.
  */
 const PHONE_COL_X = [90, 1010];
-const PHONE_ROW_H = 128;
-const PHONE_TOP_Y = 380;
-const PHONE_FONT = 40;
+const PHONE_ROW_H = 180;
+/* Below the wordmark, which itself starts clear of the corner controls —
+ * 2026-08-25: "add enough space above the 'cousineau' logo so the toggle
+ * switch doesn't conflict with the toggle switch." The toggle's box occupies
+ * roughly y12-44px, and the footer's unit is 1/1920 of a 390px screen, so
+ * 0.203px per unit: the wordmark's old y of 21.44 put it 4px from the top,
+ * straight underneath. 320 units is 65px, below the control entirely. */
+const PHONE_LOGO_Y = 320;
+const PHONE_TOP_Y = 680;
+/* 2026-08-25: "increase the size of the type. The longest piece of type
+ * should be as wide as the column width." It was 40 units — 8px on a 390px
+ * screen, which is where this started.
+ *
+ * The size is set FROM the longest label rather than estimated. Guessing
+ * 0.42em per character put it at 90, and measuring the rendered result gave
+ * "noah@noahcousineau.com" a width of 1020 units, running 110 past the
+ * artboard's edge — an @ and a couple of dots carry more width than an
+ * average taken over ordinary words predicts. At 90 it measures 1020, so the
+ * size that makes it exactly one column wide is 90 x 820/1020 = 72. */
+const PHONE_FONT = 72;
 const PHONE_RULE_W = 820;
 
 const ROW1_TEXT_Y = 353.5; // was 373.5, was 391.5, was 431.5 — see LINK BLOCK note below
@@ -218,12 +235,12 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
         )}
         {/* Taller on a phone: six stacked link rows instead of two, plus
             the wordmark above them. PHONE_TOP_Y + 6 rows + a rule. */}
-        <Stage heightUnits={phone ? PHONE_TOP_Y + PHONE_ROW_H * 6 + 90 : STAGE_HEIGHT}>
+        <Stage heightUnits={phone ? PHONE_TOP_Y + PHONE_ROW_H * 6 + 120 : STAGE_HEIGHT}>
           {/* Large Cousineau wordmark — same asset as the old small footer
               logo, scaled to the sketch's exact bbox. y nudged 41.44 ->
               21.44 on 2026-08-20 (Noah: "Shift the 'cousineau' logo up just
               a tad"). */}
-          <Place x={72.68} y={21.44} w={1774.62}>
+          <Place x={72.68} y={phone ? PHONE_LOGO_Y : 21.44} w={1774.62}>
             <Link href="/" className="block">
               {/* The wordmark asset is a single #fff fill, so in dark mode —
                   where the footer's own background flips to white — it would
@@ -274,10 +291,10 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                         {item.label}
                       </Link>
                     </Place>
-                    <Place x={x} y={y + PHONE_FONT + 22} w={PHONE_RULE_W}>
+                    <Place x={x} y={y + PHONE_FONT + 30} w={PHONE_RULE_W}>
                       <div
                         className="w-full bg-[color:var(--color-paper)]"
-                        style={{ height: uFont(4) }}
+                        style={{ height: uFont(6) }}
                       />
                     </Place>
                   </div>

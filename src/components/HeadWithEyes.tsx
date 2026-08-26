@@ -97,6 +97,31 @@ function TrackedEye({
   const eyeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    /* Where the pupil should point, as a unit direction. Shared by the two
+     * inputs below so the geometry — the counter-rotation, the clamp to the
+     * socket — is written once. */
+    function aim(ux: number, uy: number) {
+      const el = eyeRef.current;
+      if (!el) return;
+      const maxOffset = el.offsetWidth * EYE_TRAVEL_FRACTION_OF_DISC;
+      const screenX = ux * maxOffset;
+      const screenY = uy * maxOffset;
+      const deg = rotationRef?.current ?? 0;
+      if (deg === 0) {
+        el.style.transform = `translate(-50%, -50%) translate(${screenX}px, ${screenY}px)`;
+        return;
+      }
+      // Counter-rotate into the head's local space: a child's translate
+      // happens inside its parent's already-rotated frame, so without this
+      // the pupils track a direction offset by the head's tilt.
+      const rad = (-deg * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      el.style.transform = `translate(-50%, -50%) translate(${
+        screenX * cos - screenY * sin
+      }px, ${screenX * sin + screenY * cos}px)`;
+    }
+
     function handleMove(e: MouseEvent) {
       const el = eyeRef.current;
       if (!el) return;
@@ -120,28 +145,47 @@ function TrackedEye({
       // width. Sizing the travel off that would hand the pupil 41% more room
       // on exactly the head where it is already hardest to keep in the socket.
       // offsetWidth is pure layout and ignores the transform.
-      const maxOffset = el.offsetWidth * EYE_TRAVEL_FRACTION_OF_DISC;
       const dist = Math.hypot(dx, dy) || 1;
-      const screenX = (dx / dist) * maxOffset;
-      const screenY = (dy / dist) * maxOffset;
-
-      // Counter-rotate into the head's local space: a child's translate
-      // happens inside its parent's already-rotated frame, so without this
-      // the pupils track a direction offset by the head's tilt.
-      const deg = rotationRef?.current ?? 0;
-      if (deg === 0) {
-        el.style.transform = `translate(-50%, -50%) translate(${screenX}px, ${screenY}px)`;
-        return;
-      }
-      const rad = (-deg * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      el.style.transform = `translate(-50%, -50%) translate(${
-        screenX * cos - screenY * sin
-      }px, ${screenX * sin + screenY * cos}px)`;
+      aim(dx / dist, dy / dist);
     }
+
+    /* ...AND ON A PHONE, THE PHONE'S OWN TILT (2026-08-25).
+     *
+     * Noah: "Have the eyes roll around to the phone movement."
+     *
+     * There is no cursor to follow on a phone, so the same pupils take their
+     * direction from the device instead — the identical mapping the header's
+     * falling icons use for gravity (see useDropField): `gamma` is the
+     * left-right tilt, positive with the right edge down, and `beta` is +90
+     * upright, 0 flat. (sin gamma, sin beta) is then the direction "down"
+     * points in the plane of the screen, which is exactly where a pair of
+     * googly eyes would roll.
+     *
+     * Not normalised to a unit vector, deliberately: `aim` multiplies by the
+     * socket's radius, so leaving the magnitude alone means a small tilt
+     * moves them a little and a big one sends them all the way over, instead
+     * of pinning them to the rim the moment the phone is off level. Clamped
+     * so they can never leave the socket.
+     */
+    function handleTilt(e: DeviceOrientationEvent) {
+      if (e.beta == null || e.gamma == null) return;
+      const rad = Math.PI / 180;
+      let x = Math.sin(e.gamma * rad);
+      let y = Math.sin(e.beta * rad);
+      const m = Math.hypot(x, y);
+      if (m > 1) {
+        x /= m;
+        y /= m;
+      }
+      aim(x, y);
+    }
+
     window.addEventListener("mousemove", handleMove);
-    return () => window.removeEventListener("mousemove", handleMove);
+    window.addEventListener("deviceorientation", handleTilt);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("deviceorientation", handleTilt);
+    };
   }, [rotationRef]);
 
   return (

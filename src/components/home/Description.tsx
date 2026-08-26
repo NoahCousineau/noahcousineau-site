@@ -26,9 +26,16 @@ import { FitText } from "./FitText";
  * put it. Starting the pin a measured distance earlier or later instead lands
  * this point on the viewport's middle at every window size. */
 const LINES_CENTER_UNITS = (381 + 882) / 2;
+/** The same midpoint for the phone's five lines: first line's top to the last
+ *  line's rule. Kept beside the desktop one so the pair stay comparable. */
+const PHONE_LINES_CENTER_UNITS = (381 + (381 + 4 * 184 + 141)) / 2;
 
 /** Top of "His work can be seen below.", artboard units. */
 const LINE4_TOP_UNITS = 1387;
+/** ...and on a phone, where it gets the next screen to itself: a full
+ *  viewport below where the five lines finish. See the closer's own note in
+ *  the markup. */
+const PHONE_CLOSER_TOP_UNITS = 381 + 4 * 184 + 105 + 700;
 
 /** The Stage's own height, artboard units — 2460 -> 1810, 2026-08-23 per
  *  Noah: "There's now a lot of space between the hand and the project grid
@@ -53,8 +60,44 @@ const STAGE_HEIGHT_UNITS = 1500;
  * phone that is a whole screen of blank scrolling between the hand landing
  * and the first tile, so it comes down to just past the rule at y1528.
  */
-const PHONE_HAND_SCALE = 1.5;
-const PHONE_STAGE_HEIGHT_UNITS = 1580;
+/*
+ * The phone's own artboard, 1000 units wide against the page's 1920 — the
+ * same device the hero and the project grid use, and for the same reason.
+ * Every coordinate below keeps working; a unit is simply nearly twice as many
+ * pixels, so the copy comes out roughly twice the size without any of it
+ * being rescaled by hand. Noah: "Scale the text up accordingly."
+ */
+const PHONE_ARTBOARD = 1000;
+
+/*
+ * THE HAND, ON A PHONE (2026-08-25).
+ *
+ * Noah: "For the arrow hand on mobile, please scale this up by 50%. Have it
+ * lower on the screen, it's currently conflicting with the 'his work can be
+ * seen below' area." And: "scoot up the project grid so that it's a quarter
+ * of the screen height away from the bottom of the hand."
+ *
+ * The artwork is 308 units wide in its Place and 1597x2719 native, so 524
+ * tall; the scale is taken about the box's own centre, so at 2.25 it renders
+ * 693 x 1179 centred on that point. Everything below is derived from those
+ * two numbers rather than typed in, because the last round's version had the
+ * hand ABOVE the closer once the closer moved down a screen — positions that
+ * are written out separately drift apart the moment one of them moves.
+ */
+const PHONE_HAND_SCALE = 1.5 * 1.5;
+const HAND_BOX_W = 308;
+const HAND_BOX_H = 524;
+/** Where the hand's own centre sits. Clear of the closer's last rule, which
+ *  lands at PHONE_CLOSER_TOP_UNITS + 184 + 141. */
+const PHONE_HAND_CENTRE_Y = 3000;
+/** A quarter of a phone screen, in this artboard's units: 844px at
+ *  u = 390/1000 is 2164 units, so a quarter is 541. */
+const PHONE_GRID_GAP_UNITS = 541;
+/* The run-out — document space reserved after the pin releases and before
+ * Projects begins. On a phone it has to clear the hand, which now hangs well
+ * below where the copy ends, plus the quarter-screen gap Noah asked for. */
+const PHONE_STAGE_HEIGHT_UNITS =
+  PHONE_HAND_CENTRE_Y + (HAND_BOX_H * PHONE_HAND_SCALE) / 2 + PHONE_GRID_GAP_UNITS;
 /** Where that line comes to rest, as a fraction of viewport height from the
  *  top. Noah: "stop scroll about 3/4 up the page" — three quarters of the way
  *  UP is a quarter of the way DOWN — then, once he saw it: "let's shift the
@@ -70,6 +113,9 @@ const HAND_TIP = { xPct: 32.5, yPct: 0.85 };
 
 export default function Description() {
   const phone = useIsPhone();
+  /* Declared up here because the scroll effects below close over them. */
+  const closerY = phone ? PHONE_CLOSER_TOP_UNITS : LINE4_TOP_UNITS;
+  const linesCentre = phone ? PHONE_LINES_CENTER_UNITS : LINES_CENTER_UNITS;
   const root = useRef<HTMLDivElement>(null);
   /** Carries the fall. Unrotated, so its `y` is plain screen-space travel. */
   const handDropRef = useRef<HTMLDivElement>(null);
@@ -239,7 +285,7 @@ export default function Description() {
            * neither of which a keyword can express. Re-read on every refresh
            * so a resize re-centres rather than drifting. */
           start: () =>
-            docTop() - (window.innerHeight / 2 - LINES_CENTER_UNITS * uPx()),
+            docTop() - (window.innerHeight / 2 - linesCentre * uPx()),
           // Three reveals and their holds, then the travel down to the last
           // line and its own beat — see the phases below.
           end: "+=320%",
@@ -293,7 +339,7 @@ export default function Description() {
         y: () =>
           -(
             window.innerHeight * (0.5 - LINE4_TARGET_TOP) +
-            (LINE4_TOP_UNITS - LINES_CENTER_UNITS) * uPx()
+            (closerY - linesCentre) * uPx()
           ),
         duration: 1.7,
         ease: "none",
@@ -307,16 +353,85 @@ export default function Description() {
       tl.to({}, { duration: HOLD * 2.2 });
     }, root);
     return () => ctx.revert();
-  }, []);
+    /* REBUILT WHEN THE LAYOUT SWITCHES, and it has to be. `useIsPhone` answers
+     * false for the server render and the first client render, so on a phone
+     * this timeline is first built against the DESKTOP centring and closer
+     * position; without these dependencies it would keep them, and the pin
+     * would hold the wrong point on the viewport's middle for the whole
+     * session. gsap.context + revert() means rebuilding is clean. */
+  }, [closerY, linesCentre]);
 
+  const serif = { fontFamily: "var(--font-serif)" };
+
+  /*
+   * THE COPY, AS DATA, BECAUSE THE TWO LAYOUTS BREAK IT DIFFERENTLY
+   * (2026-08-25).
+   *
+   * Noah, for phones: "Let's break this into a few more lines... 'Noah
+   * Cousineau is a / graphic designer who / uses wit, play, and / humor to
+   * solve / your visual problems.'" and "'His work can / be seen below'".
+   *
+   * Same sentence, different breaks — five lines instead of three, and the
+   * italic runs land in different places because of it ("graphic designer"
+   * opens a line here and closes one there). Writing the JSX out twice would
+   * mean two copies of the sentence that have to be kept saying the same
+   * thing; a list of lines keeps one copy of each phrase and lets the layout
+   * decide where they sit.
+   */
+  const em = (t: string) => (
+    <span className="italic" style={serif}>
+      {t}
+    </span>
+  );
+  const DESKTOP_LINES = [
+    <>Noah Cousineau is a {em("graphic designer")}</>,
+    <>who uses wit, play, and humor to solve</>,
+    <>your {em("visual problems")}{em(".")}</>,
+  ];
+  const PHONE_LINES = [
+    <>Noah Cousineau is a</>,
+    <>{em("graphic designer")} who</>,
+    <>uses wit, play, and</>,
+    <>humor to solve</>,
+    <>your {em("visual problems")}{em(".")}</>,
+  ];
+  const DESKTOP_CLOSER = [<>His {em("work")} can be seen below.</>];
+  const PHONE_CLOSER = [<>His {em("work")} can</>, <>be seen below</>];
+
+  const lineSet = phone ? PHONE_LINES : DESKTOP_LINES;
+  const closerSet = phone ? PHONE_CLOSER : DESKTOP_CLOSER;
+
+  /*
+   * WHERE THEY SIT. Desktop keeps its measured positions exactly — first line
+   * at y381, then a 184-unit pitch, with the rule 141 below each line.
+   *
+   * The phone reuses that rhythm on its own narrower artboard (see
+   * PHONE_ARTBOARD): the numbers are the same, but a unit is nearly twice as
+   * many pixels there, so the type comes out roughly twice the size without
+   * any of it being rescaled by hand — the same device the hero and the
+   * project grid use.
+   */
+  const LINE_TOP = 381;
+  const LINE_PITCH = 184;
+  const RULE_OFFSET = 141;
+  const lineY = (i: number) => LINE_TOP + i * LINE_PITCH;
+
+  /* The mask each line rises out of has to be deep enough to clear the
+   * deepest descender in it. 26 units was measured against the desktop size;
+   * the phone sets the same copy at nearly twice the size in units of its own
+   * artboard, and the italic serif's descenders in "graphic designer" and
+   * "visual problems" hung below the mask and were sliced off mid-reveal
+   * ("some of the text is getting clipped off at the wrong location"). */
+  const MASK_PAD = phone ? 46 : 26;
+
+  const railWidth = phone ? PHONE_ARTBOARD - 72 : 1841;
   const rule = (y: number) => (
-    <Place x={36} y={y} w={1841} className="z-0">
+    <Place key={`r${y}`} x={36} y={y} w={railWidth} className="z-0">
       <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
     </Place>
   );
 
-  const LINE_MAX_W = 1841; // x36 -> x1877, the artboard's right margin
-  const serif = { fontFamily: "var(--font-serif)" };
+  const LINE_MAX_W = railWidth; // x36 -> the artboard's right margin
 
   return (
     // Stage height 2266 -> 2460 (2026-08-20): part of Noah's site-wide "add
@@ -343,7 +458,13 @@ export default function Description() {
     // content is asked to rise above where Stage itself is anchored. Desktop
     // (1512x900) never showed this: that aspect ratio puts Stage's frozen
     // top ABOVE y=0 (i.e., already above the viewport) with room to spare.
-    <div ref={pinRef}>
+    <div
+      ref={pinRef}
+      // Local to this section: the Hero above and the Projects grid below
+      // each declare their own, and `main` keeps the 1920-based unit for
+      // anything that has not opted out.
+      style={phone ? { ["--u" as string]: `calc(100cqw / ${PHONE_ARTBOARD})` } : undefined}
+    >
     <Stage heightUnits={phone ? PHONE_STAGE_HEIGHT_UNITS : STAGE_HEIGHT_UNITS}>
       <div ref={root} className="absolute inset-0">
         {/* Lines 1–3. Each is wrapped in an overflow-hidden mask so it can
@@ -352,67 +473,69 @@ export default function Description() {
             can't be merged into <Place> (which positions but doesn't
             clip), and the animated element is the inner div, leaving the
             mask itself untransformed as a fixed window. */}
-        {/* Line 1 y381 (was y81, moved down 300u) */}
-        <Place x={36} y={381} className="z-10">
-          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
-            <div className="js-desc-line">
-              <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-                Noah Cousineau is a <span className="italic" style={serif}>graphic designer</span>
-              </FitText>
+        {/* Lines 1..N and their rules. Each line is wrapped in an
+            overflow-hidden mask so it can rise out from behind its own rule
+            on scroll — see the LINE REVEAL note in the effect above. The mask
+            must clip, so it can't be merged into <Place> (which positions but
+            doesn't clip), and the animated element is the inner div, leaving
+            the mask itself untransformed as a fixed window. */}
+        {lineSet.map((content, i) => (
+          <Place key={`l${i}`} x={36} y={lineY(i)} className="z-10">
+            <div
+              className="overflow-hidden"
+              style={{ paddingBottom: `calc(var(--u) * ${MASK_PAD})` }}
+            >
+              <div className="js-desc-line">
+                <FitText
+                  maxWidthUnits={LINE_MAX_W}
+                  fontSizeUnits={105}
+                  className="leading-[1] tracking-tight"
+                >
+                  {content}
+                </FitText>
+              </div>
             </div>
-          </div>
-        </Place>
-        {rule(522)}
+          </Place>
+        ))}
+        {lineSet.map((_, i) => rule(lineY(i) + RULE_OFFSET))}
 
-        {/* Line 2 y565 (was y265, moved down 300u) */}
-        <Place x={36} y={565} className="z-10">
-          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
-            <div className="js-desc-line">
-              <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-                who uses wit, play, and humor to solve
-              </FitText>
-            </div>
-          </div>
-        </Place>
-        {rule(706)}
-
-        {/* Line 3 y741 (was y441, moved down 300u) */}
-        <Place x={36} y={741} className="z-10">
-          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
-            <div className="js-desc-line">
-              <FitText maxWidthUnits={LINE_MAX_W} fontSizeUnits={105} className="leading-[1] tracking-tight">
-                your <span className="italic" style={serif}>visual problems</span><span className="italic" style={serif}>.</span>
-              </FitText>
-            </div>
-          </div>
-        </Place>
-        {rule(882)}
-
-        {/* "His work can be seen below." y1387 (was y1187, moved down 300u).
-            "work" set in Quinn Text italic (serif) per spec, matching the
-            emphasis treatment used elsewhere ("graphic designer", "visual
-            problems"). Trailing period added per feedback.
-
-            Rises out from behind its own rule (y1528) exactly like lines
-            1–3 — same mask, same 135 yPercent, same ease (2026-08-21, per
-            Noah: "Let's also have the 'his work can be seen below' on the
-            home page animate upwards like the rest of the text"). Its rule
-            sits 141u below it, the identical gap lines 1–3 use, so the
-            same masking geometry works unchanged.
+        {/* The closer — "His work can be seen below." Rises out from behind
+            its own rule exactly like the lines above: same mask, same 135
+            yPercent, same ease (2026-08-21, per Noah: "Let's also have the
+            'his work can be seen below' on the home page animate upwards like
+            the rest of the text").
 
             Part of the pinned timeline since 2026-08-23, which is what lets
-            it come to a real stop a quarter down the screen — see the LINE
-            4 note in the effect for why that needed the content to travel
-            inside the pin rather than the line to get its own trigger. */}
-        <Place x={45} y={1387} className="z-10">
-          <div className="overflow-hidden" style={{ paddingBottom: "calc(var(--u) * 26)" }}>
-            <div className="js-desc-line-4">
-              <FitText maxWidthUnits={1600} fontSizeUnits={105} className="leading-[1] tracking-tight">
-                His <span className="italic" style={serif}>work</span> can be seen below.
-              </FitText>
+            it come to a real stop a quarter down the screen — see the LINE 4
+            note in the effect for why that needed the content to travel
+            inside the pin rather than the line to get its own trigger.
+
+            ON A PHONE IT GETS THE SCREEN TO ITSELF (2026-08-25). Noah: "have
+            the first descriptive as the only thing visible on the screen. The
+            user then scrolls down to see the 'His work can be seen below'
+            copy on a separate screen." The five lines above end at
+            lineY(4) + 105; this starts a full viewport further down, so
+            whatever is on screen when the last line lands, this is not part
+            of it. */}
+        {closerSet.map((content, i) => (
+          <Place key={`c${i}`} x={45} y={closerY + i * LINE_PITCH} className="z-10">
+            <div
+              className="overflow-hidden"
+              style={{ paddingBottom: `calc(var(--u) * ${MASK_PAD})` }}
+            >
+              <div className="js-desc-line-4">
+                <FitText
+                  maxWidthUnits={phone ? LINE_MAX_W : 1600}
+                  fontSizeUnits={105}
+                  className="leading-[1] tracking-tight"
+                >
+                  {content}
+                </FitText>
+              </div>
             </div>
-          </div>
-        </Place>
+          </Place>
+        ))}
+        {closerSet.map((_, i) => rule(closerY + i * LINE_PITCH + RULE_OFFSET))}
 
         {/* Pointing finger at y1600. It arrives like an arrow — dropping in
             from above the viewport, striking, and vibrating to a stop — see
@@ -431,7 +554,13 @@ export default function Description() {
                  centre, which is what makes the tip the one point that
                  doesn't move. Nested INSIDE the half-turn, so "the tip" is
                  the real tip on screen and not its mirror image. */}
-        <Place x={806} y={1600} w={308} h={523} className="z-20">
+        <Place
+          x={phone ? (PHONE_ARTBOARD - HAND_BOX_W) / 2 : 806}
+          y={phone ? PHONE_HAND_CENTRE_Y - HAND_BOX_H / 2 : 1600}
+          w={HAND_BOX_W}
+          h={523}
+          className="z-20"
+        >
           <div ref={handDropRef} className="w-full js-desc-hand-drop">
             <div
               className="w-full"
@@ -458,10 +587,6 @@ export default function Description() {
           </div>
         </Place>
 
-        {/* Rule line below text — 36u gap after "His work can be seen below"
-            baseline (y1387 + ~105 line height + 36u), matching the same
-            36u text-to-rule gap used after lines 1–3 above. */}
-        {rule(1528)}
       </div>
     </Stage>
     </div>
