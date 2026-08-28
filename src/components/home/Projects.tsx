@@ -108,8 +108,28 @@ const PHONE_ARTBOARD = 1000;
 const PHONE_MARGIN = 20;
 const PHONE_CELL_W = PHONE_ARTBOARD - PHONE_MARGIN * 2;
 const PHONE_ROW_H = 680;
+/* 2026-08-25, Noah: "on the home page project grid for mobile, let's increase
+ * the size of the project titles and subtext by 1.5x. Scoot the project title
+ * and subcopy up closer to the top left of the grid space as well."
+ *
+ * THE BOX HAS TO GROW WITH THE TYPE, and that is not cosmetic — it is what
+ * stops the change breaking the titles. The white box is 80% of the cell with
+ * 30 units of padding a side, so the text column is 708 units. Measured with
+ * canvas at the new size, the widest title line ("farmers market") wants 709.
+ * One unit short: every other title would have been fine and that one would
+ * have silently wrapped to three lines. On a phone the box is invisible
+ * anyway — white on white, and there is no hover video for it to sit over —
+ * so it runs the full width of the cell here and the text column becomes 900.
+ *
+ * Widest at 1.5x, for whoever changes this next: title 709u, disciplines
+ * 550u. */
+const PHONE_TITLE_SCALE = 1.5;
+const PHONE_BOX_W_FRAC = 1;
+/** A little more air under the rule that caps each cell than at the sides. */
+const PHONE_BOX_PAD = 30;
+const PHONE_BOX_PAD_TOP = 44;
 
-function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: number; heightUnits: number }) {
+function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits: number; heightUnits: number; phone: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // The object is thrown around inside the tile. The <Link> is absolutely
   // positioned, so it is the offsetParent the physics measures against.
@@ -154,8 +174,13 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
   };
 
   // Fixed white box size: 80% grid cell width, 60% grid cell height
-  const BOX_WIDTH = widthUnits * 0.8;   // 80% of grid cell width
+  const BOX_WIDTH = widthUnits * (phone ? PHONE_BOX_W_FRAC : 0.8);
   const BOX_HEIGHT = heightUnits * 0.6;  // 60% of grid cell height
+  const BOX_PAD = phone ? PHONE_BOX_PAD : 30;
+  const BOX_PAD_TOP = phone ? PHONE_BOX_PAD_TOP : 30;
+  const TITLE_UNITS = 75 * (phone ? PHONE_TITLE_SCALE : 1);
+  const SUB_UNITS = 20 * (phone ? PHONE_TITLE_SCALE : 1);
+  const TEXT_W = BOX_WIDTH - BOX_PAD * 2;
 
   return (
     <Link
@@ -186,16 +211,27 @@ function Cell({ cell, widthUnits, heightUnits }: { cell: Cell; widthUnits: numbe
       )}
       {/* Title + disciplines — centered inside white box, centered in grid cell.
           Box is 50% width × 70% height of the grid cell. */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-[color:var(--color-paper)] flex flex-col items-start text-left justify-center" style={{ width: `calc(var(--u) * ${BOX_WIDTH})`, height: `calc(var(--u) * ${BOX_HEIGHT})`, padding: `calc(var(--u) * 30)` }}>
-          {/* Title: fixed 75u font, no variation */}
-          <div className="lowercase leading-[1.1] text-left" style={{ fontFamily: "var(--font-sans)", fontSize: `calc(var(--u) * 75)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
+      {/* TOP-LEFT ON A PHONE, centred everywhere else — "scoot the project
+          title and subcopy up closer to the top left of the grid space".
+          Both axes move: the flex container stops centring the box in the
+          cell, and the box stops centring the type in itself. */}
+      <div className={`absolute inset-0 flex ${phone ? "items-start justify-start" : "items-center justify-center"}`}>
+        <div
+          className={`bg-[color:var(--color-paper)] flex flex-col items-start text-left ${phone ? "justify-start" : "justify-center"}`}
+          style={{
+            width: `calc(var(--u) * ${BOX_WIDTH})`,
+            height: `calc(var(--u) * ${BOX_HEIGHT})`,
+            padding: `calc(var(--u) * ${BOX_PAD_TOP}) calc(var(--u) * ${BOX_PAD}) calc(var(--u) * ${BOX_PAD})`,
+          }}
+        >
+          {/* Title: 75u, x1.5 on a phone */}
+          <div className="lowercase leading-[1.1] text-left" style={{ fontFamily: "var(--font-sans)", fontSize: `calc(var(--u) * ${TITLE_UNITS})`, width: `calc(var(--u) * ${TEXT_W})` }}>
             {cell.line1}
             <br />
             {cell.line2}
           </div>
-          {/* Subtitle: fixed 20u italic serif, no variation, single line */}
-          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left whitespace-nowrap" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * 20)`, width: `calc(var(--u) * ${BOX_WIDTH - 60})` }}>
+          {/* Subtitle: 20u italic serif, single line, x1.5 on a phone */}
+          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left whitespace-nowrap" style={{ fontFamily: "var(--font-serif)", fontSize: `calc(var(--u) * ${SUB_UNITS})`, width: `calc(var(--u) * ${TEXT_W})` }}>
             {cell.disciplines}
           </div>
         </div>
@@ -270,7 +306,7 @@ export default function Projects() {
         return (
           <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
-              <Cell cell={cell} widthUnits={w} heightUnits={h} />
+              <Cell cell={cell} widthUnits={w} heightUnits={h} phone={phone} />
             </div>
           </Place>
         );

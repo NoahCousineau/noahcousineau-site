@@ -72,9 +72,44 @@ const HAND_LABEL_GAP_UNITS = 30;
  * side there, so its rendered HEIGHT is this width times the artwork's
  * 1490/2696 aspect inverted; 900 units across gives a hand about as tall as
  * it is wide on a 390px screen. */
-const PHONE_HAND_W_UNITS = 900;
+/* x1.5 on 2026-08-25, with the label — Noah: "make sure the hand is center
+ * aligned to the page. Increase the size by 1.5x. increase the size of 'next
+ * project'." */
+const PHONE_HAND_W_UNITS = 900 * 1.5;
 const PHONE_LABEL_GAP_UNITS = 40;
-const PHONE_LABEL_FONT = 96;
+const PHONE_LABEL_FONT = 96 * 1.5;
+
+/*
+ * WHERE THE FINGERTIP ACTUALLY ENDS UP, and why the hand needed centring at
+ * all (2026-08-25).
+ *
+ * The phone hand is the same artwork turned a quarter anticlockwise, and the
+ * turn happens about the pivot the fall uses — 38.4%/99.9%, the artwork's
+ * lowest opaque pixel — not about the box's centre. Rotating about an
+ * off-centre point MOVES the box, so `items-center` was centring a box whose
+ * contents had walked out of it: measured on a 390px screen, the fingertip
+ * sat at x=105 against a page centre of 195. Ninety pixels off, under a rule
+ * it is supposed to be holding up.
+ *
+ * Solving it rather than nudging it. The fingertip is the artwork's rightmost
+ * ink, 99.96% across and 32.315% down its own box; the box is 1490/2696 =
+ * 0.5527 as tall as it is wide. Carrying both through a -90 degree rotation
+ * about the pivot puts the fingertip at (0.0105W, -0.0635W) from the div's
+ * own top-left, W being its width — and the rotated bounding box runs from
+ * y = -0.0639W, so the fingertip lands 0.0004W below its top edge. It IS the
+ * top edge, which is what makes the layout below simple: give the hand a
+ * container one W tall, sit the bounding box's top at the container's top,
+ * and the fingertip is exactly at that container's top edge.
+ */
+const PHONE_TIP_DX = 0.0105;
+const PHONE_TIP_DY = -0.0635;
+/** The rotated bounding box's height, which is the hand's own width once it
+ *  is on its side. (Its left edge is at -0.1681W, recorded here in prose
+ *  since the layout centres on the fingertip rather than on the box.) */
+const PHONE_ROT_H = 1.0;
+
+/** Pointing straight up. The artwork is drawn pointing right. */
+const PHONE_REST_ROTATION = -90;
 /** Lifts the whole column off the foot of the screen. */
 const PHONE_BOTTOM_UNITS = 200;
 /** The label's left edge lands at THIRD_COLUMN_X (2026-08-20, per Noah:
@@ -113,6 +148,8 @@ export default function FallenHand({
   const phone = useIsPhone();
   const handRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  /** The plank — "next project" and the rule it sits on, as one rigid body. */
+  const plankRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -156,23 +193,69 @@ export default function FallenHand({
       // slides away, the hand is already there, already a little tilted —
       // and immediately settles, exactly as if it landed moments before
       // they arrived.
+      /* THE REST ANGLE DEPENDS ON THE LAYOUT, and until 2026-08-25 this
+       * tween assumed the desktop one. On a phone the hand points straight
+       * up, and this animated it to -6 — flat — which would have undone the
+       * quarter turn entirely.
+       *
+       * It never actually did, because of a second bug that was hiding the
+       * first: `useIsPhone` answers false for the first client render, this
+       * effect ran against the desktop element, and its deps were
+       * `[triggerRef]` — which never changes — so it did not re-run when the
+       * phone branch replaced it. The tween was left pointing at an unmounted
+       * node. The phone hand simply never rocked. Adding `phone` to the deps
+       * fixes that and makes the rest angle matter, so both are handled here
+       * together. */
+      const rest = phone ? PHONE_REST_ROTATION : REST_ROTATION;
       tl.fromTo(
         hand,
-        { rotate: REST_ROTATION - 22 },
+        { rotate: rest - 22 },
         {
           keyframes: [
-            { rotate: REST_ROTATION + 11, duration: 0.3, ease: "sine.out" },
-            { rotate: REST_ROTATION - 7.5, duration: 0.36, ease: "sine.inOut" },
-            { rotate: REST_ROTATION + 4.5, duration: 0.32, ease: "sine.inOut" },
-            { rotate: REST_ROTATION - 2.5, duration: 0.28, ease: "sine.inOut" },
-            { rotate: REST_ROTATION + 1.2, duration: 0.24, ease: "sine.inOut" },
-            { rotate: REST_ROTATION, duration: 0.22, ease: "sine.inOut" },
+            { rotate: rest + 11, duration: 0.3, ease: "sine.out" },
+            { rotate: rest - 7.5, duration: 0.36, ease: "sine.inOut" },
+            { rotate: rest + 4.5, duration: 0.32, ease: "sine.inOut" },
+            { rotate: rest - 2.5, duration: 0.28, ease: "sine.inOut" },
+            { rotate: rest + 1.2, duration: 0.24, ease: "sine.inOut" },
+            { rotate: rest, duration: 0.22, ease: "sine.inOut" },
           ],
         }
       );
+
+      /* THE TEETER-TOTTER (2026-08-25). Noah: "I would also like this and the
+       * rule that 'next project' are on to balance on top of the finger, like
+       * a teeter-totter."
+       *
+       * Two halves to that. The balance is geometric and is handled in the
+       * markup — the fingertip is centred under the rule, so the plank rests
+       * on its own midpoint. The teeter is this: the plank tips against the
+       * hand, on the same decaying beat, and comes to rest level. Opposite
+       * phase because that is what a see-saw does — the end the fulcrum
+       * leans away from goes down — and about a third of the amplitude,
+       * since the plank is what is being balanced, not what is doing the
+       * balancing. Same pivot as the hand's, which is the whole point: the
+       * plank's transform-origin is its bottom centre, and that is the pixel
+       * the fingertip is under. */
+      if (phone && plankRef.current) {
+        tl.fromTo(
+          plankRef.current,
+          { rotate: 7 },
+          {
+            keyframes: [
+              { rotate: -3.6, duration: 0.3, ease: "sine.out" },
+              { rotate: 2.4, duration: 0.36, ease: "sine.inOut" },
+              { rotate: -1.5, duration: 0.32, ease: "sine.inOut" },
+              { rotate: 0.8, duration: 0.28, ease: "sine.inOut" },
+              { rotate: -0.4, duration: 0.24, ease: "sine.inOut" },
+              { rotate: 0, duration: 0.22, ease: "sine.inOut" },
+            ],
+          },
+          0
+        );
+      }
     }, rootRef);
     return () => ctx.revert();
-  }, [triggerRef]);
+  }, [triggerRef, phone]);
 
   /*
    * PHONE (2026-08-25). Noah: "let's remove the head. Have the hand replace
@@ -202,39 +285,66 @@ export default function FallenHand({
           gap: `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
         }}
       >
-        <Link
-          href={nextHref}
-          className="lowercase text-center hover:opacity-60 transition-opacity block w-full"
-          style={{
-            fontFamily: "var(--font-sans)",
-            fontSize: uFont(PHONE_LABEL_FONT),
-            borderBottom: "4px solid currentColor",
-            paddingBottom: "calc(var(--u) * 24)",
-          }}
-        >
-          next project
-        </Link>
+        {/* THE PLANK — the words and the rule as one rigid body, so they tip
+            together. Its transform-origin is its own bottom centre, which is
+            the pixel the fingertip sits under (see PHONE_TIP_DX above), so
+            the rotation this carries is a see-saw about the finger rather
+            than a skew of the text. */}
         <div
-          ref={handRef}
-          aria-hidden
-          className="pointer-events-none select-none"
-          style={{
-            width: `calc(var(--u) * ${PHONE_HAND_W_UNITS})`,
-            transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
-            // The artwork points RIGHT at rest; a quarter turn anticlockwise
-            // aims it at the label directly above.
-            transform: "rotate(-90deg)",
-            willChange: "transform, opacity",
-          }}
+          ref={plankRef}
+          className="w-full"
+          style={{ transformOrigin: "50% 100%", willChange: "transform" }}
         >
-          <Image
-            src="/assets/shared/pointing-hand-static-rotated.webp"
-            alt=""
-            width={2696}
-            height={1490}
-            sizes="60vw"
-            className="w-full h-auto"
-          />
+          <Link
+            href={nextHref}
+            className="lowercase text-center hover:opacity-60 transition-opacity block w-full"
+            style={{
+              fontFamily: "var(--font-sans)",
+              fontSize: uFont(PHONE_LABEL_FONT),
+              // In units like every other rule on the site, so it keeps its
+              // weight against the type at any width — and heavier now that
+              // it is a plank with something balanced on it.
+              borderBottom: `calc(var(--u) * 30) solid currentColor`,
+              paddingBottom: "calc(var(--u) * 36)",
+            }}
+          >
+            next project
+          </Link>
+        </div>
+        {/* THE FULCRUM. A box exactly as tall as the rotated hand's bounding
+            box (which is the hand's own WIDTH once it is on its side), with
+            the hand absolutely placed inside it so that box's top-left lands
+            at the container's top-left. The fingertip sits 0.0004W below that
+            top edge — near enough exactly on it — so centring the fingertip
+            is just `left: 50%` less the tip's own offset within the div. */}
+        <div
+          className="relative w-full"
+          style={{ height: `calc(var(--u) * ${PHONE_HAND_W_UNITS * PHONE_ROT_H})` }}
+        >
+          <div
+            ref={handRef}
+            aria-hidden
+            className="pointer-events-none select-none absolute"
+            style={{
+              width: `calc(var(--u) * ${PHONE_HAND_W_UNITS})`,
+              left: `calc(50% - var(--u) * ${(PHONE_TIP_DX * PHONE_HAND_W_UNITS).toFixed(2)})`,
+              top: `calc(var(--u) * ${(-PHONE_TIP_DY * PHONE_HAND_W_UNITS).toFixed(2)})`,
+              transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
+              // The artwork points RIGHT at rest; a quarter turn anticlockwise
+              // aims it at the label directly above.
+              transform: `rotate(${PHONE_REST_ROTATION}deg)`,
+              willChange: "transform, opacity",
+            }}
+          >
+            <Image
+              src="/assets/shared/pointing-hand-static-rotated.webp"
+              alt=""
+              width={2696}
+              height={1490}
+              sizes="60vw"
+              className="w-full h-auto"
+            />
+          </div>
         </div>
       </div>
     );
