@@ -34,6 +34,9 @@ export default function DevMobilePage() {
     { href: "/about", label: "About" },
     { href: "/work", label: "Work index" },
     { href: "/password?from=%2Fwork", label: "Password gate" },
+    /* Not a route in the real site — see app/dev/clock, which exists purely
+       so this bench has something to point a frame at. */
+    { href: "/dev/clock", label: "Clock screen" },
     ...projects.map((p) => ({ href: `/work/${p.slug}`, label: p.title })),
   ];
 

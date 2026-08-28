@@ -122,11 +122,31 @@ const BOTTOM_ARC_R = TEXT_INNER_R + ARC_FONT * CAP_RATIO;
 /** Fired on `window` each time the away screen appears. */
 export const AWAY_SCREEN_SHOWN = "nc:away-screen-shown";
 
-export default function AwayOverlay() {
+export default function AwayOverlay({
+  forceOpen = false,
+}: {
+  /* HELD OPEN FOR THE BENCH (2026-08-25). Noah: "on the mobile bench, please
+   * also provide a way for me to see what the clock screen will look like on
+   * mobile."
+   *
+   * The bench shows routes in iframes, and this screen is deliberately not a
+   * route — it appears on idle or on leaving, and any activity dismisses it,
+   * which are exactly the conditions a frame you are looking at will never be
+   * in. There is nothing to navigate to and nothing that would stay up if
+   * there were.
+   *
+   * So it takes a prop instead, and app/dev/clock renders it pinned open. The
+   * flag also skips the idle poll and the leave/media listeners outright
+   * rather than just forcing the state, so nothing can dismiss it and no
+   * timers run behind a screen that is meant to sit still. Dev-only by
+   * construction: the one caller that passes it 404s in production. */
+  forceOpen?: boolean;
+}) {
   const phone = useIsPhone();
   // Always starts hidden, including in server-rendered HTML, so a page
   // opened in a background tab hydrates clean.
-  const [away, setAway] = useState(false);
+  const [awayState, setAway] = useState(false);
+  const away = forceOpen || awayState;
 
   /* Announce the away screen so the rest of the site can stand itself back up
    * behind it (2026-08-22, per Noah: "It would also be good if the animations
@@ -165,7 +185,13 @@ export default function AwayOverlay() {
      * screen is a full-viewport takeover addressed to someone who has stepped
      * away from THE SITE; inside someone else's page that is not a claim this
      * component can make. Registering nothing is enough, since the overlay
-     * starts hidden and only these listeners ever raise it. */
+     * starts hidden and only these listeners ever raise it.
+     *
+     * That guard is also why the bench could never show this screen, and why
+     * `forceOpen` exists — see the prop's note. Held open, none of these
+     * listeners should run either: there is nothing for them to raise, and a
+     * dismiss would take down the thing you are trying to look at. */
+    if (forceOpen) return;
     if (window.self !== window.top) return;
 
     let lastActivity = Date.now();
@@ -247,7 +273,7 @@ export default function AwayOverlay() {
       window.removeEventListener("blur", leave);
       window.removeEventListener("focus", arrive);
     };
-  }, [isMediaBusy]);
+  }, [isMediaBusy, forceOpen]);
 
   const linkStyle: React.CSSProperties = {
     color: "var(--color-paper)",
