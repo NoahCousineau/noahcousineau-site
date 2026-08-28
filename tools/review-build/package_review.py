@@ -42,6 +42,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.parse
 from pathlib import Path
 
@@ -269,16 +270,24 @@ def main() -> int:
         return 0
 
     dest = Path(args.dest)
-    staging = OUT.parent / "noahcousineau-review"
-    if staging.exists():
-        shutil.rmtree(staging)
-    shutil.copytree(OUT, staging)
     if dest.exists():
         dest.unlink()
-    print(f"zipping to {dest} ...")
-    shutil.make_archive(str(dest.with_suffix("")), "zip", root_dir=staging.parent,
-                        base_dir=staging.name)
-    shutil.rmtree(staging)
+    # The zip's top-level folder is named for the project rather than "out",
+    # so unzipping gives a sensible thing on someone's Desktop. That needs a
+    # directory of that name to archive.
+    #
+    # STAGED OUTSIDE THE REPO, in a temp dir. It used to be staged next to
+    # out/ -- i.e. inside the project -- which put a half-gigabyte copy of the
+    # site where `next build` scans, and left an empty `noahcousineau-review/`
+    # behind in the working tree when it was done. A tempfile directory is
+    # cleaned up even if this raises partway through.
+    with tempfile.TemporaryDirectory(prefix="review-zip-") as tmpdir:
+        staging = Path(tmpdir) / "noahcousineau-review"
+        print("staging...")
+        shutil.copytree(OUT, staging)
+        print(f"zipping to {dest} ...")
+        shutil.make_archive(str(dest.with_suffix("")), "zip", root_dir=tmpdir,
+                            base_dir=staging.name)
     print(f"wrote {dest}  ({human(dest.stat().st_size)})")
     return 0
 
