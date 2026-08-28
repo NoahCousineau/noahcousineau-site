@@ -311,16 +311,21 @@ function DraggableResumeCard({
 // — which is what the arrows aim at, and what its zoom scales about, so it
 // holds still while the card grows — sits at (960, 700).
 const RESUME_CARD_CENTRE = { x: 960, y: 700 };
+/* x1.5 on 2026-08-25 — Noah: "on desktop, let's increase the size of the
+ * clay arrows by 1.5x." Only `w` is given; each arrow's height follows from
+ * its own aspect ratio inside ResumeArrows, so one number per arrow is the
+ * whole change. */
+const RESUME_ARROW_SCALE = 1.5;
 const RESUME_ARROW_SPOTS: [
   ResumeArrowSpot,
   ResumeArrowSpot,
   ResumeArrowSpot,
   ResumeArrowSpot,
 ] = [
-  { x: 273, y: 560, w: 150 },
-  { x: 294, y: 850, w: 132 },
-  { x: 1574, y: 555, w: 138 },
-  { x: 1600, y: 862, w: 147 },
+  { x: 273, y: 560, w: 150 * RESUME_ARROW_SCALE },
+  { x: 294, y: 850, w: 132 * RESUME_ARROW_SCALE },
+  { x: 1574, y: 555, w: 138 * RESUME_ARROW_SCALE },
+  { x: 1600, y: 862, w: 147 * RESUME_ARROW_SCALE },
 ];
 
 export default function About() {
@@ -330,6 +335,9 @@ export default function About() {
   // the head come to rest exactly on the line rather than at the foot of the
   // page. See components/project/headerLayout.ts.
   const arenaRef = useRef<HTMLDivElement>(null);
+  /** The résumé link the clay arrows aim at — measured rather than assumed,
+   *  since it travels inside ApproachOnScroll. See ResumeArrows.tsx. */
+  const resumeLinkRef = useRef<HTMLAnchorElement>(null);
 
   return (
     <main
@@ -519,7 +527,17 @@ export default function About() {
         {/* Off on phones for now — 2026-08-25: "Remove the clay arrows from
             the mobile version for now." */}
         {!phone && (
-          <ResumeArrows target={RESUME_CARD_CENTRE} spots={RESUME_ARROW_SPOTS} />
+          /* targetRef is what actually aims them — RESUME_CARD_CENTRE is
+             only the server-render fallback now. See the note in
+             ResumeArrows.tsx: the card travels inside ApproachOnScroll and
+             the arrows carry their own parallax, so a written-down
+             coordinate was 19-26 degrees out and getting worse as the
+             section scrolled. */
+          <ResumeArrows
+            target={RESUME_CARD_CENTRE}
+            spots={RESUME_ARROW_SPOTS}
+            targetRef={resumeLinkRef}
+          />
         )}
         {/* Headline and card travel toward the viewer together as this
             section scrolls in — see ApproachOnScroll. Wrapping BOTH (rather
@@ -529,6 +547,7 @@ export default function About() {
         <ApproachOnScroll>
           <div className="relative w-full flex flex-col items-center">
             <a
+              ref={resumeLinkRef}
               href="/assets/_documents/noah-cousineau-resume.pdf"
               target="_blank"
               rel="noreferrer"

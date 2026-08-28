@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { gsap } from "gsap";
 import Image from "next/image";
 import { Place } from "./Stage";
 import Parallax from "./Parallax";
@@ -91,11 +92,16 @@ function pickFour(rand: () => number): ResumeArrow[] {
 export default function ResumeArrows({
   target,
   spots,
+  targetRef,
 }: {
-  /** What the arrows aim at, in the caller's own artboard units. */
+  /** What the arrows aim at, in the caller's own artboard units. Used for the
+   *  server render and the first client render only — see `targetRef`. */
   target: { x: number; y: number };
   /** Where the four arrows sit, same units. Length 4, matching NUDGE. */
   spots: [ResumeArrowSpot, ResumeArrowSpot, ResumeArrowSpot, ResumeArrowSpot];
+  /** The thing they should ACTUALLY point at. See the note on the aiming
+   *  effect below for why a written-down coordinate was not enough. */
+  targetRef?: React.RefObject<HTMLElement | null>;
 }) {
   /* Randomised once per page load, and hydration-safe by the same route the
    * project header's icon sizes use: React calls getServerSnapshot for BOTH
@@ -112,6 +118,58 @@ export default function ResumeArrows({
   }, []);
   const subscribe = useCallback(() => () => {}, []);
   const arrows = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  /*
+   * AIMED AT THE LINK ITSELF, EVERY FRAME (2026-08-25).
+   *
+   * Noah: "Make sure the arrows are always pointing to the resume."
+   *
+   * They were pointing at `target` — a coordinate written down in artboard
+   * units, RESUME_CARD_CENTRE, which is only where the card is if the card
+   * has not moved. It has: it sits inside ApproachOnScroll, which travels it
+   * toward the reader as the section arrives, and the arrows carry their own
+   * Parallax at four different rates. Neither is in that constant. Measured
+   * at 1512px, all four were 19-26 degrees off the real link, and the error
+   * changed as the page scrolled — so there is no better constant to write
+   * down either.
+   *
+   * So the bearing is measured instead of declared: both ends are read from
+   * the DOM, in viewport coordinates, which is the one frame that already
+   * accounts for the approach, the parallax and the layout at once. Off the
+   * gsap ticker rather than a scroll listener because the card's own motion
+   * is a scrubbed tween — it keeps moving for a few frames after the scroll
+   * events stop, and stopping the aim there would leave the arrows a degree
+   * or two out exactly when the reader is looking at them.
+   *
+   * `target` stays as the prop it was: React still renders a rotation from
+   * it, so the server and the pre-hydration client agree on the markup, and
+   * this only takes over afterwards.
+   */
+  const aimRefs = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    const link = targetRef?.current;
+    if (!link) return;
+    const aim = () => {
+      const lr = link.getBoundingClientRect();
+      // Nothing to do while the card is nowhere near the screen; this runs
+      // every frame for the life of the page.
+      if (lr.bottom < -window.innerHeight || lr.top > window.innerHeight * 2) return;
+      const tx = lr.left + lr.width / 2;
+      const ty = lr.top + lr.height / 2;
+      for (const el of aimRefs.current) {
+        if (!el) continue;
+        // Rotation is about the element's own centre, so the transformed
+        // box's centre is still the centre this is aiming FROM.
+        const r = el.getBoundingClientRect();
+        const deg =
+          (Math.atan2(ty - (r.top + r.height / 2), tx - (r.left + r.width / 2)) * 180) /
+          Math.PI;
+        el.style.transform = `rotate(${deg.toFixed(2)}deg)`;
+      }
+    };
+    gsap.ticker.add(aim);
+    return () => gsap.ticker.remove(aim);
+  }, [targetRef]);
 
   return (
     <>
@@ -155,7 +213,10 @@ export default function ResumeArrows({
                 aiming — which is what makes four of them read as four depths
                 rather than four arrows sliding along their own shafts. */}
             <Parallax units={PARALLAX_UNITS[i]}>
-            <div style={{ transform: `rotate(${deg}deg)` }}>
+            <div
+              ref={(el) => { aimRefs.current[i] = el; }}
+              style={{ transform: `rotate(${deg}deg)` }}
+            >
               <div
                 className="js-resume-arrow"
                 style={{

@@ -104,11 +104,50 @@ const COPY_ANCHOR = {
   rot: -3.77,
   size: 68.3 * COPY_SCALE,
 };
-const COPY_LINES = [
+/** As Noah drew them: each line's offset from the anchor, at his own scale. */
+const COPY_LINES_DRAWN = [
   { dx: 0, dy: 0, text: "woah, pal!" },
   { dx: 11.2 * COPY_SCALE, dy: 83.6 * COPY_SCALE, text: "what’s the" },
   { dx: -1.5 * COPY_SCALE, dy: 146.2 * COPY_SCALE, text: "password?" },
 ];
+
+/*
+ * CENTRED ON ONE AXIS (2026-08-25). Noah: "the lock screen animation is
+ * almost perfect! Let's just make sure the copy and the password type box are
+ * center-aligned to themselves a bit more. Please also scoot up 'woah, pal!'
+ * up by a smidge."
+ *
+ * "To themselves" is the instruction: not to the hand, not to the page, but
+ * to each other. Measured at 1512px, the four things had four different
+ * centres —
+ *
+ *     "woah, pal!"  683.1      "what's the"  693.9
+ *     "password?"   696.7      the field     723.2
+ *
+ * — a 40px spread, which is what reads as the group being slightly askew.
+ * The axis they move to is their own mean, 699.2, because that is the one
+ * that moves the composition least; anchoring on the copy alone would have
+ * dragged the field 29px and pushed it toward the edge of the palm it is
+ * drawn on.
+ *
+ * Kept SEPARATE from the drawn offsets above rather than folded into them.
+ * Those numbers are Noah's artwork and should stay legible as such; these are
+ * a measured correction in screen space, and the two would be impossible to
+ * tell apart once added together.
+ *
+ * Divided by cos(3.77 degrees) because dx runs along the copy's own rotated
+ * axis, not the screen's.
+ */
+const COPY_CENTRING = [21.41, 6.78, 3.21];
+/** ...and the smidge. 16 units at the copy's scale, 10.7px at 1512. The lift
+ *  is applied along the same rotated axis, so it carries the line 0.89 units
+ *  to the RIGHT as well — already taken out of COPY_CENTRING[0] above. */
+const COPY_LIFT = -16 * COPY_SCALE;
+const COPY_LINES = COPY_LINES_DRAWN.map((l, i) => ({
+  ...l,
+  dx: l.dx + COPY_CENTRING[i],
+  dy: l.dy + (i === 0 ? COPY_LIFT : 0),
+}));
 /** Akzidenz sits its baseline about this far below the top of a line box at
  *  line-height 1; the demo positions type by baseline, CSS by box top. */
 const BASELINE_RATIO = 0.75;
@@ -116,8 +155,11 @@ const COPY_FADE = 0.25;
 
 /** The entry box, from the demo's <rect>: centre, size and tilt, in units,
  *  shrunk and moved with the copy above. */
+/** The field's share of the centring above: -24px at 1512, in units. Its own
+ *  rotation is about its centre, so this moves the centre directly. */
+const FIELD_CENTRING = -30.44;
 const FIELD = {
-  cx: 948.4 + COPY_SHIFT_X,
+  cx: 948.4 + COPY_SHIFT_X + FIELD_CENTRING,
   cy: 779.6,
   w: 327.3 * COPY_SCALE,
   h: 61.3 * COPY_SCALE,
