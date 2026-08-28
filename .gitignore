@@ -45,3 +45,6 @@ __pycache__/
 
 # Static review export (next build with NEXT_PUBLIC_REVIEW_BUILD=1)
 /out
+
+# Throwaway measurement scripts (see the verification habit in CLAUDE.md)
+qa/.scratch/

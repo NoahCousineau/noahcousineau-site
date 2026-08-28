@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
 import { useIsPhone } from "@/lib/useIsPhone";
@@ -18,6 +18,27 @@ import { FitText } from "./FitText";
  * then swings down fast with easy ease." FitText caps every line at the
  * artboard's right margin (x1877, i.e. 1841 units from x36).
  */
+/*
+ * WHERE THE LINES SIT. Desktop keeps its measured positions exactly — first
+ * line at y381, then a 184-unit pitch, with the rule 141 below each line.
+ *
+ * The phone reuses that rhythm on its own narrower artboard (see
+ * PHONE_ARTBOARD): the numbers are the same, but a unit is nearly twice as
+ * many pixels there, so the type comes out roughly twice the size without
+ * any of it being rescaled by hand — the same device the hero and the
+ * project grid use.
+ *
+ * At module scope since 2026-08-25 because the phone's closer position is now
+ * DERIVED from them rather than written out as its own number.
+ */
+const LINE_TOP = 381;
+const LINE_PITCH = 184;
+const RULE_OFFSET = 141;
+const lineY = (i: number) => LINE_TOP + i * LINE_PITCH;
+/** The foot of the first paragraph on a phone: the rule under its fifth line,
+ *  plus that rule's own 6-unit weight. */
+const PHONE_PARA1_BOTTOM_UNITS = LINE_TOP + 4 * LINE_PITCH + RULE_OFFSET + 6;
+
 /* Vertical centre of the three-line block, artboard units: the top of line 1
  * (y381) to the rule under line 3 (y882). 2026-08-23, Noah: "let's have the
  * 'Noah Cousineau is a graphic...' information stop scrolling in the center
@@ -32,10 +53,37 @@ const PHONE_LINES_CENTER_UNITS = (381 + (381 + 4 * 184 + 141)) / 2;
 
 /** Top of "His work can be seen below.", artboard units. */
 const LINE4_TOP_UNITS = 1387;
-/** ...and on a phone, where it gets the next screen to itself: a full
- *  viewport below where the five lines finish. See the closer's own note in
- *  the markup. */
-const PHONE_CLOSER_TOP_UNITS = 381 + 4 * 184 + 105 + 700;
+/** A phone screen's HEIGHT expressed in this artboard's units, for the
+ *  server render and the first client render. 844px at u = 390/1000 is 2164;
+ *  the hook below replaces it with the real one as soon as there is a window
+ *  to measure. */
+const PHONE_SCREEN_UNITS_FALLBACK = 2164;
+
+/**
+ * One phone screen, in artboard units, measured.
+ *
+ * IT HAS TO BE MEASURED, and that is the whole reason this exists rather than
+ * being another constant. `--u` is derived from the viewport's WIDTH
+ * (`100cqw / 1000`), so a distance written in units is a fixed fraction of
+ * the width and has no fixed relationship to the height at all. "One screen
+ * down" is a height, and the two only agree on one device.
+ *
+ * That is exactly how the old `+ 700` went wrong: 700 units reads like a
+ * screen and is 273px on a 390px-wide phone, less than a third of an 844px
+ * one.
+ */
+function usePhoneScreenUnits(phone: boolean) {
+  const [units, setUnits] = useState(PHONE_SCREEN_UNITS_FALLBACK);
+  useEffect(() => {
+    if (!phone) return;
+    const measure = () =>
+      setUnits(window.innerHeight / (window.innerWidth / PHONE_ARTBOARD));
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [phone]);
+  return units;
+}
 
 /** The Stage's own height, artboard units — 2460 -> 1810, 2026-08-23 per
  *  Noah: "There's now a lot of space between the hand and the project grid
@@ -94,17 +142,19 @@ const PHONE_ARTBOARD = 1000;
 const PHONE_HAND_SCALE = 2.25 * 0.25;
 const HAND_BOX_W = 308;
 const HAND_BOX_H = 524;
-/** Where the hand's own centre sits. Clear of the closer's last rule, which
- *  lands at PHONE_CLOSER_TOP_UNITS + 184 + 141. */
-const PHONE_HAND_CENTRE_Y = 3000;
+/** How far the hand's centre hangs below the closer's last rule. Was the
+ *  difference between two written-out numbers (3000 against a rule at 2247);
+ *  kept as that same 753 now that the closer's position is derived, so the
+ *  hand travels with it instead of being left behind when the gap grows. */
+const PHONE_HAND_DROP_UNITS = 753;
 /** A quarter of a phone screen, in this artboard's units: 844px at
  *  u = 390/1000 is 2164 units, so a quarter is 541. */
 const PHONE_GRID_GAP_UNITS = 541;
 /* The run-out — document space reserved after the pin releases and before
  * Projects begins. On a phone it has to clear the hand, which now hangs well
  * below where the copy ends, plus the quarter-screen gap Noah asked for. */
-const PHONE_STAGE_HEIGHT_UNITS =
-  PHONE_HAND_CENTRE_Y + (HAND_BOX_H * PHONE_HAND_SCALE) / 2 + PHONE_GRID_GAP_UNITS;
+const phoneStageHeightUnits = (handCentreY: number) =>
+  handCentreY + (HAND_BOX_H * PHONE_HAND_SCALE) / 2 + PHONE_GRID_GAP_UNITS;
 /** Where that line comes to rest, as a fraction of viewport height from the
  *  top. Noah: "stop scroll about 3/4 up the page" — three quarters of the way
  *  UP is a quarter of the way DOWN — then, once he saw it: "let's shift the
@@ -121,7 +171,24 @@ const HAND_TIP = { xPct: 32.5, yPct: 0.85 };
 export default function Description() {
   const phone = useIsPhone();
   /* Declared up here because the scroll effects below close over them. */
-  const closerY = phone ? PHONE_CLOSER_TOP_UNITS : LINE4_TOP_UNITS;
+  /* A WHOLE SCREEN BETWEEN THE PARAGRAPHS (2026-08-25). Noah: "let's make
+   * sure that the two descriptive paragraphs don't appear on the screen at
+   * the same time. Add enough space to make this possible."
+   *
+   * Both paragraphs live in the same `root`, which the timeline translates
+   * rigidly — so the distance between the foot of the first and the top of
+   * the second is CONSTANT on screen, whatever the scroll is doing. That
+   * makes the condition exact rather than a matter of taste: they can never
+   * share a screen precisely when that distance is at least one viewport
+   * tall, and the gap only has to be measured, not tuned.
+   *
+   * It was 664 units, which is 259px of an 844px screen — measured, both
+   * paragraphs were co-visible across about 800px of scrolling. */
+  const phoneScreenUnits = usePhoneScreenUnits(phone);
+  const phoneCloserY = PHONE_PARA1_BOTTOM_UNITS + phoneScreenUnits;
+  const closerY = phone ? phoneCloserY : LINE4_TOP_UNITS;
+  const phoneHandCentreY =
+    phoneCloserY + LINE_PITCH + RULE_OFFSET + PHONE_HAND_DROP_UNITS;
   const linesCentre = phone ? PHONE_LINES_CENTER_UNITS : LINES_CENTER_UNITS;
   const root = useRef<HTMLDivElement>(null);
   /** Carries the fall. Unrotated, so its `y` is plain screen-space travel. */
@@ -138,9 +205,25 @@ export default function Description() {
       const stage = pinRef.current;
       if (!stage) return;
 
-      /** Live value of one artboard unit in px — the stage spans the same
-       *  1920-unit canvas as everything else, capped at 1920px wide. */
-      const uPx = () => stage.offsetWidth / 1920;
+      /** Live value of one artboard unit in px.
+       *
+       * DIVIDED BY THE ARTBOARD THIS SECTION IS ACTUALLY DRAWN ON, which was
+       * not true until 2026-08-25 and is a real bug rather than a tidy-up.
+       * The constant 1920 was correct when this was the only canvas on the
+       * page; the phone layout then gave the section its own narrower one
+       * (PHONE_ARTBOARD, declared as `--u: calc(100cqw / 1000)` on the
+       * wrapper below) so the existing coordinates would render at nearly
+       * twice the size, and this kept dividing by 1920.
+       *
+       * Measured on a 390px screen: a rule declared 928 units wide renders
+       * 361.9px, so one unit is 0.390px — while this returned 390/1920 =
+       * 0.203, low by exactly the 1920/1000 artboard ratio. Every phone
+       * scroll number derived from it was therefore about half of what it
+       * should have been: the pin's start offset, docTop's use below, and
+       * above all the line-4 travel, which is why the closer never climbed
+       * far enough to get the screen to itself. Desktop is unaffected — the
+       * artboard there IS 1920, so the value is unchanged at 0.7875. */
+      const uPx = () => stage.offsetWidth / (phone ? PHONE_ARTBOARD : 1920);
       /** Document-space top, via offset parents, so a transform on the stage
        *  (or ScrollTrigger's own pin spacer) can't skew the reading. */
       const docTop = () => {
@@ -465,7 +548,7 @@ export default function Description() {
      * position; without these dependencies it would keep them, and the pin
      * would hold the wrong point on the viewport's middle for the whole
      * session. gsap.context + revert() means rebuilding is clean. */
-  }, [closerY, linesCentre]);
+  }, [closerY, linesCentre, phone]);
 
   const serif = { fontFamily: "var(--font-serif)" };
 
@@ -507,28 +590,32 @@ export default function Description() {
   const lineSet = phone ? PHONE_LINES : DESKTOP_LINES;
   const closerSet = phone ? PHONE_CLOSER : DESKTOP_CLOSER;
 
-  /*
-   * WHERE THEY SIT. Desktop keeps its measured positions exactly — first line
-   * at y381, then a 184-unit pitch, with the rule 141 below each line.
-   *
-   * The phone reuses that rhythm on its own narrower artboard (see
-   * PHONE_ARTBOARD): the numbers are the same, but a unit is nearly twice as
-   * many pixels there, so the type comes out roughly twice the size without
-   * any of it being rescaled by hand — the same device the hero and the
-   * project grid use.
-   */
-  const LINE_TOP = 381;
-  const LINE_PITCH = 184;
-  const RULE_OFFSET = 141;
-  const lineY = (i: number) => LINE_TOP + i * LINE_PITCH;
 
-  /* The mask each line rises out of has to be deep enough to clear the
-   * deepest descender in it. 26 units was measured against the desktop size;
-   * the phone sets the same copy at nearly twice the size in units of its own
-   * artboard, and the italic serif's descenders in "graphic designer" and
-   * "visual problems" hung below the mask and were sliced off mid-reveal
-   * ("some of the text is getting clipped off at the wrong location"). */
-  const MASK_PAD = phone ? 46 : 26;
+  /* THE MASK ENDS AT THE RULE. Not "the line's height plus enough padding to
+   * clear its descenders", which is what it was, and which is the bug.
+   *
+   * 2026-08-25, Noah: "make sure that the text doesn't cross the horizontal
+   * lines when we scroll. For example, 'Noah Cousineau is a' crosses the
+   * horizontal line when we scroll down. I don't want this, I always want it
+   * to appear above the line."
+   *
+   * The old rule was `height of the type + MASK_PAD`, with MASK_PAD guessed
+   * at 26 on a desktop and 46 on a phone after descenders got sliced. Both
+   * numbers describe the TYPE and neither knows where the rule is, so on a
+   * phone the window came out 146-154 units deep against a rule sitting at
+   * 141 — every one of the five lines reached 4-5px past its own rule.
+   *
+   * RULE_OFFSET is the answer to the question the padding was guessing at:
+   * the mask is the gap between a line's top and its rule, so it can no more
+   * cross that rule than a window can be wider than its frame. It stops being
+   * a number to tune.
+   *
+   * And there is room to spare, which is what makes this safe rather than a
+   * trade against the clipping this padding was added to fix. Measured with
+   * canvas TextMetrics over every run in every phone line, roman and italic:
+   * the deepest ink of the lot is "graphic designer"'s descender at 115.1
+   * units below the line's top, against a 141-unit window. 26 units clear. */
+  const MASK_DEPTH_UNITS = RULE_OFFSET;
 
   const railWidth = phone ? PHONE_ARTBOARD - 72 : 1841;
   const rule = (y: number) => (
@@ -571,7 +658,7 @@ export default function Description() {
       // anything that has not opted out.
       style={phone ? { ["--u" as string]: `calc(100cqw / ${PHONE_ARTBOARD})` } : undefined}
     >
-    <Stage heightUnits={phone ? PHONE_STAGE_HEIGHT_UNITS : STAGE_HEIGHT_UNITS}>
+    <Stage heightUnits={phone ? phoneStageHeightUnits(phoneHandCentreY) : STAGE_HEIGHT_UNITS}>
       <div ref={root} className="absolute inset-0">
         {/* Lines 1–3. Each is wrapped in an overflow-hidden mask so it can
             rise out from behind its own rule on scroll — see the LINE
@@ -589,7 +676,7 @@ export default function Description() {
           <Place key={`l${i}`} x={36} y={lineY(i)} className="z-10">
             <div
               className="overflow-hidden"
-              style={{ paddingBottom: `calc(var(--u) * ${MASK_PAD})` }}
+              style={{ height: `calc(var(--u) * ${MASK_DEPTH_UNITS})` }}
             >
               <div className="js-desc-line">
                 <FitText
@@ -627,7 +714,7 @@ export default function Description() {
           <Place key={`c${i}`} x={45} y={closerY + i * LINE_PITCH} className="z-10">
             <div
               className="overflow-hidden"
-              style={{ paddingBottom: `calc(var(--u) * ${MASK_PAD})` }}
+              style={{ height: `calc(var(--u) * ${MASK_DEPTH_UNITS})` }}
             >
               <div className="js-desc-line-4">
                 <FitText
@@ -662,7 +749,7 @@ export default function Description() {
                  the real tip on screen and not its mirror image. */}
         <Place
           x={phone ? (PHONE_ARTBOARD - HAND_BOX_W) / 2 : 806}
-          y={phone ? PHONE_HAND_CENTRE_Y - HAND_BOX_H / 2 : 1600}
+          y={phone ? phoneHandCentreY - HAND_BOX_H / 2 : 1600}
           w={HAND_BOX_W}
           h={523}
           className="z-20"
