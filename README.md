@@ -109,6 +109,34 @@ conversation (private storage + signed expiring URLs).
 **To change the password:** set `SITE_PASSWORD` on Vercel. Old cookies keep
 working until they expire (1 year) — bump `GATE_SECRET` to invalidate everyone.
 
+## The shareable review copy
+
+A self-contained zip of the whole site, for sending to someone before it goes
+live. It opens by double-clicking `index.html` — no Node, no server.
+
+```bash
+NEXT_PUBLIC_REVIEW_BUILD=1 NEXT_PUBLIC_REVIEW_PASSWORD='<the password>' npm run build
+python3 tools/review-build/package_review.py
+```
+
+The first command writes a static export to `out/`; the second trims it and
+writes **`~/Desktop/noahcousineau-review.zip`** (pass `--dest` for somewhere
+else, `--dry-run` to see what it would remove without touching anything).
+
+**The password ships in the page source in this mode.** A static export has no
+server, so the gate's check runs in the browser and `/work/*` is reachable
+directly — the proxy cannot run. Fine for a review copy passed to a friend, not
+how the live site works. `NEXT_PUBLIC_REVIEW_BUILD` is never set for a real
+build.
+
+**Why the trimming step exists:** `public/` is 2.1GB. Nobody ever downloads
+that in the ordinary build, because next/image serves resized derivatives on
+demand and the originals stay on the server. A static export has no server, so
+every original ships and the export lands at 2.3GB. The script drops the
+dev-only routes, deletes media no page references, re-encodes video to 720p and
+caps images at 2400px. See the note at the top of it — each of those passes has
+been wrong in an instructive way at least once.
+
 - [ ] Home page design + load animation (9 letter SVGs are vectors, individually animatable)
 - [ ] About page design
 - [ ] Per-project section layouts and custom moments
