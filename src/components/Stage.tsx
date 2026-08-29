@@ -47,6 +47,7 @@ export function Place({
   y,
   w,
   wCss,
+  yCss,
   h,
   className = "",
   style,
@@ -58,6 +59,8 @@ export function Place({
   /** A raw CSS width, for the rare case where the width needs a clamp or a
    *  min() rather than a plain artboard multiple. Wins over `w`. */
   wCss?: string;
+  /** The same escape hatch for the vertical position. Wins over `y`. */
+  yCss?: string;
   h?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -68,7 +71,7 @@ export function Place({
       className={`absolute ${className}`}
       style={{
         left: `calc(var(--u) * ${x})`,
-        top: `calc(var(--u) * ${y})`,
+        top: yCss ?? `calc(var(--u) * ${y})`,
         ...(wCss != null
           ? { width: wCss }
           : w != null

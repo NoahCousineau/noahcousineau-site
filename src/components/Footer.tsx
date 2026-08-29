@@ -112,6 +112,27 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
  */
 const PHONE_COL_X = [90, 1010];
 const PHONE_ROW_H = 180;
+/*
+ * CEILINGS ON THE LINK BLOCK'S VERTICAL RUN (2026-08-29).
+ *
+ * The two-column arrangement now covers 390 up to 1199, and its row pitch and
+ * top offset are artboard units — so the block grows three times as tall
+ * across that band while the window does not. Audited at 1024 and 1199, the
+ * sixth row had run down past the teeter-totter and "next project" was sitting
+ * on top of the phone number.
+ *
+ * Capping both in px keeps the phone exactly as drawn (at 390 the unit terms
+ * are 138px and 36.5px, well under these) and stops the block reaching the
+ * bottom of the footer, which the see-saw owns. Chosen so the last row's rule
+ * lands around 550px at 1199, against a plank that starts at 604.
+ */
+const PHONE_TOP_MAX_PX = 220;
+const PHONE_ROW_MAX_PX = 58;
+/** The row's y as a CSS expression rather than a unit count, so the ceilings
+ *  above can apply. `row` is 0-5 down each column. */
+const phoneRowY = (row: number) =>
+  `calc(min(calc(var(--u) * ${PHONE_TOP_Y}), ${PHONE_TOP_MAX_PX}px)` +
+  ` + ${row} * min(calc(var(--u) * ${PHONE_ROW_H}), ${PHONE_ROW_MAX_PX}px))`;
 /* Below the wordmark, which itself starts clear of the corner controls —
  * 2026-08-25: "add enough space above the 'cousineau' logo so the toggle
  * switch doesn't conflict with the toggle switch." The toggle's box occupies
@@ -296,12 +317,17 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                   ? (ci - 3) * 2 + ii
                   : ci * 2 + ii;
                 const x = PHONE_COL_X[right ? 1 : 0];
-                const y = PHONE_TOP_Y + row * PHONE_ROW_H;
+                const rowY = phoneRowY(row);
+                /* The label-to-rule offset is capped for the same reason the
+                   pitch is: 102 units is 20.7px on a phone and would be 63.6
+                   at 1199, floating each rule away from type that is clamped
+                   at 15px. */
+                const ruleY = `calc(${rowY} + min(calc(var(--u) * ${PHONE_FONT + 30}), 24px))`;
                 const external =
                   item.href.startsWith("http") || item.href.endsWith(".pdf");
                 return (
                   <div key={`${flatIndex}-${item.href}`}>
-                    <Place x={x} y={y}>
+                    <Place x={x} y={0} yCss={rowY}>
                       <Link
                         href={item.href}
                         target={external ? "_blank" : undefined}
@@ -329,7 +355,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                         the phone's own label-to-rule proportion across the
                         band, and is below 820 units at every phone width so
                         nothing there moves. */}
-                    <Place x={x} y={y + PHONE_FONT + 30} wCss={`min(calc(var(--u) * ${PHONE_RULE_W}), 200px)`}>
+                    <Place x={x} y={0} yCss={ruleY} wCss={`min(calc(var(--u) * ${PHONE_RULE_W}), 200px)`}>
                       <div
                         className="w-full bg-[color:var(--color-paper)]"
                         style={{ height: uFont(6) }}
