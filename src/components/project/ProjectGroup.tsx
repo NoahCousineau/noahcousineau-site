@@ -61,6 +61,12 @@ export type MediaCell =
       w?: number;
       h?: number;
       scale?: number;
+      /** Ignore `scale` on phones, rendering the media at the cell's full
+       *  width. 2026-08-29, Noah, on the Cultural Olympiad poster section:
+       *  "let's scale the first image to be as wide as the second image" —
+       *  a 94% inset that frames the poster on a desktop just reads as a
+       *  misaligned edge once the row is one column wide. */
+      phoneUnscaled?: boolean;
       colWidth?: number;
       fit?: boolean;
       cropAspect?: string;
@@ -81,8 +87,8 @@ export type MediaCell =
        *  the entire problem being fixed. */
       bgColor?: string;
     }
-  | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean; objectFit?: "cover" | "contain" }
-  | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number };
+  | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean; objectFit?: "cover" | "contain"; phoneUnscaled?: boolean }
+  | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number; phoneUnscaled?: boolean };
 
 export type MediaRow = {
   cells: MediaCell[];
@@ -236,7 +242,7 @@ const IMAGE_QUALITY = 100;
  * scale being set. Fixed by adding a transform-based zoom path for the
  * 100–200% range, mirroring the editor's `applyScaleStyle()` exactly.
  */
-function ScaledMedia({ scale, bgColor, children }: { scale?: number; bgColor?: string; children: React.ReactNode }) {
+function ScaledMedia({ scale, bgColor, phoneUnscaled, children }: { scale?: number; bgColor?: string; phoneUnscaled?: boolean; children: React.ReactNode }) {
   if (!scale || scale === 100) return <>{children}</>;
   // BUGFIX (2026-08-16k): previously this branched into two entirely
   // different layout strategies exactly at the 100% boundary — a
@@ -255,7 +261,10 @@ function ScaledMedia({ scale, bgColor, children }: { scale?: number; bgColor?: s
   const clamped = Math.max(20, Math.min(200, scale));
   return (
     <div
-      className="absolute inset-0"
+      /* `js-scaled` lets a phone drop the transform for cells that only need
+         it on a desktop — see .js-phone-unscaled in globals.css, and the
+         `phoneUnscaled` cell flag that opts in. */
+      className={`absolute inset-0 js-scaled${phoneUnscaled ? " js-phone-unscaled" : ""}`}
       style={{
         transform: `scale(${clamped / 100})`,
         transformOrigin: "center",
@@ -274,7 +283,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
         {cell.fit ? (
           <InViewVideo src={cell.src} objectFit={cell.objectFit} />
         ) : (
-          <ScaledMedia scale={cell.scale} bgColor={bgColor}>
+          <ScaledMedia scale={cell.scale} bgColor={bgColor} phoneUnscaled={cell.phoneUnscaled}>
             <InViewVideo src={cell.src} objectFit={cell.objectFit} />
           </ScaledMedia>
         )}
@@ -284,7 +293,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
   if (cell.type === "youtube") {
     return (
       <div className="relative w-full h-full overflow-hidden bg-black" style={{ aspectRatio: cell.aspect ?? aspect ?? "16/9" }}>
-        <ScaledMedia scale={cell.scale} bgColor={bgColor}>
+        <ScaledMedia scale={cell.scale} bgColor={bgColor} phoneUnscaled={cell.phoneUnscaled}>
           <iframe
             src={`https://www.youtube.com/embed/${cell.id}`}
             className="absolute inset-0 w-full h-full"
@@ -363,7 +372,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           />
         )
       ) : (
-        <ScaledMedia scale={cell.scale} bgColor={effectiveBg}>
+        <ScaledMedia scale={cell.scale} bgColor={effectiveBg} phoneUnscaled={cell.phoneUnscaled}>
           <Image
             src={`/assets/${slug}/${cell.file}`}
             alt={cell.alt || ""}

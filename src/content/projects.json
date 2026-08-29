@@ -1582,7 +1582,8 @@
                 {
                   "type": "image",
                   "file": "cultural-olympiad-poster_02_noah-cousineau-poster-online.jpg",
-                  "scale": 94
+                  "scale": 94,
+                  "phoneUnscaled": true
                 }
               ]
             },

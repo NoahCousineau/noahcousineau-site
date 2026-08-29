@@ -365,6 +365,13 @@ html {
   .js-row-rule {
     display: none;
   }
+
+  /* A `scale` that frames a cell on a desktop can read as a misaligned edge
+     once a phone has made the row one column wide. Cells that opt in with
+     `phoneUnscaled` render at their full width here instead. */
+  .js-phone-unscaled {
+    transform: none !important;
+  }
 }
 
 :root {
