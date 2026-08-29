@@ -7,7 +7,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { uFont } from "./Stage";
 import { THIRD_COLUMN_X } from "./footerLayout";
-import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
+import { useIsCompact } from "@/lib/useIsPhone";
 
 /*
  * FALLEN HAND + NEXT PROJECT (2026-08-20, per Noah: "Let's have the hand on
@@ -167,10 +167,11 @@ export default function FallenHand({
   /** Destination for the label — the next project in the running order. */
   nextHref: string;
 }) {
-  const phone = useIsPhone();
-  /* The column arrangement runs the whole way down from 1200, matching the
-   * links beside it — see the note in Footer.tsx. `phone` is kept only for
-   * the things that are genuinely phone-specific. */
+  /* THE COLUMN ARRANGEMENT RUNS THE WHOLE WAY DOWN FROM 1200, matching the
+   * links beside it — see the note in Footer.tsx. Nothing here is
+   * phone-specific any more: the sizes that used to need a separate phone
+   * case are now capped in px instead (PHONE_HAND_MAX_PX and friends), which
+   * covers both tiers with one set of numbers. */
   const compact = useIsCompact();
   const handRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
