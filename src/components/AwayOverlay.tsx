@@ -311,8 +311,6 @@ export default function AwayOverlay({
         transitionTimingFunction: "ease",
         transitionDuration: away ? "520ms, 0ms" : "180ms, 0ms",
         transitionDelay: away ? "0ms, 0ms" : "0ms, 180ms",
-        containerType: "inline-size",
-        ["--u" as string]: "calc(100cqw / 1920)",
       }}
     >
       {/* `1fr auto 1fr` puts the CLOCK dead centre on the page regardless of
@@ -327,9 +325,16 @@ export default function AwayOverlay({
           centre regardless of how wide either contact group is; stacked, the
           clock is centred by the column itself and the same guarantee comes
           for free. */}
+      {/* THE ARTBOARD IS THE CONTENT, NOT THE PANEL (2026-08-29). The black
+          curtain has to stay full-bleed at every width -- it is the thing
+          covering the site -- so it cannot be the element the narrow tier
+          caps. `.artboard` moves down here, onto the grid, which is what
+          should stop growing and centre itself. See the narrow-tier note in
+          globals.css. */}
       <div
-        className={`grid w-full ${phone ? "justify-items-center" : "items-center"}`}
+        className={`artboard grid w-full ${phone ? "justify-items-center" : "items-center"}`}
         style={{
+          ["--u" as string]: "calc(100cqw / 1920)",
           gridTemplateColumns: phone ? "minmax(0, 1fr)" : "1fr auto 1fr",
           /* Generous, and it has to be: the arc type is drawn INSIDE the
              clock's own square box, right at its top and bottom edges, so

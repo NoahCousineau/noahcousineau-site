@@ -214,7 +214,8 @@ html {
  * Kept as custom properties rather than TypeScript constants because the
  * phone override is a pure media query and nothing about it is structural —
  * see components/project/headerLayout.ts, which now just names these. The
- * 767px line is the same one src/lib/useIsPhone.ts draws.
+ * 1199px line is the same one src/lib/useIsPhone.ts draws — see the narrow
+ * tier note below for why it moved up from 767.
  *
  * On a phone the header is exactly one screen tall and the rule sits near
  * its foot, per Noah: "Make the black bar where all the header icons fall at
@@ -236,12 +237,82 @@ html {
  * any stylesheet selector. Overriding it is the point — those widths describe
  * how to divide a row that, on a phone, no longer exists.
  */
+/*
+ * THE NARROW TIER (2026-08-29).
+ *
+ * Noah: "there's a bit of clunkiness when we scale between desktop and mobile
+ * sizes. The site is working well in desktop and it's working well in mobile,
+ * but in-between things aren't scaling correctly... The most important thing
+ * is that the desktop size STAYS THE SAME and the mobile view STAYS THE SAME,
+ * but we find a better way to scale in between."
+ *
+ * WHAT WAS ACTUALLY WRONG, measured across a sweep from 390 to 1920:
+ *
+ *   width   layout    --u     smallest type   footer head
+ *   767     phone     0.767   23.0px          495px
+ *   768     desktop   0.400    7.2px          120px
+ *
+ * One pixel of window, and the type drops by a factor of three while the head
+ * drops by four. Both SIDES of that line are wrong, which is why it reads as
+ * clunky rather than merely as a breakpoint:
+ *
+ *   - The phone design is drawn for a ~390px screen on a 1000-unit artboard.
+ *     At 767 it is being rendered at nearly twice that, so the head fills the
+ *     window and the type is enormous. It had nothing stopping it growing.
+ *   - The desktop design is drawn on a 1920-unit artboard, and `--u` is a pure
+ *     linear zoom. At 768 the whole page is at 40%: the footer links measured
+ *     7.46px and the grid's discipline line 8px. It is not broken, just far
+ *     too small to read.
+ *
+ * WHY A FLOOR ON --u IS NOT THE ANSWER, since it is the obvious first idea:
+ * the artboard width IS the layout. Content sits at x-coordinates up to 1877
+ * units, so raising `--u` without reflowing pushes the right-hand edge off
+ * screen — a 1920-unit layout at --u 0.62 needs 1190px no matter how wide the
+ * window actually is. Nothing can be gained between "shrink it" and "reflow
+ * it", so the fix has to be to reflow sooner.
+ *
+ * THE FIX, in two halves:
+ *
+ *   1. The narrow (phone) layout now covers everything up to 1199px, so the
+ *      desktop layout is never drawn below 62% — where its smallest type is
+ *      about 11px rather than 7.
+ *   2. The narrow layout STOPS GROWING at --narrow-max and centres itself, so
+ *      it is never drawn at more than ~1.6x the size it was designed at.
+ *
+ * Both ends are therefore bounded, and neither 390 nor anything at or above
+ * 1200 changes by a pixel: at 390 `min(100%, 620px)` is 390, and above 1199
+ * this media query does not apply at all.
+ *
+ * 620px is the one number to turn if the middle wants to be bigger or
+ * smaller. It is 1.59x the 390px the phone layout was drawn for.
+ */
 :root {
   --grid-margin: 178;
   --descriptor-scale: 1;
+  /* The widest the narrow layout is ever drawn. See the note above. */
+  --narrow-max: 620px;
 }
 
-@media (max-width: 767px) {
+/*
+ * Every element that establishes an artboard carries this: the page shells,
+ * the footer's inner column, the away screen's content. It is the ONE place
+ * the cap is applied, which is what keeps the tiers from drifting apart --
+ * `100cqw` inside any of them is the capped width, so every `--u` derived
+ * from it (1920 for the page, 1000 for the phone hero/description/grid, 820
+ * for the gate) follows automatically without any of them naming the cap.
+ */
+.artboard {
+  container-type: inline-size;
+}
+
+@media (max-width: 1199px) {
+  .artboard {
+    width: min(100%, var(--narrow-max));
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 1199px) {
   :root {
     /* 30 -> 250, 2026-08-25: "let's shrink the grid enough where the 'c' logo
        and the toggle switch can cleanly fit without interacting with the
@@ -308,7 +379,7 @@ html {
   --chrome-drop: 0px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1199px) {
   :root {
     /* 2026-08-25: "please make sure that the 'C' and the toggle switch are
        center aligned."
@@ -327,7 +398,7 @@ html {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1199px) {
   :root {
     --header-height: 100dvh;
     /* 94% -> 98.5%, 2026-08-25: "have the header bar that the icons fall into

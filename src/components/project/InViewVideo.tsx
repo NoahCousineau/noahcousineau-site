@@ -188,7 +188,14 @@ export function InViewVideo({
             background: "rgba(0,0,0,0.55)",
             color: "#fff",
             fontFamily: "var(--font-sans)",
-            fontSize: "calc(var(--u) * 16)",
+            /* FLOORED, because 16 artboard units is not a size on a small
+               window (2026-08-29). `--u` is a pure linear zoom, so this badge
+               measured 3.25px at a 390px viewport -- present, styled, and
+               completely unreadable. The clamp gives it a floor in rem and a
+               ceiling so it cannot run away on a wide display either; the
+               same idiom the section titles already use. Unchanged from about
+               1320px up, where 16 units is already past the floor. */
+            fontSize: "clamp(0.6875rem, calc(var(--u) * 16), 1rem)",
             lineHeight: 1,
             backdropFilter: "blur(4px)",
           }}

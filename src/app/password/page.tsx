@@ -62,7 +62,7 @@ function Gate() {
       {/* The home page, carrying on behind. Inert: the reader's only move
           here is to type. */}
       <main
-        className="js-password-backdrop mx-auto w-full max-w-[1920px]"
+        className="artboard js-password-backdrop mx-auto w-full max-w-[1920px]"
         aria-hidden
         style={{
           containerType: "inline-size",

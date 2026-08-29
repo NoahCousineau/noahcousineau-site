@@ -31,7 +31,13 @@ import { useCallback, useSyncExternalStore } from "react";
  * subscription wrong.
  */
 
-export const PHONE_MAX_WIDTH = 767;
+/* 767 -> 1199 on 2026-08-29, together with the media queries in globals.css
+ * that have to agree with it. See the narrow-tier note there for the
+ * measurements: at 768 the desktop layout was being drawn at 40%, with 7.46px
+ * footer links. The narrow layout now covers everything below 1200 and caps
+ * its own growth at --narrow-max, so neither side of the line is drawn at a
+ * size it was not designed for. */
+export const PHONE_MAX_WIDTH = 1199;
 const QUERY = `(max-width: ${PHONE_MAX_WIDTH}px)`;
 
 function subscribe(onChange: () => void) {

@@ -91,7 +91,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
 
     return (
       <main
-        className="mx-auto w-full max-w-[1920px]"
+        className="artboard mx-auto w-full max-w-[1920px]"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
         {/* HEADER (2026-08-22). The hero photograph that used to fill this

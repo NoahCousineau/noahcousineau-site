@@ -213,7 +213,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           so there's no unit to fall short regardless of toolbar state. */}
       <footer className="fixed inset-0 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start z-0 overflow-hidden">
       <div
-        className="relative mx-auto max-w-[1920px] w-full h-full"
+        className="artboard relative mx-auto max-w-[1920px] w-full h-full"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
         {/* Scenery at the bottom edge; pointer-events off so it can never

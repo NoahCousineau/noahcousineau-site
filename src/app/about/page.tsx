@@ -341,7 +341,7 @@ export default function About() {
 
   return (
     <main
-      className="w-full"
+      className="artboard w-full"
       style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
     >
       {/* ================= HEADER ================= */}
