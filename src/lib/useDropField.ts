@@ -187,6 +187,42 @@ const PROP_TOLERANCE = 3;
  *  as touching. */
 const OVERLAP_SLOP = 1.6;
 
+/*
+ * LETTING THINGS SIT ON TOP OF EACH OTHER (2026-08-29).
+ *
+ * Noah: "make sure that they come to an eventual rest AND they can sit on top
+ * of one another without feeling the need to be forced off."
+ *
+ * The second half is the interesting one, and the solver genuinely could not
+ * do it. The separation push runs along the line between two centres, so a
+ * body resting on another whose centre is offset sideways — which is every
+ * real pile — gets a push with a large HORIZONTAL component, every frame,
+ * until it has slid off. Stacking was only ever a transient on the way to
+ * being flattened.
+ *
+ * TWO THINGS THAT DID NOT WORK, recorded because both are the obvious move:
+ *
+ *   Skipping the push entirely for a shallow overlap between two slow bodies.
+ *   The push is also what SUPPORTS the upper body, so without it gravity pulls
+ *   it down into its neighbour until it breaks the speed threshold, the push
+ *   returns, it slows, and the skip re-engages. Measured, that version never
+ *   reached rest at all: 19.5, 11.2, 14.9, 14.2px/s at seconds 7-10 against a
+ *   baseline that was at 0.00 by then.
+ *
+ *   Suppressing the push's wake-up below a sub-pixel threshold. A body that
+ *   stays flagged asleep is not damped, so the small pushes accumulate
+ *   unopposed into visible drift — 18-24px/s, worse again.
+ *
+ * What works is to keep the whole push but take the SIDEWAYS half out of it
+ * once a contact has come to rest. The vertical component still supports the
+ * pile, so it still settles; the horizontal one is the part that was sliding
+ * things off each other, and a resting contact has no reason to be resolved
+ * sideways at all.
+ */
+const RESTING_OVERLAP = 14;
+/** How much of the sideways push survives once a contact is at rest. */
+const RESTING_SLIDE = 0.12;
+
 export type DropSpec = {
   /** Rendered width, as a fraction of the ARENA's width. */
   width: number;
@@ -610,10 +646,24 @@ export function useDropField({
             const total = ma + mc;
             if (total <= 0) continue;
             const push = overlap * SEPARATION;
-            a.x -= nx * push * (mc / total);
-            a.y -= ny * push * (mc / total);
-            c.x += nx * push * (ma / total);
-            c.y += ny * push * (ma / total);
+            /* A shallow overlap between two slow bodies is a pile at rest, and
+             * the sideways part of resolving it is what slides one off the
+             * other. The vertical part stays at full strength — it is the
+             * support, and removing it makes the pile sink instead of settle
+             * (see the note at RESTING_OVERLAP). Held bodies are excluded:
+             * while someone is dragging one, every contact is live again. */
+            const restingPair =
+              !a.held &&
+              !c.held &&
+              overlap < RESTING_OVERLAP &&
+              Math.hypot(a.vx, a.vy) < SLEEP_SPEED &&
+              Math.hypot(c.vx, c.vy) < SLEEP_SPEED;
+            const pushX = nx * push * (restingPair ? RESTING_SLIDE : 1);
+            const pushY = ny * push;
+            a.x -= pushX * (mc / total);
+            a.y -= pushY * (mc / total);
+            c.x += pushX * (ma / total);
+            c.y += pushY * (ma / total);
             // This is a REAL, currently-unresolved overlap being acted on —
             // a body whose position just moved because of it is not at
             // rest, whatever its stored velocity says. Missing this was the
