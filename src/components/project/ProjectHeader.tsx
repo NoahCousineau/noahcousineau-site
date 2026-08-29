@@ -161,7 +161,9 @@ function buildSpecs(
   icons: HeaderIcon[],
   iconSrc: string | undefined,
   iconWidth: number,
-  object: { width: number; height: number } | undefined,
+  /* `style` is read for the hero's invert-on-dark — see the note where the
+     hero spec is pushed below. */
+  object: { width: number; height: number; style?: string } | undefined,
   randomize: boolean
 ): DropSpec[] {
   const rand = randomize ? Math.random : () => 0.5;
@@ -216,6 +218,32 @@ function buildSpecs(
       delay: icons.length * DROP_STAGGER_MS,
       src: iconSrc,
       aspect: object ? object.width / object.height : 1,
+      /* THE HERO ICON INVERTS TOO (2026-08-29). Noah: "on mobile and
+       * desktop, the Valley Strong Hero Icon isn't turning white in dark
+       * mode."
+       *
+       * It never could: the falling icons above carry `invertOnDark` keyed on
+       * their `kind`, and this spec simply had no such field, so the hero was
+       * the one icon on the page that could not invert. Valley Strong's hero
+       * is a chalk line drawing, so in dark mode it was dark ink on a dark
+       * background — present and invisible.
+       *
+       * `style: "draw"` is the right signal rather than a new hand-kept list,
+       * and it holds up when measured. Mean saturation of the ink in each
+       * project's own hero frame:
+       *
+       *   valley-strong  style="draw"  0.115   <- the only line drawing
+       *   sprouts                      0.562
+       *   corita                       0.790
+       *   socal earth                  0.861
+       *   cultural olympiad            0.989
+       *   more work                    0.895
+       *
+       * The one drawn hero is also the only near-greyscale one by a factor of
+       * five, which is exactly the condition the falling icons' note gives for
+       * when a plain CSS invert reads correctly. The photographic heroes are
+       * full-colour objects and must not invert, and none of them will. */
+      invertOnDark: object?.style === "draw",
     });
   }
   return list;
