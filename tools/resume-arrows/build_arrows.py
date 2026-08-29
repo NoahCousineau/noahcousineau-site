@@ -67,9 +67,28 @@ can be checked against a contact sheet rather than trusted.
 # index (1-based, in ORDER_KEY order) -> the direction the arrow points in
 # the source photograph, degrees, screen coords: 0 right, 90 down, 180 left.
 SOURCE_ANGLE = {
-    1: 8, 2: 8, 3: 187, 4: 0,
-    5: 5, 6: -8, 7: 0, 8: 0,
-    9: 183, 10: -55, 11: 183, 12: -5,
+    # 2026-08-29: four of these were 180 degrees out, and the arrows built
+    # from them pointed AWAY from the résumé. Noah, with a contact sheet of
+    # each set: "the clay arrows... they're not always pointing in the correct
+    # direction... These are arrows that are pointing left and arrows that are
+    # pointing right."
+    #
+    # Checked against a montage of the eight built assets rather than the
+    # source photo, which is the honest way round: what matters is which way
+    # the OUTPUT points, and the output is what the montage shows. Built 1, 5,
+    # 6 and 7 pointed left — table indices 1, 6, 7 and 9, since SKIP removes
+    # 4, 8, 10 and 12 and the rest renumber. Each of those four is its old
+    # value plus 180.
+    #
+    # Worth knowing for next time: an automated check was tried again here and
+    # is still not trustworthy. Comparing the mean vertical extent of the ink
+    # in the outer fifth at each end gets 7 of 8, and the one it misses is a
+    # fat pentagon whose blunt tail notch is taller than its own point — the
+    # same failure mode the docstring above describes. The contact sheet is
+    # the check.
+    1: 188, 2: 8, 3: 187, 4: 0,
+    5: 5, 6: 172, 7: 180, 8: 0,
+    9: 3, 10: -55, 11: 183, 12: -5,
 }
 
 # Not every arrow in the photo reads as one at the size these render.
