@@ -341,16 +341,29 @@ export default function AwayOverlay({
              the visible gap between "CONTACT NOAH" and the row beneath it is
              this value minus however much of that box is empty corner. At
              1.5rem the links landed on top of the arc. */
+          /* The phone gap grew on 2026-08-29 with the stacking above: each
+             contact group is now two lines tall instead of one row, so the
+             group's own last line starts where its first used to, and the
+             phone number's rule landed on "IT'S TIME TO" while "LinkedIn"
+             sat under "CONTACT NOAH". 150 -> 320 units. */
           gap: phone
-            ? "clamp(2.25rem, calc(var(--u) * 150), 4.5rem)"
+            ? "clamp(2.75rem, calc(var(--u) * 320), 8rem)"
             : "clamp(1.25rem, calc(var(--u) * 132), 8rem)",
         }}
       >
         {/* Email and phone side by side, per Noah, and pushed toward the
-            clock so both groups read as flanking it. */}
+            clock so both groups read as flanking it.
+
+            ...ONE PER LINE ON A PHONE (2026-08-29). Noah: "on the mobile
+            clock screen, let's stack all the content vertically and
+            centered." The row already wrapped, but only when it had to --
+            the email is long enough that it wrapped and the phone number did
+            not, which is what produced the ragged half-stacked look. Stacking
+            it outright is the instruction, and it also removes the only
+            reason this group's width mattered. */}
         <div
-          className={`flex flex-wrap items-center ${
-            phone ? "justify-center" : "justify-end"
+          className={`flex items-center ${
+            phone ? "flex-col justify-center" : "flex-wrap justify-end"
           }`}
           style={{ gap: "clamp(1rem, calc(var(--u) * 76), 4.25rem)" }}
         >
@@ -414,9 +427,10 @@ export default function AwayOverlay({
           </div>
         </div>
 
+        {/* Stacked on a phone for the same reason as the group above. */}
         <div
-          className={`flex flex-wrap items-center ${
-            phone ? "justify-center" : "justify-start"
+          className={`flex items-center ${
+            phone ? "flex-col justify-center" : "flex-wrap justify-start"
           }`}
           style={{ gap: "clamp(1rem, calc(var(--u) * 76), 4.25rem)" }}
         >

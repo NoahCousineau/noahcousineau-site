@@ -158,11 +158,29 @@ const COPY_FADE = 0.25;
 /** The field's share of the centring above: -24px at 1512, in units. Its own
  *  rotation is about its centre, so this moves the centre directly. */
 const FIELD_CENTRING = -30.44;
+/*
+ * OFF THE EDGE OF THE PALM (2026-08-29). Noah: "shrink the password box a bit
+ * and nudge it slightly to the right. It's currently a bit too close to the
+ * edge of the palm."
+ *
+ * Measured at 1512 the box ran 588.6..810 with the palm's own edge sampling
+ * as skin from about 585 -- three or four pixels of clearance, which is none.
+ *
+ * MOST OF THE MOVE IS THE SHRINK, deliberately. The box was brought onto one
+ * axis with the three lines of copy four days ago (see COPY_CENTRING), and
+ * sliding it bodily right would undo that. Shrinking happens about its own
+ * centre, so 13% off the width buys 14 units of clearance on the left for
+ * nothing; the nudge then only has to supply the last 12. The centre ends up
+ * 12 units right of the shared axis rather than 26, so the group still reads
+ * as centred.
+ */
+const FIELD_SHRINK = 0.87;
+const FIELD_NUDGE_X = 12;
 const FIELD = {
-  cx: 948.4 + COPY_SHIFT_X + FIELD_CENTRING,
+  cx: 948.4 + COPY_SHIFT_X + FIELD_CENTRING + FIELD_NUDGE_X,
   cy: 779.6,
-  w: 327.3 * COPY_SCALE,
-  h: 61.3 * COPY_SCALE,
+  w: 327.3 * COPY_SCALE * FIELD_SHRINK,
+  h: 61.3 * COPY_SCALE * FIELD_SHRINK,
   rot: -3.97,
   stroke: 3 * COPY_SCALE,
 };

@@ -124,6 +124,15 @@ const PHONE_ROW_H = 680;
  * Widest at 1.5x, for whoever changes this next: title 709u, disciplines
  * 550u. */
 const PHONE_TITLE_SCALE = 1.5;
+/* The disciplines line gets a bit more than the title does (2026-08-29):
+ * "on the mobile home screen in the project grid, let's increase the size of
+ * the descriptive text by just a bit." Only the subtext, so the title is
+ * untouched at 1.5x. 30 -> 37.5 units, 11.7px -> 14.6px at 390. Measured
+ * against the column it has to fit: the widest disciplines line wants 550
+ * units at 1.5x, so 687 at 1.875x, against the 900-unit text column -- it
+ * stays on one line, which `whitespace-nowrap` would otherwise have forced
+ * out of the box. */
+const PHONE_SUB_SCALE = 1.5 * 1.25;
 const PHONE_BOX_W_FRAC = 1;
 /** A little more air under the rule that caps each cell than at the sides. */
 const PHONE_BOX_PAD = 30;
@@ -179,7 +188,7 @@ function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits
   const BOX_PAD = phone ? PHONE_BOX_PAD : 30;
   const BOX_PAD_TOP = phone ? PHONE_BOX_PAD_TOP : 30;
   const TITLE_UNITS = 75 * (phone ? PHONE_TITLE_SCALE : 1);
-  const SUB_UNITS = 20 * (phone ? PHONE_TITLE_SCALE : 1);
+  const SUB_UNITS = 20 * (phone ? PHONE_SUB_SCALE : 1);
   const TEXT_W = BOX_WIDTH - BOX_PAD * 2;
 
   return (

@@ -206,21 +206,38 @@ export default function FallenHand({
        * node. The phone hand simply never rocked. Adding `phone` to the deps
        * fixes that and makes the rest angle matter, so both are handled here
        * together. */
+      /* THE PHONE HAND DOES NOT ROCK (2026-08-29). Noah: "in the footer on
+       * mobile project pages, let's keep the hand stationery on the bottom.
+       * It shouldn't be moving and should act like a steady fulcrum for the
+       * teeter totter. The teetering animation on 'next project' is good
+       * though."
+       *
+       * Which is the right call, and it is worth saying why rather than just
+       * deleting a tween: a see-saw's fulcrum is the part that DOESN'T move.
+       * With both halves rocking, the plank read as sitting on something
+       * unsteady instead of balancing on something planted. The plank keeps
+       * its own tween below, so the gesture is unchanged -- it just now has
+       * something fixed to pivot on.
+       *
+       * The desktop hand still settles: there it is a hand that has just
+       * fallen and landed, not a fulcrum. */
       const rest = phone ? PHONE_REST_ROTATION : REST_ROTATION;
-      tl.fromTo(
-        hand,
-        { rotate: rest - 22 },
-        {
-          keyframes: [
-            { rotate: rest + 11, duration: 0.3, ease: "sine.out" },
-            { rotate: rest - 7.5, duration: 0.36, ease: "sine.inOut" },
-            { rotate: rest + 4.5, duration: 0.32, ease: "sine.inOut" },
-            { rotate: rest - 2.5, duration: 0.28, ease: "sine.inOut" },
-            { rotate: rest + 1.2, duration: 0.24, ease: "sine.inOut" },
-            { rotate: rest, duration: 0.22, ease: "sine.inOut" },
-          ],
-        }
-      );
+      if (!phone) {
+        tl.fromTo(
+          hand,
+          { rotate: rest - 22 },
+          {
+            keyframes: [
+              { rotate: rest + 11, duration: 0.3, ease: "sine.out" },
+              { rotate: rest - 7.5, duration: 0.36, ease: "sine.inOut" },
+              { rotate: rest + 4.5, duration: 0.32, ease: "sine.inOut" },
+              { rotate: rest - 2.5, duration: 0.28, ease: "sine.inOut" },
+              { rotate: rest + 1.2, duration: 0.24, ease: "sine.inOut" },
+              { rotate: rest, duration: 0.22, ease: "sine.inOut" },
+            ],
+          }
+        );
+      }
 
       /* THE TEETER-TOTTER (2026-08-25). Noah: "I would also like this and the
        * rule that 'next project' are on to balance on top of the finger, like

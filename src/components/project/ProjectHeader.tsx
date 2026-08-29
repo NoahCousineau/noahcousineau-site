@@ -73,7 +73,21 @@ const ICON_SCALE = 0.72;
  * in the middle of a run of mobile notes and immediately after "for the
  * mobile project pages" — the desktop header has not been called too small.
  * Same single multiplier as the two doublings before it. */
-const PHONE_ICON_SCALE = 8;
+/*
+ * 2026-08-29: "on the mobile project pages, let's increase the size of the
+ * header icon by 1.75x respectively."
+ *
+ * NOT 8 x 1.75, and the reason matters. This constant had never been applied
+ * — see the note on getSnapshot below — so the 2, then 4, then 8 it has held
+ * were all dead, and every phone icon has been rendering at its DESKTOP size
+ * the whole time. There is no "current 8x" to multiply.
+ *
+ * So the multiplier is read against what Noah is actually looking at, which
+ * is the desktop size: 1.75 makes the phone hero 1.75x the fraction of the
+ * screen it occupies today. Measured, the hero goes from 32.0% of the arena
+ * (125px on a 390px screen) to 56.0% (218px).
+ */
+const PHONE_ICON_SCALE = 1.75;
 /* ...and "Move the title down as to not conflict with the 'C' logo." The
  * mark is fixed near the top-left; the header's own inset is 40 units, which
  * on a 390px screen is 8px and puts the title straight under it.
@@ -310,12 +324,34 @@ export default function ProjectHeader({
     [icons, iconSrc, iconWidth, object]
   );
   const getServerSnapshot = useCallback(() => deterministicSpecs, [deterministicSpecs]);
+  /* What the cached specs above were built for; see getSnapshot. */
+  const randomKeyRef = useRef("");
+  /* REBUILT WHEN THE SIZES CHANGE, and until 2026-08-29 it was not — which
+   * is why Noah asked for bigger phone icons three times and got nothing.
+   *
+   * The cache was `if (!randomizedRef.current)`, so the specs were built the
+   * first time getSnapshot ran and kept forever. On a phone that first run is
+   * right after hydration, while `useIsPhone` still answers false — so
+   * `iconWidth` was the DESKTOP width, and it stayed the desktop width after
+   * the hook flipped. Measured on a 390px screen: the hero rendered at
+   * 32.0081% of the arena, which is exactly ICON_SCALE with no phone
+   * multiplier applied at all. PHONE_ICON_SCALE has been dead code through
+   * three rounds of "double the icons".
+   *
+   * Keyed on the inputs rather than cleared on every render: the array's
+   * identity has to stay stable while they do, or useSyncExternalStore sees a
+   * new value on every call and React warns (or loops) — which is the same
+   * trap the useMemo above exists to avoid. The sizes do re-randomise if the
+   * layout tier changes under the reader, which is not a promise anything
+   * makes; "different each page load" is. */
+  const sizingKey = `${iconWidth}|${iconSrc ?? ""}|${icons.length}`;
   const getSnapshot = useCallback(() => {
-    if (!randomizedRef.current) {
+    if (!randomizedRef.current || randomKeyRef.current !== sizingKey) {
+      randomKeyRef.current = sizingKey;
       randomizedRef.current = buildSpecs(icons, iconSrc, iconWidth, object, true);
     }
     return randomizedRef.current;
-  }, [icons, iconSrc, iconWidth, object]);
+  }, [icons, iconSrc, iconWidth, object, sizingKey]);
   const subscribe = useCallback(() => () => {}, []);
   const liveSpecs = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 

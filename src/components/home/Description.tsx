@@ -139,7 +139,11 @@ const PHONE_ARTBOARD = 1000;
  * units, 17% of the screen, against the desktop hand's 12% of a 1512 window:
  * the same kind of accent at each size rather than the phone's centrepiece.
  */
-const PHONE_HAND_SCALE = 2.25 * 0.25;
+/* ...and back up 1.5x on 2026-08-29: "the arrow hand is a bit too small on
+ * the mobile home screen. Let's increase the size by 1.5x." 0.5625 -> 0.84375,
+ * which lands the hand at 260 units of the 1000-unit phone artboard, 26% of
+ * the screen. The -75% before it had overshot. */
+const PHONE_HAND_SCALE = 2.25 * 0.25 * 1.5;
 const HAND_BOX_W = 308;
 const HAND_BOX_H = 524;
 /** How far the hand's centre hangs below the closer's last rule. Was the
