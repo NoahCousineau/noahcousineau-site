@@ -63,12 +63,27 @@ import { useIsPhone } from "@/lib/useIsPhone";
  * was already handled — `mousemove` is in ACTIVITY below, so a cursor moving
  * anywhere over the page keeps stamping the clock; only a genuinely still
  * pointer counts as idle. */
-const IDLE_MS = 30_000;
+/* 30s -> 90s, 2026-08-29. Noah, for the second time: "I also still feel like
+ * the clock screen is showing up too fast and too frequently, let's work to
+ * resolve this."
+ *
+ * "Too fast" is this number and "too frequently" is the leave trigger below,
+ * so both move. Thirty seconds is a long time to be typing but a short one to
+ * be READING a case study — which is exactly what someone is doing on a
+ * project page, scrolled to a still image with the pointer parked. The site's
+ * own content invites the state this was treating as absence. */
+const IDLE_MS = 90_000;
 /** How often the idle poll checks the activity stamp. */
 const IDLE_POLL_MS = 1000;
 /** Debounce on the leave triggers, so an alt-tab bounce or focus brushing
  * browser chrome doesn't flash a full-screen black panel. */
-const LEAVE_DELAY_MS = 400;
+/* 400ms -> 2500ms, 2026-08-29, the "too frequently" half of the note on
+ * IDLE_MS. 400ms debounces a bounce; it does not cover the ordinary business
+ * of leaving the tab to check something and coming straight back, which
+ * raised the panel every time. Two and a half seconds is long enough that a
+ * glance elsewhere costs nothing and short enough that genuinely walking away
+ * still lands on the clock. */
+const LEAVE_DELAY_MS = 2500;
 
 const CONTACT_LEFT = [
   { label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" },
@@ -346,6 +361,18 @@ export default function AwayOverlay({
              group's own last line starts where its first used to, and the
              phone number's rule landed on "IT'S TIME TO" while "LinkedIn"
              sat under "CONTACT NOAH". 150 -> 320 units. */
+          /* SPREAD DOWN THE SCREEN ON A PHONE (2026-08-29). Noah: "the text
+             is arranged much better. Let's just distribute the content
+             vertically more."
+             A gap alone can only push the three rows apart from wherever the
+             centred column happens to start, so past a point it just pushes
+             the whole block off the screen. Giving the column the screen's
+             height and letting `align-content` share the slack out does what
+             was asked: the contacts sit near the top and bottom edges and the
+             clock keeps the middle, whatever the device's height. The gap
+             stays as the MINIMUM separation for a short screen. */
+          alignContent: phone ? "space-evenly" : undefined,
+          minHeight: phone ? "88dvh" : undefined,
           gap: phone
             ? "clamp(2.75rem, calc(var(--u) * 320), 8rem)"
             : "clamp(1.25rem, calc(var(--u) * 132), 8rem)",

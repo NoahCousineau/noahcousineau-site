@@ -642,7 +642,21 @@ export function ProjectGroup({
                   ))}
                 </div>
               )}
-              <Rule />
+              {/* THE RULE BETWEEN ROWS, off on a phone (2026-08-29). Noah:
+                  "let's make sure that there are no horizontal grid lines
+                  within one section. This makes the content look separate
+                  when it's not."
+
+                  On a desktop each row is a band of side-by-side images and
+                  the rule is the grid line under it. A phone stacks every
+                  cell into its own row, so the same rule lands between two
+                  images that are part of one row of the artwork and reads as
+                  a section break. The section's own full-bleed rule under its
+                  title still separates sections; the white row-gap still
+                  separates stacked images. */}
+              <div className="js-row-rule">
+                <Rule />
+              </div>
             </div>
             );
           })}

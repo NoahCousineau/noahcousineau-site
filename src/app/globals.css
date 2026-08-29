@@ -326,7 +326,9 @@ html {
     /* "Please also double the size of the section title type on mobile."
        ...and again: "for the mobile project pages, let's double the size of
        the section titles again." 2 -> 4. */
-    --descriptor-scale: 4;
+    /* 4 -> 3.5, 2026-08-29: "I would also like the mobile section titles to
+       be just a tad smaller as well." 21.7px -> 19.0px at 390. */
+    --descriptor-scale: 3.5;
   }
 
   .js-project-row {
@@ -355,6 +357,12 @@ html {
      would draw a stray line down the side of an image. The horizontal Rule()
      between rows is untouched. */
   .js-cell-seam {
+    display: none;
+  }
+
+  /* See the note at its call site in ProjectGroup: on a phone every cell is
+     its own row, so a per-row rule cuts a section in half. */
+  .js-row-rule {
     display: none;
   }
 }

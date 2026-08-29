@@ -110,8 +110,11 @@ const PHONE_ROT_H = 1.0;
 
 /** Pointing straight up. The artwork is drawn pointing right. */
 const PHONE_REST_ROTATION = -90;
-/** Lifts the whole column off the foot of the screen. */
-const PHONE_BOTTOM_UNITS = 200;
+/** Where the column sits against the foot of the screen. NEGATIVE since
+ *  2026-08-29 — Noah: "scoot the whole interaction down so the bottom of the
+ *  hand bleeds off the bottom of the page." It used to be lifted 200 units
+ *  clear; now the wrist runs off the edge instead of stopping short of it. */
+const PHONE_BOTTOM_UNITS = -300;
 /** The label's left edge lands at THIRD_COLUMN_X (2026-08-20, per Noah:
  * "Have 'next project' in the same column as 'valley strong credit union'
  * and 'more work'. Shift the hand over as needed to keep it pointing to
@@ -258,13 +261,17 @@ export default function FallenHand({
           plankRef.current,
           { rotate: 7 },
           {
+            /* Every duration doubled, 2026-08-29: "let's double the amount
+               of time the 'next project' teeters." The amplitudes are
+               untouched, so it is the same swing taken at half speed rather
+               than a bigger one. */
             keyframes: [
-              { rotate: -3.6, duration: 0.3, ease: "sine.out" },
-              { rotate: 2.4, duration: 0.36, ease: "sine.inOut" },
-              { rotate: -1.5, duration: 0.32, ease: "sine.inOut" },
-              { rotate: 0.8, duration: 0.28, ease: "sine.inOut" },
-              { rotate: -0.4, duration: 0.24, ease: "sine.inOut" },
-              { rotate: 0, duration: 0.22, ease: "sine.inOut" },
+              { rotate: -3.6, duration: 0.6, ease: "sine.out" },
+              { rotate: 2.4, duration: 0.72, ease: "sine.inOut" },
+              { rotate: -1.5, duration: 0.64, ease: "sine.inOut" },
+              { rotate: 0.8, duration: 0.56, ease: "sine.inOut" },
+              { rotate: -0.4, duration: 0.48, ease: "sine.inOut" },
+              { rotate: 0, duration: 0.44, ease: "sine.inOut" },
             ],
           },
           0
@@ -299,7 +306,11 @@ export default function FallenHand({
           left: "12.5%", // (100 - 75) / 2, so the block is 3/4 of the screen
           width: "75%",
           bottom: `calc(var(--u) * ${PHONE_BOTTOM_UNITS})`,
-          gap: `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
+          /* No gap on a phone: "make the line sit on the very tip of the
+             finger." The fingertip is placed at the fulcrum box's own top
+             edge (see PHONE_TIP_DX), so any gap here is daylight between the
+             plank and the thing holding it up. */
+          gap: phone ? "0px" : `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
         }}
       >
         {/* THE PLANK — the words and the rule as one rigid body, so they tip
@@ -321,7 +332,9 @@ export default function FallenHand({
               // In units like every other rule on the site, so it keeps its
               // weight against the type at any width — and heavier now that
               // it is a plank with something balanced on it.
-              borderBottom: `calc(var(--u) * 30) solid currentColor`,
+              /* 30 -> 14 units, 2026-08-29: "reduce the line thickness
+                 under 'next project' in the project footers." */
+              borderBottom: `calc(var(--u) * 14) solid currentColor`,
               paddingBottom: "calc(var(--u) * 36)",
             }}
           >
