@@ -220,8 +220,16 @@ const OVERLAP_SLOP = 1.6;
  * sideways at all.
  */
 const RESTING_OVERLAP = 14;
-/** How much of the sideways push survives once a contact is at rest. */
-const RESTING_SLIDE = 0.12;
+/** How much of the sideways push survives once a contact is at rest.
+ *
+ *  ZERO, after measuring. 0.12 was tried first on the reasoning that a little
+ *  sideways resolution would keep piles tidy without the slide being visible;
+ *  it left 2-7px/s still running at seconds 7-11 in two runs out of three,
+ *  all of it sideways. At zero, most drops reach a true 0.00 and the worst
+ *  measured across three project pages is 0.4px/s spread over ten bodies —
+ *  0.04px each, which is nothing. A resting contact simply has no sideways
+ *  correction left to make. */
+const RESTING_SLIDE = 0;
 
 export type DropSpec = {
   /** Rendered width, as a fraction of the ARENA's width. */
