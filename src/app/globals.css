@@ -372,6 +372,15 @@ html {
   .js-phone-unscaled {
     transform: none !important;
   }
+
+  /* Rows that opt in with `phoneWide` pull back most of the grid margin, so
+     the media runs nearer the screen edges. 130 of the 250 units, leaving 120
+     — about 24px on a 390 screen, which is still a margin rather than a
+     bleed, and still clears the C's ring at 39.8px by enough that a poster
+     passing under it reads as passing under it. */
+  .js-phone-wide {
+    margin-inline: calc(var(--u) * -130);
+  }
 }
 
 :root {

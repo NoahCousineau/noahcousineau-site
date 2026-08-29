@@ -97,6 +97,15 @@ export type MediaRow = {
   /** True for rows of separate "poster" cells that need a visible gap +
    * hairline between them, per the artboard (e.g. the 4-up campaign row). */
   gapped?: boolean;
+  /** Reclaim most of the phone grid margin for this row, so its media runs
+   *  nearer the edges of the screen. 2026-08-29, Noah, on the Cultural
+   *  Olympiad: "work to increase the poster size on the mobile version."
+   *
+   *  A row flag rather than a wider `--grid-margin`, because that margin is
+   *  load-bearing: it is what keeps grid content out from under the fixed C
+   *  and toggle in the top corners. Widening one row well down the page costs
+   *  nothing there. */
+  phoneWide?: boolean;
 };
 
 const GAP_UNITS = 48; // measured off the artboard's poster-row seam
@@ -595,7 +604,7 @@ export function ProjectGroup({
             const gridAlignItems = rowHasFitCell ? "start" : undefined;
 
             return (
-            <div key={i}>
+            <div key={i} className={row.phoneWide ? "js-phone-wide" : undefined}>
               {row.gapped ? (
                 <div
                   style={{

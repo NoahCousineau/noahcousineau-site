@@ -1585,7 +1585,8 @@
                   "scale": 94,
                   "phoneUnscaled": true
                 }
-              ]
+              ],
+              "phoneWide": true
             },
             {
               "aspect": "3/4",
@@ -1594,7 +1595,8 @@
                   "type": "image",
                   "file": "cultural-olympiad-poster_03_olympics-poster-on-display-2.jpg"
                 }
-              ]
+              ],
+              "phoneWide": true
             }
           ]
         },
