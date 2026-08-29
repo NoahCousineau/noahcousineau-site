@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useIsPhone } from "@/lib/useIsPhone";
+import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 import {
   WORM_BAND,
   WORM_CYCLE_ADVANCE,
@@ -56,7 +56,18 @@ const START_CENTRE = 0.25;
 
 export default function LoadingWorm() {
   const phone = useIsPhone();
-  const SCALE_NOW = phone ? PHONE_SCALE : SCALE;
+  const compact = useIsCompact();
+  /* THREE SIZES, NOT TWO (2026-08-29). Noah: "the loading worm animation is
+   * too large in the in-between, let's reduce the size to a natural
+   * in-between of the mobile and desktop sizes."
+   *
+   * Most of what he saw was the phone scale reaching up to 1199 while the
+   * breakpoint was temporarily moved; with that reverted the worm is already
+   * proportionally identical to the desktop's (measured 15.5% of the viewport
+   * at both 820 and 1512, against 46% on a phone). This trims it further on
+   * top of that, since the middle band has a smaller window to fill and a
+   * worm at the desktop's share of it reads heavier than it does at 1512. */
+  const SCALE_NOW = phone ? PHONE_SCALE : compact ? SCALE * 0.8 : SCALE;
   const [tick, setTick] = useState(0);
 
   useEffect(() => {

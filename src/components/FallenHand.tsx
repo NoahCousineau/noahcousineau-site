@@ -7,7 +7,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { uFont } from "./Stage";
 import { THIRD_COLUMN_X } from "./footerLayout";
-import { useIsPhone } from "@/lib/useIsPhone";
+import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 
 /*
  * FALLEN HAND + NEXT PROJECT (2026-08-20, per Noah: "Let's have the hand on
@@ -76,6 +76,25 @@ const HAND_LABEL_GAP_UNITS = 30;
  * aligned to the page. Increase the size by 1.5x. increase the size of 'next
  * project'." */
 const PHONE_HAND_W_UNITS = 900 * 1.5;
+/*
+ * AND A CEILING ON ALL OF IT (2026-08-29). Noah: "make sure the head or the
+ * hand isn't so large that it conflicts with the footer content."
+ *
+ * The column layout now runs from 390 up to 1199, and every number in it is
+ * in artboard units — which means it TRIPLES across that band. 1350 units is
+ * 274px on a 390 screen and would be 843px at 1199, a hand two-thirds the
+ * height of the window with the links behind it. The label does the same
+ * thing: 144 units is 29px and would be 90px.
+ *
+ * So each is capped in px at roughly the size it reaches on a large phone.
+ * Below that nothing moves — at 390 every min() below picks the unit term —
+ * and above it the composition simply stops growing, which is what stops it
+ * colliding with anything.
+ */
+const PHONE_HAND_MAX_PX = 300;
+const PHONE_LABEL_MAX_PX = 30;
+/** The hand's rendered width: artboard units until they exceed the cap. */
+const PHONE_HAND_W_CSS = `min(calc(var(--u) * ${PHONE_HAND_W_UNITS}), ${PHONE_HAND_MAX_PX}px)`;
 const PHONE_LABEL_GAP_UNITS = 40;
 const PHONE_LABEL_FONT = 96 * 1.5;
 
@@ -149,6 +168,10 @@ export default function FallenHand({
   nextHref: string;
 }) {
   const phone = useIsPhone();
+  /* The column arrangement runs the whole way down from 1200, matching the
+   * links beside it — see the note in Footer.tsx. `phone` is kept only for
+   * the things that are genuinely phone-specific. */
+  const compact = useIsCompact();
   const handRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   /** The plank — "next project" and the rule it sits on, as one rigid body. */
@@ -224,8 +247,8 @@ export default function FallenHand({
        *
        * The desktop hand still settles: there it is a hand that has just
        * fallen and landed, not a fulcrum. */
-      const rest = phone ? PHONE_REST_ROTATION : REST_ROTATION;
-      if (!phone) {
+      const rest = compact ? PHONE_REST_ROTATION : REST_ROTATION;
+      if (!compact) {
         tl.fromTo(
           hand,
           { rotate: rest - 22 },
@@ -256,7 +279,7 @@ export default function FallenHand({
        * balancing. Same pivot as the hand's, which is the whole point: the
        * plank's transform-origin is its bottom centre, and that is the pixel
        * the fingertip is under. */
-      if (phone && plankRef.current) {
+      if (compact && plankRef.current) {
         tl.fromTo(
           plankRef.current,
           { rotate: 7 },
@@ -279,7 +302,7 @@ export default function FallenHand({
       }
     }, rootRef);
     return () => ctx.revert();
-  }, [triggerRef, phone]);
+  }, [triggerRef, compact]);
 
   /*
    * PHONE (2026-08-25). Noah: "let's remove the head. Have the hand replace
@@ -297,20 +320,32 @@ export default function FallenHand({
    * The head that used to sit here is dropped by the footer itself — see
    * Footer.tsx, which is what knows whether it is on a project page.
    */
-  if (phone) {
+  if (compact) {
     return (
       <div
         ref={rootRef}
         className="absolute flex flex-col items-center"
         style={{
-          left: "12.5%", // (100 - 75) / 2, so the block is 3/4 of the screen
-          width: "75%",
-          bottom: `calc(var(--u) * ${PHONE_BOTTOM_UNITS})`,
+          /* THREE QUARTERS OF THE SCREEN, BUT NOT MORE THAN 420px. On a
+             phone 75% is 292px and this is unchanged; across the middle band
+             75% would be 615px at 820 and 900 at 1199, and the plank's rule
+             then reaches back under the left-hand link column. Capping it and
+             centring on `margin-inline` keeps the see-saw a self-contained
+             object at the foot of the footer instead of a line drawn across
+             everything else. */
+          left: 0,
+          right: 0,
+          marginInline: "auto",
+          width: "min(75%, 420px)",
+          /* Negative, so `max` is what caps its MAGNITUDE: the wrist runs
+             off the bottom edge by 61px on a phone and never by more than
+             70, however wide the window gets. */
+          bottom: `max(calc(var(--u) * ${PHONE_BOTTOM_UNITS}), -70px)`,
           /* No gap on a phone: "make the line sit on the very tip of the
              finger." The fingertip is placed at the fulcrum box's own top
              edge (see PHONE_TIP_DX), so any gap here is daylight between the
              plank and the thing holding it up. */
-          gap: phone ? "0px" : `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
+          gap: compact ? "0px" : `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
         }}
       >
         {/* THE PLANK — the words and the rule as one rigid body, so they tip
@@ -328,7 +363,7 @@ export default function FallenHand({
             className="lowercase text-center hover:opacity-60 transition-opacity block w-full"
             style={{
               fontFamily: "var(--font-sans)",
-              fontSize: uFont(PHONE_LABEL_FONT),
+              fontSize: `min(${uFont(PHONE_LABEL_FONT)}, ${PHONE_LABEL_MAX_PX}px)`,
               // In units like every other rule on the site, so it keeps its
               // weight against the type at any width — and heavier now that
               // it is a plank with something balanced on it.
@@ -349,16 +384,18 @@ export default function FallenHand({
             is just `left: 50%` less the tip's own offset within the div. */}
         <div
           className="relative w-full"
-          style={{ height: `calc(var(--u) * ${PHONE_HAND_W_UNITS * PHONE_ROT_H})` }}
+          style={{ height: `calc(${PHONE_ROT_H} * ${PHONE_HAND_W_CSS})` }}
         >
           <div
             ref={handRef}
             aria-hidden
             className="pointer-events-none select-none absolute"
             style={{
-              width: `calc(var(--u) * ${PHONE_HAND_W_UNITS})`,
-              left: `calc(50% - var(--u) * ${(PHONE_TIP_DX * PHONE_HAND_W_UNITS).toFixed(2)})`,
-              top: `calc(var(--u) * ${(-PHONE_TIP_DY * PHONE_HAND_W_UNITS).toFixed(2)})`,
+              width: PHONE_HAND_W_CSS,
+              // Both offsets are fractions OF THE HAND'S OWN WIDTH, so they
+              // follow the cap automatically rather than needing one each.
+              left: `calc(50% - ${PHONE_TIP_DX} * ${PHONE_HAND_W_CSS})`,
+              top: `calc(${-PHONE_TIP_DY} * ${PHONE_HAND_W_CSS})`,
               transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
               // The artwork points RIGHT at rest; a quarter turn anticlockwise
               // aims it at the label directly above.

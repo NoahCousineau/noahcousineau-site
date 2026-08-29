@@ -236,7 +236,16 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             the hand replace the head." `nextProjectHref` is only ever passed
             on a project page, so it doubles as "is this a project footer",
             which is exactly the distinction being drawn. */}
-        {!(phone && nextProjectHref) && (
+        {/* THE HEAD STANDS DOWN WHEREVER THE TEETER-TOTTER STANDS UP
+            (2026-08-29). Noah: "make sure the head or the hand isn't so large
+            that it conflicts with the footer content."
+            This was keyed on `phone`, so between 768 and 1199 a project page
+            drew BOTH -- the head at the bottom right and the fallen hand
+            reaching for a 'next project' that was 37px wide. Two focal points
+            and neither at its intended size. `compact` is the same line the
+            links reflow on, so the footer now has one composition per tier
+            rather than two halves of different ones. */}
+        {!(compact && nextProjectHref) && (
           <PeekingHead
             centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
             widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
