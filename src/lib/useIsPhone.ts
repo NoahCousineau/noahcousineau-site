@@ -31,13 +31,10 @@ import { useCallback, useSyncExternalStore } from "react";
  * subscription wrong.
  */
 
-/* 767 -> 1199 on 2026-08-29, together with the media queries in globals.css
- * that have to agree with it. See the narrow-tier note there for the
- * measurements: at 768 the desktop layout was being drawn at 40%, with 7.46px
- * footer links. The narrow layout now covers everything below 1200 and caps
- * its own growth at --narrow-max, so neither side of the line is drawn at a
- * size it was not designed for. */
-export const PHONE_MAX_WIDTH = 1199;
+/* Moved to 1199 and back again on 2026-08-29 — see the tier note in
+ * globals.css. The middle widths keep the DESKTOP layout, full-bleed; what
+ * they needed was floors under the small labels, not a different layout. */
+export const PHONE_MAX_WIDTH = 767;
 const QUERY = `(max-width: ${PHONE_MAX_WIDTH}px)`;
 
 function subscribe(onChange: () => void) {
@@ -53,4 +50,44 @@ export function useIsPhone(): boolean {
   // A plain `false` literal is a stable value, so this cannot loop.
   const getServerSnapshot = useCallback(() => false, []);
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+/*
+ * THE MIDDLE TIER (2026-08-29).
+ *
+ * Noah, on the footer at an in-between width: "I don't like how the head is
+ * interfering with the links... Please scale the head (and the teeter totter)
+ * and the project links so it feels like a natural in-between of the desktop
+ * size and the mobile size."
+ *
+ * WHY THE FOOTER NEEDS ITS OWN LINE AND THE REST OF THE SITE DOES NOT. Most
+ * of the site is display type and images, which scale with `--u` perfectly
+ * well at any width. The footer's link list does not, and the arithmetic says
+ * so exactly: each column's rule is RULE_WIDTH = 204.22 units and its label is
+ * 17.9 units, a ratio fixed by the design. Holding the label at a legible 11px
+ * therefore needs the column to be at least 204.22/17.9 x 11 = 125.5px, which
+ * needs `--u` >= 0.615 — a 1180px window. Below that, five columns of legible
+ * type do not fit at any size, so flooring the label alone just runs each one
+ * into its neighbour (which is what the first attempt at this did).
+ *
+ * So below 1200 the footer uses the PHONE's two-column arrangement, which has
+ * room, with the label size clamped rather than scaled — see Footer.tsx.
+ */
+export const MID_MAX_WIDTH = 1199;
+const MID_QUERY = `(max-width: ${MID_MAX_WIDTH}px)`;
+
+function subscribeMid(onChange: () => void) {
+  const mql = window.matchMedia(MID_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+
+/** True below 1200px — phones included. Same hydration-safe shape as
+ *  useIsPhone above: false for the server and the first client render. */
+export function useIsCompact(): boolean {
+  return useSyncExternalStore(
+    subscribeMid,
+    () => window.matchMedia(MID_QUERY).matches,
+    () => false
+  );
 }

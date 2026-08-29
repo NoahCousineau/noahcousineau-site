@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Stage, Place, uFont } from "./Stage";
+import { Stage, Place, uFont, uFontMin } from "./Stage";
 import PeekingHead, { PHONE_HEAD_WIDTH_UNITS } from "./PeekingHead";
-import { useIsPhone } from "@/lib/useIsPhone";
+import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 import FallenHand from "./FallenHand";
 import { useRef } from "react";
 import { THIRD_COLUMN_X } from "./footerLayout";
@@ -177,6 +177,11 @@ const ROW2_RULE_Y = 429.4;
  */
 export default function Footer({ nextProjectHref }: { nextProjectHref?: string }) {
   const phone = useIsPhone();
+  /* BELOW 1200 THE LINKS USE THE PHONE'S TWO COLUMNS, phones included — see
+   * the note on useIsCompact for the arithmetic. Five columns of legible type
+   * do not fit under a 1180px window at any size, so this is a reflow rather
+   * than a resize. Everything else in the footer still keys off `phone`. */
+  const compact = useIsCompact();
   // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
   // — which does scroll — is what tells the fallen hand it has arrived.
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -270,7 +275,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
 
           {/* Five link columns, each 2 stacked links + rule, positioned at
               their exact sketch x-coordinates. */}
-          {phone
+          {compact
             ? COLUMNS.flatMap((col, ci) =>
                 col.items.map((item, ii) => ({ item, ci, ii }))
               ).map(({ item, ci, ii }, flatIndex) => {
@@ -293,12 +298,29 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                         target={external ? "_blank" : undefined}
                         rel={external ? "noreferrer" : undefined}
                         className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                        style={{ fontFamily: "var(--font-sans)", fontSize: uFont(PHONE_FONT) }}
+                        /* CLAMPED, NOT SCALED, across the middle band. The
+                           phone value is 72 units, which is 14.6px on a 390
+                           screen and would be 45px at 1199 — the linear zoom
+                           running away in the other direction. The floor keeps
+                           it legible at the narrow end and the ceiling stops it
+                           overtaking the desktop's own 17.9px at the wide end;
+                           in between it tracks the artboard as usual. */
+                        style={{
+                          fontFamily: "var(--font-sans)",
+                          fontSize: `clamp(14.6px, calc(var(--u) * ${PHONE_FONT}), 15px)`,
+                        }}
                       >
                         {item.label}
                       </Link>
                     </Place>
-                    <Place x={x} y={y + PHONE_FONT + 30} w={PHONE_RULE_W}>
+                    {/* The rule is capped in px for the same reason the
+                        label is clamped: 820 units is 166px on a phone and
+                        512px at 1199, which would leave a 15px label sitting
+                        under a rule three times too long for it. 200px holds
+                        the phone's own label-to-rule proportion across the
+                        band, and is below 820 units at every phone width so
+                        nothing there moves. */}
+                    <Place x={x} y={y + PHONE_FONT + 30} wCss={`min(calc(var(--u) * ${PHONE_RULE_W}), 200px)`}>
                       <div
                         className="w-full bg-[color:var(--color-paper)]"
                         style={{ height: uFont(6) }}
@@ -315,7 +337,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                   target={col.items[0].href.startsWith("http") ? "_blank" : undefined}
                   rel={col.items[0].href.startsWith("http") ? "noreferrer" : undefined}
                   className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                  style={{ fontFamily: "var(--font-sans)", fontSize: uFont(17.9) }}
+                  style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(17.9, 11) }}
                 >
                   {col.items[0].label}
                 </Link>
@@ -330,7 +352,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                   target={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "_blank" : undefined}
                   rel={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "noreferrer" : undefined}
                   className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                  style={{ fontFamily: "var(--font-sans)", fontSize: uFont(17.9) }}
+                  style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(17.9, 11) }}
                 >
                   {col.items[1].label}
                 </Link>

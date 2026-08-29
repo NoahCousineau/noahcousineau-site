@@ -46,6 +46,7 @@ export function Place({
   x,
   y,
   w,
+  wCss,
   h,
   className = "",
   style,
@@ -54,6 +55,9 @@ export function Place({
   x: number;
   y: number;
   w?: number;
+  /** A raw CSS width, for the rare case where the width needs a clamp or a
+   *  min() rather than a plain artboard multiple. Wins over `w`. */
+  wCss?: string;
   h?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -65,7 +69,11 @@ export function Place({
       style={{
         left: `calc(var(--u) * ${x})`,
         top: `calc(var(--u) * ${y})`,
-        ...(w != null ? { width: `calc(var(--u) * ${w})` } : {}),
+        ...(wCss != null
+          ? { width: wCss }
+          : w != null
+            ? { width: `calc(var(--u) * ${w})` }
+            : {}),
         ...(h != null ? { height: `calc(var(--u) * ${h})` } : {}),
         ...style,
       }}
@@ -78,4 +86,23 @@ export function Place({
 /** Font size in artboard units (pt/1920 of width). */
 export function uFont(units: number): string {
   return `calc(var(--u) * ${units})`;
+}
+
+/**
+ * The same artboard size, but with a floor (2026-08-29).
+ *
+ * `--u` is a pure linear zoom, so any size written in units keeps shrinking
+ * for as long as the window does. That is right for display type, which is
+ * meant to scale with the composition, and wrong for small labels, which
+ * simply stop being readable: the footer's link list is 17.9 units, which is
+ * 17.9px at the 1920 artboard and 7.46px at an 800px window. Noah, on that
+ * screenshot: the middle widths should feel like "a natural in-between of the
+ * desktop size and the mobile size", and 7px is not in between anything.
+ *
+ * The ceiling is the artboard value itself, so this is exactly the old
+ * expression above 1920/units px and only ever engages below it — nothing at
+ * desktop width moves.
+ */
+export function uFontMin(units: number, minPx: number): string {
+  return `clamp(${minPx}px, calc(var(--u) * ${units}), ${units}px)`;
 }
