@@ -395,6 +395,41 @@ html {
   --chrome-drop: 0px;
 }
 
+/*
+ * THE MIDDLE BAND'S CHROME (2026-08-29). Noah: "for the in-between size,
+ * please make sure that the 'c' and the toggle switch don't interfere with
+ * the horizontal lines."
+ *
+ * They did, from 768 all the way to 1200. Measured against a stuck section
+ * header's rule on a project page:
+ *
+ *   width   rule            C            toggle
+ *   768     21.1..24.3      0..30        20..36     both crossed
+ *   1024    28.1..32.3      0.3..30.3    20..36     both crossed
+ *   1199    32.9..37.9      2.9..32.9    20..36     both crossed
+ *   1512    41.5..47.8      7.5..37.5    20..36     clear
+ *
+ * The C's own `top` is derived from a section title's centreline, and that
+ * expression goes NEGATIVE below about 1002px — so it was pinned at its floor
+ * of 0 while the rule, which scales with --u, kept sliding down through it.
+ * Above 1200 the rule has moved far enough down to clear the chrome on its
+ * own, which is why the desktop never showed this.
+ *
+ * The band therefore gets the phone's treatment: sit the chrome BELOW the
+ * rule instead of above it. The drop TRACKS the rule rather than being a
+ * fixed nudge, because the rule moves 13px across the band — it is the rule's
+ * own y (16u padding + 26.67u title + 10u gap + 6u weight = 58.67u, spelled
+ * out here because --u lives on <main> and this chrome is fixed outside it)
+ * plus a little air. The floor keeps the C's ink centre on the toggle's, the
+ * same pairing the phone block below sets up.
+ */
+@media (min-width: 768px) and (max-width: 1199px) {
+  :root {
+    --chrome-drop: calc(min(100vw, 1920px) / 1920 * 58.67 + 6px - 13.25px);
+    --home-mark-top-floor: calc(13.25px + var(--chrome-drop));
+  }
+}
+
 @media (max-width: 767px) {
   :root {
     /* 2026-08-25: "please make sure that the 'C' and the toggle switch are
