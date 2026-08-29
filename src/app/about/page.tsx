@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ArcText } from "@/components/ArcText";
 import RagdollHead from "@/components/about/RagdollHead";
-import ParallaxPhotos from "@/components/about/ParallaxPhotos";
 import ApproachOnScroll from "@/components/about/ApproachOnScroll";
 import ResumeArrows, { type ResumeArrowSpot } from "@/components/ResumeArrows";
 import { useIsPhone } from "@/lib/useIsPhone";
@@ -118,12 +117,30 @@ function DraggableResumeCard({
   backSrc,
   rotationSpeedDegPerSec = 75, // Noah: dial back from 100 to 75
   widthUnits = 420,
+  alt = "Noah Cousineau résumé",
+  invertOnDark = false,
+  edge = true,
 }: {
   frontSrc: string;
   backSrc: string;
+  /** NEGATIVE spins the other way. The loop below eases toward this value
+   *  continuously rather than adding a fixed step, so a negative target needs
+   *  nothing else — 2026-08-29, for the newsletter envelope: "it will have the
+   *  same 3D effect, but will rotate in the opposite way." */
   rotationSpeedDegPerSec?: number;
   /** Doubled on phones — see the call site. */
   widthUnits?: number;
+  alt?: string;
+  /** For line artwork, which reads as ink on paper and has to become ink on
+   *  black. The envelope is a pencil drawing: measured, its ink is 0.079 mean
+   *  saturation on the front and 0.121 on the back, against 0.56-0.99 for the
+   *  photographic objects elsewhere — the same test the header icons use to
+   *  decide what may safely take a plain CSS invert. */
+  invertOnDark?: boolean;
+  /** The paper thickness slabs. A sheet of card has them; a line drawing of
+   *  an envelope on a transparent ground does not, and showing them would
+   *  frame the drawing in two grey bars it has no edges to justify. */
+  edge?: boolean;
 }) {
   const [angle, setAngle] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -246,46 +263,61 @@ function DraggableResumeCard({
           shadow; edge-on casts a tighter, crisper sliver) — together
           this reads as one real shadow reacting to the card's orientation
           rather than a single axis being animated in isolation. */}
-      <div
-        className="absolute rounded-2xl"
-        style={{
-          inset: "6%",
-          background: "rgba(0,0,0,1)",
-          opacity: 0.12 + 0.28 * facingFactor,
-          filter: `blur(${14 + 20 * facingFactor}px)`,
-          transform: `translateZ(-40px) scale(0.94) scaleX(${Math.max(0.06, facingFactor)})`,
-          zIndex: -1,
-        }}
-      />
+      {/* CAST SHADOW — the other thing that only makes sense for a sheet
+          of card. It is a blurred black slab behind the object, sized to
+          the object's own box; behind a line drawing on a transparent
+          ground it reads as a grey smear floating in mid-air rather than
+          as a shadow of anything. Tied to `edge` because it answers the
+          same question: is this a physical sheet or a drawing of one? */}
+      {edge && (
+        <div
+          className="absolute rounded-2xl"
+          style={{
+            inset: "6%",
+            background: "rgba(0,0,0,1)",
+            opacity: 0.12 + 0.28 * facingFactor,
+            filter: `blur(${14 + 20 * facingFactor}px)`,
+            transform: `translateZ(-40px) scale(0.94) scaleX(${Math.max(0.06, facingFactor)})`,
+            zIndex: -1,
+          }}
+        />
+      )}
       <div
         className="w-full h-full relative"
         style={{ transformStyle: "preserve-3d", transform: `rotateY(${angle}deg) rotateZ(-9deg)` }}
       >
         {/* Front face */}
         <div className="absolute inset-0" style={{ backfaceVisibility: "hidden" }}>
-          <Image src={frontSrc} alt="Noah Cousineau résumé — front" fill className="object-contain pointer-events-none" />
+          <Image src={frontSrc} alt={`${alt} — front`} fill className={`object-contain pointer-events-none${invertOnDark ? " invert-on-dark" : ""}`} />
         </div>
         {/* Back face — rotated 180deg so it faces outward on the opposite side */}
         <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-          <Image src={backSrc} alt="Noah Cousineau résumé — back" fill className="object-contain pointer-events-none" />
+          <Image src={backSrc} alt={`${alt} — back`} fill className={`object-contain pointer-events-none${invertOnDark ? " invert-on-dark" : ""}`} />
         </div>
         {/* Edge strips — approximate paper thickness along all 4 sides */}
-        <div
-          className="absolute bg-[#dcdcdc]"
-          style={{ left: 0, right: 0, top: 0, height: `${THICKNESS_PX}px`, transform: `translateY(-${THICKNESS_PX / 2}px) rotateX(90deg)`, transformOrigin: "top" }}
-        />
-        <div
-          className="absolute bg-[#dcdcdc]"
-          style={{ left: 0, right: 0, bottom: 0, height: `${THICKNESS_PX}px`, transform: `translateY(${THICKNESS_PX / 2}px) rotateX(90deg)`, transformOrigin: "bottom" }}
-        />
-        <div
-          className="absolute bg-[#dcdcdc]"
-          style={{ top: 0, bottom: 0, left: 0, width: `${THICKNESS_PX}px`, transform: `translateX(-${THICKNESS_PX / 2}px) rotateY(90deg)`, transformOrigin: "left" }}
-        />
-        <div
-          className="absolute bg-[#dcdcdc]"
-          style={{ top: 0, bottom: 0, right: 0, width: `${THICKNESS_PX}px`, transform: `translateX(${THICKNESS_PX / 2}px) rotateY(90deg)`, transformOrigin: "right" }}
-        />
+        {/* Paper thickness. Skipped for line artwork — see the `edge`
+            prop: a drawing of an envelope on a transparent ground has no
+            edges these two grey bars could be. */}
+        {edge && (
+          <>
+          <div
+            className="absolute bg-[#dcdcdc]"
+            style={{ left: 0, right: 0, top: 0, height: `${THICKNESS_PX}px`, transform: `translateY(-${THICKNESS_PX / 2}px) rotateX(90deg)`, transformOrigin: "top" }}
+          />
+          <div
+            className="absolute bg-[#dcdcdc]"
+            style={{ left: 0, right: 0, bottom: 0, height: `${THICKNESS_PX}px`, transform: `translateY(${THICKNESS_PX / 2}px) rotateX(90deg)`, transformOrigin: "bottom" }}
+          />
+          <div
+            className="absolute bg-[#dcdcdc]"
+            style={{ top: 0, bottom: 0, left: 0, width: `${THICKNESS_PX}px`, transform: `translateX(-${THICKNESS_PX / 2}px) rotateY(90deg)`, transformOrigin: "left" }}
+          />
+          <div
+            className="absolute bg-[#dcdcdc]"
+            style={{ top: 0, bottom: 0, right: 0, width: `${THICKNESS_PX}px`, transform: `translateX(${THICKNESS_PX / 2}px) rotateY(90deg)`, transformOrigin: "right" }}
+          />
+          </>
+        )}
       </div>
     </div>
   );
@@ -421,31 +453,22 @@ export default function About() {
         className="relative isolate w-full flex flex-col items-center text-center"
         style={{ padding: "calc(var(--u) * 300) calc(var(--u) * 120)" }}
       >
-        {/* Life-story photos, drifting at depth behind the text. Uses
-            placeholder artwork for now — see ParallaxPhotos. */}
-        <ParallaxPhotos />
+        {/* THE PHOTO BED AND THE "BIG STATEMENT" STARBURST ARE GONE
+            (2026-08-29). Noah: "I don't think I'm going to have the time to
+            do what I want with the about me text in the about me section.
+            Please keep the text, but remove the floating images and the 'big
+            statement' piece."
 
-        {/* "Big statement" starburst — placeholder shape via clip-path
-            star polygon, yellow fill matching the design's #ffca05. */}
-        <div
-          className="relative z-10 flex items-center justify-center"
-          style={{
-            width: "calc(var(--u) * 420)",
-            aspectRatio: "1/1",
-            background: "#ffca05",
-            clipPath:
-              "polygon(50% 0%, 61% 18%, 82% 8%, 82% 30%, 100% 35%, 88% 50%, 100% 65%, 82% 70%, 82% 92%, 61% 82%, 50% 100%, 39% 82%, 18% 92%, 18% 70%, 0% 65%, 12% 50%, 0% 35%, 18% 30%, 18% 8%, 39% 18%)",
-          }}
-        >
-          <span
-            className="text-[color:var(--color-ink)] text-center leading-tight"
-            style={{ fontFamily: "var(--font-sans)", fontSize: "calc(var(--u) * 44)", fontWeight: 700 }}
-          >
-            Big
-            <br />
-            statement
-          </span>
-        </div>
+            Both were placeholders waiting on artwork that is not going to
+            arrive before launch — the starburst was a clip-path polygon with
+            the literal words "Big statement" in it, and ParallaxPhotos was
+            drifting stand-in images. Shipping either would have been shipping
+            a note-to-self. The copy is real and stays.
+
+            The section keeps `relative isolate` and its padding: the copy is
+            still z-10 over nothing in particular, and the vertical space is
+            what gives this section its own beat between the header and the
+            résumé. */}
 
         {/* Body paragraph — Noah's placeholder copy (2026-08-24: "the about
             me paragraph is one of the last things I have to work on. For
@@ -584,6 +607,76 @@ export default function About() {
               frontSrc="/assets/about/resume-preview.jpg"
               backSrc="/assets/about/resume-back.png"
               widthUnits={phone ? 840 : 420}
+            />
+          </div>
+        </ApproachOnScroll>
+      </section>
+
+      {/* ================= NEWSLETTER ================= */}
+      {/* 2026-08-29, Noah: "Below the resume section, add a section that has
+          the text 'Subscribe to my newsletter'. It is treated the same exact
+          way the resume section is where there is arched text and a spinning
+          object."
+
+          DELIBERATELY THE SAME COMPONENTS, not a copy of them: the same
+          ArcText, the same ApproachOnScroll, the same DraggableResumeCard.
+          "Treated the same exact way" is a instruction about the pair of
+          sections reading as siblings, and the cheapest way to guarantee that
+          is for them to be the same code with different content. What differs
+          is only what Noah named — the artwork, the direction of spin, and
+          that a pencil drawing has to invert in the dark.
+
+          No clay arrows here. They point at the résumé, and Noah's sketch put
+          them there specifically; two sets of arrows on one page would stop
+          either being an arrow pointing at something. */}
+      <section
+        className="relative w-full flex flex-col items-center"
+        style={{ padding: "calc(var(--u) * 60) calc(var(--u) * 120) calc(var(--u) * 340)", marginBottom: "calc(var(--u) * 200)" }}
+      >
+        <ApproachOnScroll>
+          <div className="relative w-full flex flex-col items-center">
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSdVU0sAC4ZmMUfeLH3tRPOqwPQC1v7MzKLoMk5YxFoA7Sy3Gg/viewform?usp=header"
+              target="_blank"
+              rel="noreferrer"
+              className="block no-underline"
+              style={
+                phone
+                  ? { width: "calc(var(--u) * 1800)", height: "calc(var(--u) * 566)" }
+                  : { width: "calc(var(--u) * 1050)", height: "calc(var(--u) * 330)" }
+              }
+            >
+              <ArcText
+                id="newsletter-arc"
+                text="Subscribe To My Newsletter"
+                width={1050}
+                height={330}
+                radius={630}
+                baselineY={20}
+                fontSize={69}
+                flip={true}
+                color="var(--color-ink)"
+              />
+            </a>
+
+            {/* THE ENVELOPE SPINS THE OTHER WAY. `rotationSpeedDegPerSec` is
+                the value the loop eases toward, so a negative target is the
+                whole change — "the same 3D effect, but will rotate in the
+                opposite way".
+
+                `edge` off because the paper-thickness slabs are two grey bars
+                sized for a sheet of card, and this is a line drawing on a
+                transparent ground with no edges for them to be. `invertOnDark`
+                on because it is pencil: 0.079 mean ink saturation on the
+                front, 0.121 on the back. */}
+            <DraggableResumeCard
+              frontSrc="/assets/about/envelope-front.webp"
+              backSrc="/assets/about/envelope-back.webp"
+              rotationSpeedDegPerSec={-75}
+              widthUnits={phone ? 840 : 420}
+              alt="Subscribe to Noah Cousineau's newsletter"
+              invertOnDark
+              edge={false}
             />
           </div>
         </ApproachOnScroll>
