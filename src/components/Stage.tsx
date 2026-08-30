@@ -48,6 +48,7 @@ export function Place({
   w,
   wCss,
   yCss,
+  xCss,
   h,
   className = "",
   style,
@@ -61,6 +62,9 @@ export function Place({
   wCss?: string;
   /** The same escape hatch for the vertical position. Wins over `y`. */
   yCss?: string;
+  /** ...and for the horizontal one, so a column can be anchored to the right
+   *  edge of the window rather than to an artboard coordinate. Wins over `x`. */
+  xCss?: string;
   h?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -70,7 +74,7 @@ export function Place({
     <div
       className={`absolute ${className}`}
       style={{
-        left: `calc(var(--u) * ${x})`,
+        left: xCss ?? `calc(var(--u) * ${x})`,
         top: yCss ?? `calc(var(--u) * ${y})`,
         ...(wCss != null
           ? { width: wCss }

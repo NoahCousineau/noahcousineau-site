@@ -316,6 +316,23 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                 const row = right
                   ? (ci - 3) * 2 + ii
                   : ci * 2 + ii;
+                /* THE RIGHT COLUMN HANGS OFF THE RIGHT EDGE (2026-08-29).
+                   Noah: "for the in-between footers, make sure the column on
+                   the right side is always on the right side of the browser
+                   window."
+
+                   Its x was 1010 artboard units, which is 205px on a 390
+                   phone and 630px at 1199 — so as the band widened the column
+                   drifted toward the middle and left a third of the window
+                   empty beside it. Anchoring its RIGHT edge to the same inset
+                   the left column uses for its LEFT edge makes the pair
+                   symmetrical at every width, which is what "always on the
+                   right side" means. The rule's own capped width is what the
+                   column is offset by (see PHONE_RULE_W below). */
+                const ruleW = `min(calc(var(--u) * ${PHONE_RULE_W}), 200px)`;
+                const xCss = right
+                  ? `calc(100% - ${ruleW} - var(--u) * ${PHONE_COL_X[0]})`
+                  : undefined;
                 const x = PHONE_COL_X[right ? 1 : 0];
                 const rowY = phoneRowY(row);
                 /* The label-to-rule offset is capped for the same reason the
@@ -327,7 +344,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                   item.href.startsWith("http") || item.href.endsWith(".pdf");
                 return (
                   <div key={`${flatIndex}-${item.href}`}>
-                    <Place x={x} y={0} yCss={rowY}>
+                    <Place x={x} xCss={xCss} y={0} yCss={rowY}>
                       <Link
                         href={item.href}
                         target={external ? "_blank" : undefined}
@@ -355,7 +372,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                         the phone's own label-to-rule proportion across the
                         band, and is below 820 units at every phone width so
                         nothing there moves. */}
-                    <Place x={x} y={0} yCss={ruleY} wCss={`min(calc(var(--u) * ${PHONE_RULE_W}), 200px)`}>
+                    <Place x={x} xCss={xCss} y={0} yCss={ruleY} wCss={ruleW}>
                       <div
                         className="w-full bg-[color:var(--color-paper)]"
                         style={{ height: uFont(6) }}
