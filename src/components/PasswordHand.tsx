@@ -189,8 +189,14 @@ const FIELD = {
  * How the typed password is drawn (2026-08-25).
  *
  * Noah: "the password dots should be sized to fill up the type box when the
- * correct password is entered. Since 'TopSecret!' would be 10 characters, the
- * password dots should be sized to allow a maximum of 10 dots in the box."
+ * correct password is entered. Since [the site password] would be 10
+ * characters, the password dots should be sized to allow a maximum of 10
+ * dots in the box."
+ *
+ * (Quoted with the password removed, 2026-08-29. It was written out here
+ * verbatim, which put it in the repository and in every server source map
+ * the build produces — a secret stops being one the moment it is a code
+ * comment. MAX_DOTS below carries the only part that matters: the count.)
  *
  * DRAWN, NOT TYPED. The dots used to be whatever bullet the font puts in a
  * `type="password"` input, spaced by a letter-spacing guess — which cannot be
