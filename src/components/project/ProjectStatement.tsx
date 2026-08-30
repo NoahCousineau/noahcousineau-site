@@ -7,7 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "@/components/Stage";
 import { RULE_WEIGHT_CSS } from "./ProjectGroup";
 import { lockScroll, releaseScroll } from "@/lib/scrollLock";
-import { useIsPhone } from "@/lib/useIsPhone";
+import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 
 /**
  * linkify — auto-links bare domain mentions (e.g. "socalearth.org") and
@@ -381,6 +381,7 @@ export function ProjectStatement({
   paragraph: string | string[];
 }) {
   const phone = useIsPhone();
+  const compact = useIsCompact();
   /** The question's rendered height in artboard units, on phones where the
    *  line count is not known ahead of time. See STAGE_HEIGHT below. */
   const [questionHeight, setQuestionHeight] = useState<number | null>(null);
@@ -460,7 +461,13 @@ const FINGER_TIP_BELOW_TOP = 0.178;
      * context is created means there is nothing to revert and nothing that
      * could leave `lockScroll` engaged on a device where getting the page
      * moving again matters more. */
-    if (phone) return;
+    /* DESKTOP ONLY, 2026-08-29: "let's only have the hand falling animation
+     * play when the screen is in desktop mode." Was `phone`, which left the
+     * whole gesture — swing, fall, and the scroll lock that holds the page
+     * still while they play — running across the entire middle band, where
+     * the hand is small and the lock is most annoying. `compact` is the same
+     * line the footer's own see-saw reflows on. */
+    if (compact) return;
 
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
@@ -697,7 +704,7 @@ const FINGER_TIP_BELOW_TOP = 0.178;
     /* `phone` is false for the server render and the first client render, so
      * without it here a phone would build the desktop timeline once and keep
      * it. */
-  }, [phone]);
+  }, [phone, compact]);
 
   // Hand image (pre-rotated 90° so the finger points right — see
   // public/assets/shared/pointing-hand-static-rotated.webp, cropped tight
@@ -847,7 +854,9 @@ const FINGER_TIP_BELOW_TOP = 0.178;
                 /* ...and "Reduce the descriptive text size down by 1/3."
                    1.5 -> 1.0 of --text-lead, which is that two-thirds. */
                 fontSize: phone
-                  ? "var(--text-lead)"
+                  /* +15% on 2026-08-29: "in mobile mode, let's increase the
+                     size of the descriptive copy by 15%." */
+                  ? "calc(var(--text-lead) * 1.15)"
                   : "calc(var(--text-lead) * 1.5)",
                 fontFamily: "var(--font-sans)",
                 lineHeight: "1.38125",

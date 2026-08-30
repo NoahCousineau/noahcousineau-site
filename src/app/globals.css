@@ -366,6 +366,23 @@ html {
     display: none;
   }
 
+  /* ...AND THE SPACE IT WAS PROVIDING HAS TO COME BACK (2026-08-29). Noah:
+     "let's ensure the images stacked on top of one another have a small gap
+     in-between. Right now some do while others are touching one another."
+
+     The two cases had different answers and only one of them was handled.
+     Cells WITHIN a row get `row-gap` once the row collapses to one column;
+     cells in DIFFERENT rows were separated by the rule above, and hiding it
+     left them flush against each other. Which is exactly "some do while
+     others are touching": whether a pair had a gap depended on whether the
+     artwork happened to put them in the same row.
+
+     Same 48 units as the row-gap, so a reader cannot tell which pairs were
+     row-mates and which were not — which is the point. */
+  .js-grid-row + .js-grid-row {
+    margin-top: calc(var(--u) * 48);
+  }
+
   /* A `scale` that frames a cell on a desktop can read as a misaligned edge
      once a phone has made the row one column wide. Cells that opt in with
      `phoneUnscaled` render at their full width here instead. */
@@ -434,6 +451,13 @@ html {
  */
 @media (min-width: 768px) and (max-width: 1199px) {
   :root {
+    /* 2026-08-29: "for the project section titles, please double the size of
+       these on the in-between size." The band inherits the desktop's scale of
+       1, which puts the title at 10.7px at 768 and 16.6px at 1199 — correct
+       as a linear zoom of the desktop design and too small to carry a section
+       in a window that size. 2 lands it at 21.3px and 33.2px, between the
+       phone's 19px and the desktop's 21px at 1512. */
+    --descriptor-scale: 2;
     --chrome-drop: calc(min(100vw, 1920px) / 1920 * 58.67 + 6px - 13.25px);
     --home-mark-top-floor: calc(13.25px + var(--chrome-drop));
   }

@@ -128,7 +128,11 @@ const NO_ICONS: HeaderIcon[] = [];
 const KIND_MAX_FRACTION_OF_HERO: Record<HeaderIcon["kind"], number> = {
   clay: 0.75,
   paper: 0.5,
-  pencil: 0.3,
+  /* 0.3 -> 0.4, 2026-08-29: "for all sizes, let's make the pencil header
+   * icons a little larger." Only the pencil ceiling moves; clay and paper
+   * keep the fractions Noah set, so the kinds still read in the order he
+   * asked for (clay biggest, then paper, then pencil). */
+  pencil: 0.4,
 };
 
 /* Three tiers per kind, each a fraction of THAT KIND'S OWN ceiling above —

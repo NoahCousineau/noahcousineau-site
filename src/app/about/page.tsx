@@ -451,7 +451,14 @@ export default function About() {
           between near and far photos became legible. */}
       <section
         className="relative isolate w-full flex flex-col items-center text-center"
-        style={{ padding: "calc(var(--u) * 300) calc(var(--u) * 120)" }}
+        /* TOP PADDING CUT BY 75% (2026-08-29). Noah: "there's a gap on the
+           about me page that is in-between the top of the about me paragraph
+           and the header line. Let's reduce this space by 75%." 300 -> 75
+           units. The 300 was sized to give the parallax photo bed room to
+           read as depth; that bed is gone (see the note below), so the space
+           was holding nothing. The BOTTOM padding stays at 300 — it is what
+           separates this section from the résumé. */
+        style={{ padding: "calc(var(--u) * 75) calc(var(--u) * 120) calc(var(--u) * 300)" }}
       >
         {/* THE PHOTO BED AND THE "BIG STATEMENT" STARBURST ARE GONE
             (2026-08-29). Noah: "I don't think I'm going to have the time to
@@ -672,8 +679,12 @@ export default function About() {
             <DraggableResumeCard
               frontSrc="/assets/about/envelope-front.webp"
               backSrc="/assets/about/envelope-back.webp"
-              rotationSpeedDegPerSec={-75}
-              widthUnits={phone ? 840 : 420}
+              /* 2026-08-29: "let's just have it rotate the other direction
+                 than what it currently is" — so back to positive, matching
+                 the résumé's own direction. And "increase the size of the
+                 envelope by 20%": 420 -> 504, 840 -> 1008. */
+              rotationSpeedDegPerSec={75}
+              widthUnits={phone ? 1008 : 504}
               alt="Subscribe to Noah Cousineau's newsletter"
               invertOnDark
               edge={false}

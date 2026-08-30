@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import MickeyWatch from "./MickeyWatch";
 import { ArcText, BottomArcText } from "./ArcText";
-import { useIsPhone } from "@/lib/useIsPhone";
+import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 
 /*
  * AWAY SCREEN — full-viewport ink panel carrying the clock lockup and
@@ -72,7 +72,17 @@ import { useIsPhone } from "@/lib/useIsPhone";
  * be READING a case study — which is exactly what someone is doing on a
  * project page, scrolled to a still image with the pointer parked. The site's
  * own content invites the state this was treating as absence. */
-const IDLE_MS = 90_000;
+/* 45s, set explicitly on 2026-08-29: "let's have this appear 45 seconds
+ * after the user last interacts with the site. Scrolling on the site counts
+ * as an interaction."
+ *
+ * Lower than the 90 it had been, which reads as a contradiction next to "the
+ * clock screen is appearing too soon" and is not one: the complaint is about
+ * the timer not being RESET, not about its length. If a scroll does not stamp
+ * the clock then any number is too short, because the countdown never
+ * restarts while someone reads. So the number is what Noah asked for and the
+ * reset is widened below to cover every way a person touches a page. */
+const IDLE_MS = 45_000;
 /** How often the idle poll checks the activity stamp. */
 const IDLE_POLL_MS = 1000;
 /** Debounce on the leave triggers, so an alt-tab bounce or focus brushing
@@ -158,6 +168,7 @@ export default function AwayOverlay({
   forceOpen?: boolean;
 }) {
   const phone = useIsPhone();
+  const compact = useIsCompact();
   // Always starts hidden, including in server-rendered HTML, so a page
   // opened in a background tab hydrates clean.
   const [awayState, setAway] = useState(false);
@@ -266,7 +277,15 @@ export default function AwayOverlay({
       }
     };
 
-    const ACTIVITY = ["mousemove", "mousedown", "keydown", "wheel", "touchstart", "scroll"] as const;
+    /* Every way someone can be present. `scroll` was already here, but only
+       on `window` — and a smooth-scroll library that animates a transform
+       rather than the document would never fire it, so the pointer and touch
+       events are the belt to its braces. `pointermove` also covers a stylus
+       and a trackpad glide that never becomes a click. */
+    const ACTIVITY = [
+      "mousemove", "mousedown", "keydown", "wheel", "touchstart", "touchmove",
+      "pointerdown", "pointermove", "scroll",
+    ] as const;
     ACTIVITY.forEach((e) =>
       window.addEventListener(e, onActivity, { passive: true })
     );
@@ -406,9 +425,17 @@ export default function AwayOverlay({
           style={{
             // Bigger on a phone as a share of the screen, since it is no
             // longer sharing a row with anything.
+            /* The middle band gets its own size (2026-08-29: "for the
+               in-between sizes, let's make sure the clock is slightly
+               larger"). The desktop expression is 520 units capped at 52vh,
+               which at 900px wide is only 244px — small in a window with
+               nothing else in it. 720 units lifts it to about 338px there
+               and the vh cap still governs a short window. */
             width: phone
               ? "min(calc(var(--u) * 1320), 34vh)"
-              : "min(calc(var(--u) * 520), 52vh)",
+              : compact
+                ? "min(calc(var(--u) * 720), 58vh)"
+                : "min(calc(var(--u) * 520), 52vh)",
             aspectRatio: "1/1",
           }}
         >

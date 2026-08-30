@@ -604,7 +604,7 @@ export function ProjectGroup({
             const gridAlignItems = rowHasFitCell ? "start" : undefined;
 
             return (
-            <div key={i} className={row.phoneWide ? "js-phone-wide" : undefined}>
+            <div key={i} className={`js-grid-row${row.phoneWide ? " js-phone-wide" : ""}`}>
               {row.gapped ? (
                 <div
                   style={{
