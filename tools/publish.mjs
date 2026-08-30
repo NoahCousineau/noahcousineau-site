@@ -258,19 +258,33 @@ if (changedFiles.length) {
   ok(`Saved: ${message}`);
 }
 
-// -u on every push is harmless and means the very first one sets the branch
-// up to track origin, so later pushes and the "what's waiting" count work.
-const push = spawnSync("git", ["push", "-u", "origin", branch], { encoding: "utf8" });
+/* STDIO IS INHERITED, NOT CAPTURED, AND THAT IS THE WHOLE POINT.
+ *
+ * The first push to a private repository has to authenticate, and git asks
+ * for the username and token on the terminal. With the output piped — which
+ * is what every other step here does, so it can read the errors — that prompt
+ * is written into a pipe nobody is reading: the window sits there blank and
+ * apparently frozen, with git waiting for an answer that cannot arrive.
+ *
+ * So this one command talks straight to the terminal. It costs the parsed
+ * error text, which is why the file-size check above runs BEFORE the push
+ * rather than reading its output afterwards. */
+say(`  ${C.dim}If this is your first push, git will ask for your GitHub username${C.reset}`);
+say(`  ${C.dim}and a personal access token — NOT your account password, which${C.reset}`);
+say(`  ${C.dim}GitHub no longer accepts. It is remembered after the first time.${C.reset}\n`);
+const push = spawnSync("git", ["push", "-u", "origin", branch], { stdio: "inherit" });
 if (push.status !== 0) {
-  const out = `${push.stdout || ""}${push.stderr || ""}`;
-  if (/exceeds .*file size limit|large files/i.test(out)) {
-    stop("A file is too big to publish.", [
-      "GitHub won't accept anything over 100MB.",
-      'Run: bash tools/purge-large-files-from-history.sh',
-      "then try publishing again.",
-    ]);
-  }
-  stop("Couldn't send the changes up.", [`${C.dim}${out.trim().split("\n").slice(-4).join("\n  ")}${C.reset}`]);
+  stop("Couldn't send the changes up.", [
+    "The message above says why. The usual two:",
+    "",
+    `${C.dim}Authentication failed${C.reset} — GitHub wants a personal access token, not`,
+    "your password. Make one at github.com/settings/tokens, give it",
+    "Contents access to this repository, and paste it when git asks",
+    "for the password.",
+    "",
+    `${C.dim}Repository not found${C.reset} — the address is wrong, or the repository`,
+    "hasn't been created yet.",
+  ]);
 }
 ok("Sent.");
 
