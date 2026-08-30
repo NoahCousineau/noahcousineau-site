@@ -14,10 +14,36 @@ import type { NextRequest } from "next/server";
  */
 
 const COOKIE = "nc_gate";
-const SECRET = process.env.GATE_SECRET || "dev-only-insecure-secret-change-me";
+
+/*
+ * THE SIGNING SECRET, AND WHY PRODUCTION REFUSES THE FALLBACK (2026-08-29,
+ * launch hardening).
+ *
+ * The fallback exists so `npm run dev` works out of the box on a fresh clone.
+ * But it is a literal in a public repo: anyone who reads this file can mint a
+ * cookie that `readGate` accepts, which turns the gate into a decoration. In
+ * development that is a convenience; in production it is the whole control
+ * failing open, silently, with no symptom anyone would notice.
+ *
+ * So production throws instead. A deploy that forgets GATE_SECRET fails at
+ * the first gated request with a message naming the variable — loud, at
+ * deploy time, rather than quiet forever.
+ */
+const DEV_SECRET = "dev-only-insecure-secret-change-me";
+function secret(): string {
+  const s = process.env.GATE_SECRET;
+  if (s) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "GATE_SECRET is not set. The password gate cannot sign cookies securely " +
+        "without it — set it in the host's environment variables before deploying."
+    );
+  }
+  return DEV_SECRET;
+}
 
 function sign(value: string): string {
-  return createHmac("sha256", SECRET).update(value).digest("hex");
+  return createHmac("sha256", secret()).update(value).digest("hex");
 }
 
 /** Returns the signed token if the cookie is present and valid. */
@@ -36,7 +62,24 @@ export function readGate(request: NextRequest): string | null {
 }
 
 /** Issue a signed cookie. */
-export function issueGate(): NextResponse {
+/** True when this request actually arrived over HTTPS — including behind a
+ *  proxy or CDN, which terminates TLS and forwards the original scheme in
+ *  `x-forwarded-proto`. Keyed on the CONNECTION rather than on NODE_ENV so
+ *  that `next start` over http on a laptop still works (a Secure cookie is
+ *  simply never stored there, and the gate would look broken), while a real
+ *  deployment gets the flag without anyone having to remember to set it. */
+function isHttps(request?: Pick<Request, "headers" | "url">): boolean {
+  if (!request) return process.env.NODE_ENV === "production";
+  const proto = request.headers.get("x-forwarded-proto");
+  if (proto) return proto.split(",")[0].trim() === "https";
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return process.env.NODE_ENV === "production";
+  }
+}
+
+export function issueGate(request?: Pick<Request, "headers" | "url">): NextResponse {
   const value = Date.now().toString();
   const token = `${value}.${sign(value)}`;
   const res = NextResponse.json({ ok: true });
@@ -44,11 +87,21 @@ export function issueGate(): NextResponse {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    /* Without this the cookie is sent over plain HTTP too, so anyone sharing
+       a network can read it off the wire and replay it. See isHttps above for
+       why it follows the connection rather than NODE_ENV. */
+    secure: isHttps(request),
     maxAge: 60 * 60 * 24 * 365,
   });
   return res;
 }
 
 export function clearGate(res: NextResponse) {
-  res.cookies.set(COOKIE, "", { path: "/", maxAge: 0 });
+  res.cookies.set(COOKIE, "", {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isHttps(),
+    maxAge: 0,
+  });
 }
