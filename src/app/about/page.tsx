@@ -378,11 +378,18 @@ export default function About() {
   // the head come to rest exactly on the line rather than at the foot of the
   // page. See components/project/headerLayout.ts.
   const arenaRef = useRef<HTMLDivElement>(null);
-  /** The résumé link the clay arrows aim at — measured rather than assumed,
-   *  since it travels inside ApproachOnScroll. See ResumeArrows.tsx. */
-  const resumeLinkRef = useRef<HTMLAnchorElement>(null);
-  /** The newsletter link its own pair of arrows aims at. */
-  const newsletterLinkRef = useRef<HTMLAnchorElement>(null);
+  /* THE ARROWS AIM AT THE SPINNING OBJECT, NOT THE HEADLINE (2026-08-30).
+   * Noah: "let's make sure the arrows are pointing at the envelope and
+   * resume. Right now they're not angled correctly."
+   *
+   * They were aimed at the <a>, which is the arc of type — and type sits well
+   * above the thing it names. Measured at 1512: the résumé's link centre is
+   * 228px above the card, the newsletter's 282px above the envelope. Every
+   * arrow was therefore aimed correctly at the wrong point, which reads as an
+   * arrow pointing past its object. These wrappers give the aim a box a
+   * reader would actually call "the résumé" and "the envelope". */
+  const resumeCardRef = useRef<HTMLDivElement>(null);
+  const envelopeRef = useRef<HTMLDivElement>(null);
 
   return (
     <main
@@ -579,7 +586,7 @@ export default function About() {
           <ResumeArrows
             target={RESUME_CARD_CENTRE}
             spots={RESUME_ARROW_SPOTS}
-            targetRef={resumeLinkRef}
+            targetRef={resumeCardRef}
           />
         )}
         {/* Headline and card travel toward the viewer together as this
@@ -590,7 +597,6 @@ export default function About() {
         <ApproachOnScroll>
           <div className="relative w-full flex flex-col items-center">
             <a
-              ref={resumeLinkRef}
               href="/assets/_documents/noah-cousineau-resume.pdf"
               target="_blank"
               rel="noreferrer"
@@ -623,11 +629,13 @@ export default function About() {
                 mousedown/touchstart handler, which would conflict with a
                 wrapping link's click-to-navigate — the download action is on
                 the curved headline text instead. */}
-            <DraggableResumeCard
-              frontSrc="/assets/about/resume-preview.jpg"
-              backSrc="/assets/about/resume-back.png"
-              widthUnits={phone ? 840 : 420}
-            />
+            <div ref={resumeCardRef}>
+              <DraggableResumeCard
+                frontSrc="/assets/about/resume-preview.jpg"
+                backSrc="/assets/about/resume-back.png"
+                widthUnits={phone ? 840 : 420}
+              />
+            </div>
           </div>
         </ApproachOnScroll>
       </section>
@@ -661,13 +669,12 @@ export default function About() {
           <ResumeArrows
             target={NEWSLETTER_CARD_CENTRE}
             spots={NEWSLETTER_ARROW_SPOTS}
-            targetRef={newsletterLinkRef}
+            targetRef={envelopeRef}
           />
         )}
         <ApproachOnScroll>
           <div className="relative w-full flex flex-col items-center">
             <a
-              ref={newsletterLinkRef}
               href="https://docs.google.com/forms/d/e/1FAIpQLSdVU0sAC4ZmMUfeLH3tRPOqwPQC1v7MzKLoMk5YxFoA7Sy3Gg/viewform?usp=header"
               target="_blank"
               rel="noreferrer"
@@ -701,19 +708,21 @@ export default function About() {
                 transparent ground with no edges for them to be. `invertOnDark`
                 on because it is pencil: 0.079 mean ink saturation on the
                 front, 0.121 on the back. */}
-            <DraggableResumeCard
-              frontSrc="/assets/about/envelope-front.webp"
-              backSrc="/assets/about/envelope-back.webp"
-              /* 2026-08-29: "let's just have it rotate the other direction
-                 than what it currently is" — so back to positive, matching
-                 the résumé's own direction. And "increase the size of the
-                 envelope by 20%": 420 -> 504, 840 -> 1008. */
-              rotationSpeedDegPerSec={75}
-              widthUnits={phone ? 1008 : 504}
-              alt="Subscribe to Noah Cousineau's newsletter"
-              invertOnDark
-              edge={false}
-            />
+            <div ref={envelopeRef}>
+              <DraggableResumeCard
+                frontSrc="/assets/about/envelope-front.webp"
+                backSrc="/assets/about/envelope-back.webp"
+                /* Flipped again 2026-08-30: "the envelope is still rotating
+                   the wrong direction, make it rotate the other way" — so back
+                   to negative, which is opposite the résumé's. Sized +20% on
+                   2026-08-29: 420 -> 504, 840 -> 1008. */
+                rotationSpeedDegPerSec={-75}
+                widthUnits={phone ? 1008 : 504}
+                alt="Subscribe to Noah Cousineau's newsletter"
+                invertOnDark
+                edge={false}
+              />
+            </div>
           </div>
         </ApproachOnScroll>
       </section>

@@ -19,6 +19,12 @@ interface RotatingHeadProps {
   isDarkMode?: boolean;
   variant?: 'staggered' | 'smooth'; // For future smooth variants
   autoRotateSpeed?: number;
+  /** How long the head stays still after a drag before it starts winding
+   *  back up. 5000 -> 2200 on 2026-08-30 — Noah: "make it so the head
+   *  continues rotating a little sooner than it currently does after the user
+   *  stops it." Five seconds was Noah's own original number, but that was
+   *  before the ramp existed: the head does not snap back to speed, it eases
+   *  over RESUME_RAMP_MS, so the pause reads longer than it measures. */
   resumeRotationDelay?: number;
   dragSensitivity?: number;
   containerClassName?: string;
@@ -28,7 +34,7 @@ export default function RotatingHead({
   isDarkMode = false,
   variant = 'staggered',
   autoRotateSpeed = 100,
-  resumeRotationDelay = 5000,
+  resumeRotationDelay = 2200,
   dragSensitivity = 20,
   containerClassName = '',
 }: RotatingHeadProps) {

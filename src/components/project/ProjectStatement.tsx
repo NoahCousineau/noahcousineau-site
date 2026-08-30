@@ -449,9 +449,32 @@ const FINGER_TIP_BELOW_TOP = 0.178;
   /** The sticky wrapper's own style attribute, saved while the fall pins it
    *  to the viewport so it can be handed back afterwards. */
   const restoreSticky = useRef<string | null>(null);
+  /* WHETHER THE HAND HAS ALREADY FALLEN ON THIS PAGE VIEW. A ref, so it
+   * survives the effect being torn down and rebuilt. */
+  const hasFallen = useRef(false);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (!handRef.current || !paragraphRef.current || !handStickyRef.current) return;
+
+    /* ONCE IT HAS FALLEN IT STAYS DOWN (2026-08-30). Noah: "the hand will
+     * awkwardly appear sometimes on project pages when changing the browser
+     * window size."
+     *
+     * Reproduced exactly: fall the hand at 1512 (it ends `visibility: hidden`),
+     * resize to 1100, and it is `visible, opacity 1` again. `gsap.context`
+     * reverts the inline styles it set when the effect tears down — and
+     * crossing the desktop/compact line is a teardown, because `compact` is in
+     * the deps. The revert is right for everything else the context did; it is
+     * wrong for the one state that is supposed to outlive it.
+     *
+     * So the fall records itself, and a rebuild puts the hand straight back
+     * down instead of creating a trigger that has already had its turn. This
+     * has to sit ABOVE the `compact` bail below, or resizing into the middle
+     * band — which is how Noah found it — skips the hide entirely. */
+    if (hasFallen.current) {
+      gsap.set(handRef.current, { autoAlpha: 0 });
+      return;
+    }
     /* NOT ON A PHONE (2026-08-25). Noah: "let's not make the hand fall. Let's
      * just keep it stuck and pointing at the content."
      *
@@ -633,6 +656,9 @@ const FINGER_TIP_BELOW_TOP = 0.178;
         },
         onComplete: () => {
           releaseScroll();
+          // Remembered outside the gsap context, so a later rebuild knows the
+          // gesture is spent — see the note at the top of this effect.
+          hasFallen.current = true;
           // The hand has hidden itself by now; put the wrapper back so there
           // is no fixed-position element left over on the page.
           const el = handStickyRef.current;
