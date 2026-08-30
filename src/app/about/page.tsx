@@ -516,13 +516,11 @@ export default function About() {
             what gives this section its own beat between the header and the
             résumé. */}
 
-        {/* Body paragraph — Noah's placeholder copy (2026-08-24: "the about
-            me paragraph is one of the last things I have to work on. For
-            now, please use this placeholder text... I'll give more attention
-            to the about me paragraph... later"), not a lorem stand-in —
-            real text, subject to a later pass. Split at a sentence boundary
-            near its midpoint into the two columns the design calls for on
-            desktop; single column on narrow viewports. */}
+        {/* Body copy. Noah's final text, sent 2026-08-30 to replace the
+            placeholder that had stood here since 2026-08-24 ("the about me
+            paragraph is one of the last things I have to work on").
+            Transcribed exactly as written — four paragraphs now rather than
+            two, which the single-column grid takes without any change. */}
         <div
           // ONE COLUMN, 2026-08-24: "For the about me text, have the text in
           // one wide column instead of two short ones." Was one column below
@@ -544,23 +542,35 @@ export default function About() {
           }}
         >
           <p className="m-0">
-            Being silly is serious work. This is not only a strong personal
-            belief, but a reason why I switched careers from engineering to
-            graphic design. As an engineer, I worked on serious projects
-            where miscalculation could cost hundreds of thousands of
-            dollars, or worse, an accident or injury. When I attended my
-            masters program at ArtCenter College of Design, I was confused
-            to see designers uphold themselves to similar levels of
-            severity.
+            Engineering is the study of problem solving. This was the core
+            learning that I derived from my bachelors program in Aerospace
+            Engineering and from my career as an engineer. Despite dedicating
+            so much time to becoming an engineer, there was one other key
+            learning that I gained from my experience; I hated engineering.
           </p>
           <p className="m-0">
-            In a discipline where we need to connect to audiences, why be so
-            incredibly grave and stark with our work? Why not be a little
-            more human have some fun with it? I create work with humor,
-            levity, and joy not only because I enjoy doing so, but because
-            it resonates with audiences. In a somber and increasingly less
-            human design landscape, there’s nothing more serious than
-            having some fun.
+            For a field that seemed to be teaming with creativity and
+            possibility, I found myself mired by dull calculations,
+            regimented procedures, and serious consequences to errors. If I
+            was going to devote myself to a career, I wanted to ensure it was
+            one where I could be creative and not be so grave and solemn.
+            This yearning for levity and creativity brought me to another
+            passion of mine, graphic design.
+          </p>
+          <p className="m-0">
+            After a graduate graphic design program and working as a designer,
+            I’ve found something curious about my industry. Many designers
+            carry themselves with the same onus that I was required to have as
+            an engineer. Designers can be serious, stern, and humorless in
+            their character and work. If we find ourselves in a field full of
+            self expression and creativity, why be so stark about it?
+          </p>
+          <p className="m-0">
+            Like engineering, design is also a study of problem solving.
+            Unlike engineering, design can be solved however the designer
+            wants. I find that I still have a calculated problem-solving
+            approach to design like I did as an engineer. This time, I just
+            chose to have fun while solving the problem.
           </p>
         </div>
       </section>
