@@ -65,6 +65,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  /* Don't advertise the framework on every response. It tells an attacker
+     which CVE list to work through and buys the site nothing. */
+  poweredByHeader: false,
   /* A static export has no server to send headers, so this is skipped there;
      the review zip is opened from a file system anyway. */
   ...(reviewBuild
