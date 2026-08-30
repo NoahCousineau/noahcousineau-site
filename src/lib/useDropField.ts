@@ -231,6 +231,60 @@ const RESTING_OVERLAP = 14;
  *  correction left to make. */
 const RESTING_SLIDE = 0;
 
+/**
+ * Friction BETWEEN TWO BODIES, as a fraction of the normal impulse
+ * (2026-08-31). Noah: "getting the header icons able to move and rest on top
+ * of one another and reduce fidgeting."
+ *
+ * Until now there was no tangential response between bodies at all. Every
+ * body-body contact applied an impulse along the normal and nothing across
+ * it, so two objects in contact could slide past each other freely: the only
+ * thing slowing a sideways slide was AIR_DRAG, at 0.2 per second, and the
+ * floor's own friction, which a body resting on another body never touches.
+ * An icon that landed on top of another kept whatever sideways speed it
+ * arrived with and crept off the side of it.
+ *
+ * RESTING_SLIDE above solved the POSITIONAL half of the same problem — the
+ * separation push no longer shoves a settled pair apart sideways. This is the
+ * velocity half, and the two are complementary: one stops a resting contact
+ * being resolved sideways, the other stops a moving one sliding.
+ *
+ * Coulomb-style, so it scales with how hard the two are pressed together: the
+ * tangential impulse is clamped to this fraction of the normal impulse, which
+ * means a light touch barely grips and a body with real weight on it holds
+ * firm. 0.5 is a middling, sticky-but-not-glued value.
+ */
+const PAIR_FRICTION = 0.5;
+
+
+
+/**
+ * THE SETTLE WATCHDOG (2026-08-31). Seconds a body may sit essentially still
+ * before it is parked outright, and how far "essentially still" is allowed to
+ * wander, as a fraction of the body's own width.
+ *
+ * Every other quiet-detection term in this file is a SPEED in px/s, and speed
+ * is the wrong unit for the question Noah is actually asking — "reduce
+ * fidgeting" is about whether anything appears to move, which is a question
+ * about DISPLACEMENT. A body can sit under every speed threshold and still
+ * creep, and worse, those thresholds are absolute pixels while the arena is
+ * sized in --u: at a 900px window the whole field is about two-thirds the
+ * size it was tuned at, so the same numbers mean something different. Two of
+ * four project pages were still moving at 36-158px/s a full twelve seconds
+ * after their drop, and which two depended on the window width.
+ *
+ * This closes it from the other end and is scale-free by construction:
+ * measured against the body's own width, so it means the same thing at 390px
+ * as at 1920px. If a body has not moved 2% of its own width in a second and a
+ * half, whatever it is doing is not visible, and it is stopped.
+ *
+ * It cannot freeze anything real. A body in flight covers its own width many
+ * times over in this window, and a dragged body is `held`, which is excluded.
+ * Waking works exactly as before — a neighbour arriving, a drag, a resize.
+ */
+const SETTLE_WATCHDOG_S = 1.5;
+const SETTLE_DRIFT_FRACTION = 0.02;
+
 export type DropSpec = {
   /** Rendered width, as a fraction of the ARENA's width. */
   width: number;
@@ -273,6 +327,11 @@ type Body = {
   /** Rendered size in px, refreshed each frame from layout. */
   w: number;
   h: number;
+  /** Where this body was when the settle watchdog last saw it move, and for
+   *  how long it has stayed near that spot. See SETTLE_WATCHDOG_S. */
+  anchorX: number;
+  anchorY: number;
+  anchorT: number;
 };
 
 export function useDropField({
@@ -395,6 +454,9 @@ export function useDropField({
         calm: 0,
         w: 0,
         h: 0,
+        anchorX: 0,
+        anchorY: 0,
+        anchorT: 0,
       };
     });
     specs.forEach((spec, i) => {
@@ -631,6 +693,12 @@ export function useDropField({
       b.vy = 0;
       b.rot = 0;
       b.spin = b.spec.spin === false ? 0 : (Math.random() - 0.5) * 90;
+      // Start the watchdog from where the body actually is, not from (0,0),
+      // which would read as a huge jump on its first frame and is also the
+      // corner this field spent a while learning not to put things in.
+      b.anchorX = b.x;
+      b.anchorY = b.y;
+      b.anchorT = 0;
     };
 
     const substep = (h: number) => {
@@ -691,8 +759,65 @@ export function useDropField({
             const towards = (Math.atan2(dy, dx) * 180) / Math.PI;
             const overlap = reach(a, towards) + reach(c, towards + 180) - d - OVERLAP_SLOP;
             if (overlap <= 0) continue;
+
+            /* A CONTACT BETWEEN TWO SLEEPING BODIES IS FINISHED WITH
+             * (2026-08-31). Noah: "reduce fidgeting."
+             *
+             * This is what kept a pile alive indefinitely. The resolution
+             * below wakes both bodies for ANY overlap at all, and a stack
+             * always has one: SEPARATION is under 1, so the push never fully
+             * closes the gap it is correcting. So a settled body would sleep,
+             * be woken by its neighbour's contact on the very next substep,
+             * spend REST_TIME accumulating calm, sleep again, and be woken
+             * again — and every one of those waking intervals is another dose
+             * of gravity integrated and then corrected away. Measured on
+             * /work/sprouts-farmers-market, that cycle never stopped: about
+             * 47px of total travel per second, still going twelve seconds
+             * after the drop, while pages whose objects happen to rest
+             * directly on the floor reached a true 0.00.
+             *
+             * Skipping the whole contact is safe here in a way it was NOT in
+             * the version recorded above RESTING_OVERLAP, which skipped for
+             * any shallow overlap between two SLOW bodies and made piles
+             * sink: a slow body is still awake, still integrating gravity,
+             * so removing its support let it fall. An ASLEEP body does not
+             * integrate anything. There is nothing to support and nothing to
+             * correct, so leaving the pair completely alone is exactly right,
+             * and it costs the drift the other attempt hit — a sleeping body
+             * receiving a push it can never counteract.
+             *
+             * Anything that disturbs the pile — a drag, a resize, a late
+             * arrival landing on it — wakes a body by another route, and the
+             * moment either side is awake this contact resolves normally
+             * again and wakes its neighbour with it. */
+            if (!a.held && !c.held && a.asleep && c.asleep) continue;
             const nx = dx / d;
             const ny = dy / d;
+            /* A SLEEPING BODY IS GROUND, NOT A PARTICIPANT (2026-08-31).
+             *
+             * This is what finally stopped the fidgeting, and the reason the
+             * earlier attempts above could not. A settled body would be
+             * parked, its still-awake neighbour's contact would wake it on
+             * the very next substep, the two would shove each other a pixel
+             * or two, and it would park again — a cycle with no end. Traced
+             * on /work/corita-art-center: one icon oscillating between
+             * x=631.3 and x=633.3, y and rotation frozen, still going twelve
+             * seconds after the drop.
+             *
+             * Every real solver treats a sleeping body as static, and that is
+             * all this does. When one side is asleep the whole correction is
+             * applied to the other one and the sleeper is neither moved nor
+             * woken, so the awake body resolves against it exactly as it
+             * would against the floor, comes to rest, and is parked by the
+             * watchdog in turn. Then both are asleep, the contact is skipped
+             * outright, and the pile is genuinely finished.
+             *
+             * Note this is NOT the same as skipping the push, which was tried
+             * and made piles sink: the correction is still applied at full
+             * strength, just all of it to the body that can still move. */
+            const aStatic = a.asleep && !a.held;
+            const cStatic = c.asleep && !c.held;
+
             // Mass by area, so a big object shoulders a small one aside.
             const ra = bound(a);
             const rb = bound(c);
@@ -715,10 +840,18 @@ export function useDropField({
               Math.hypot(c.vx, c.vy) < SLEEP_SPEED;
             const pushX = nx * push * (restingPair ? RESTING_SLIDE : 1);
             const pushY = ny * push;
-            a.x -= pushX * (mc / total);
-            a.y -= pushY * (mc / total);
-            c.x += pushX * (ma / total);
-            c.y += pushY * (ma / total);
+            if (aStatic) {
+              c.x += pushX;
+              c.y += pushY;
+            } else if (cStatic) {
+              a.x -= pushX;
+              a.y -= pushY;
+            } else {
+              a.x -= pushX * (mc / total);
+              a.y -= pushY * (mc / total);
+              c.x += pushX * (ma / total);
+              c.y += pushY * (ma / total);
+            }
             // This is a REAL, currently-unresolved overlap being acted on —
             // a body whose position just moved because of it is not at
             // rest, whatever its stored velocity says. Missing this was the
@@ -731,8 +864,8 @@ export function useDropField({
             // `asleep = false`, never ran — while `write()` still applies
             // the new x/y every frame regardless of the asleep flag,
             // producing visible motion nothing marked as "still settling."
-            if (!a.held) a.asleep = false;
-            if (!c.held) c.asleep = false;
+            if (!a.held && !aStatic) a.asleep = false;
+            if (!c.held && !cStatic) c.asleep = false;
 
             const rvx = c.vx - a.vx;
             const rvy = c.vy - a.vy;
@@ -752,16 +885,48 @@ export function useDropField({
               // body's relative velocity can actually reach zero and stay
               // there. Above it, a real collision still bounces normally.
               const restitution = Math.abs(sep) < PAIR_REST_SPEED ? 0 : PAIR_RESTITUTION;
-              const jimp = (-(1 + restitution) * sep) / (1 / (ma || 1) + 1 / (mc || 1));
-              if (!a.held) {
-                a.vx -= (jimp * nx) / (ma || 1);
-                a.vy -= (jimp * ny) / (ma || 1);
+              // A sleeping body is ground here too: infinite mass, so it
+              // absorbs the collision without taking any of it.
+              const invA = aStatic ? 0 : 1 / (ma || 1);
+              const invC = cStatic ? 0 : 1 / (mc || 1);
+              const invSum = invA + invC;
+              if (invSum <= 0) continue;
+              const jimp = (-(1 + restitution) * sep) / invSum;
+              if (!a.held && !aStatic) {
+                a.vx -= jimp * nx * invA;
+                a.vy -= jimp * ny * invA;
                 a.asleep = false;
               }
-              if (!c.held) {
-                c.vx += (jimp * nx) / (mc || 1);
-                c.vy += (jimp * ny) / (mc || 1);
+              if (!c.held && !cStatic) {
+                c.vx += jimp * nx * invC;
+                c.vy += jimp * ny * invC;
                 c.asleep = false;
+              }
+
+              /* FRICTION ACROSS THE CONTACT — see PAIR_FRICTION. Without
+               * this, the impulse above is purely along the normal and two
+               * touching bodies slide past each other as if greased, which
+               * is why an icon landing on another crept off the side of it
+               * instead of staying put. The tangent is the normal turned a
+               * quarter turn; the impulse opposes whatever relative motion
+               * runs along it, clamped Coulomb-style to a fraction of the
+               * normal impulse so the grip is proportional to how hard the
+               * two are pressed together. */
+              const tx = -ny;
+              const ty = nx;
+              const vt = rvx * tx + rvy * ty;
+              if (vt !== 0) {
+                const jt = -vt / invSum;
+                const maxF = PAIR_FRICTION * Math.abs(jimp);
+                const jtc = Math.max(-maxF, Math.min(maxF, jt));
+                if (!a.held && !aStatic) {
+                  a.vx -= jtc * tx * invA;
+                  a.vy -= jtc * ty * invA;
+                }
+                if (!c.held && !cStatic) {
+                  c.vx += jtc * tx * invC;
+                  c.vy += jtc * ty * invC;
+                }
               }
             }
           }
@@ -883,6 +1048,32 @@ export function useDropField({
           b.spin = 0;
           b.asleep = true;
           b.calm = 0;
+        }
+      }
+
+      /* THE SETTLE WATCHDOG — see SETTLE_WATCHDOG_S. The pass above asks
+       * whether a body is slow; this one asks whether it has actually gone
+       * anywhere, which is the question the eye asks. A body creeping below
+       * every speed threshold, or being nudged a third of a pixel at a time
+       * by a neighbour it can never quite resolve against, satisfies the
+       * first and fails this one. */
+      for (const b of list) {
+        if (!b.released || b.held || b.asleep) continue;
+        const drift = Math.max(0.5, b.w * SETTLE_DRIFT_FRACTION);
+        if (Math.hypot(b.x - b.anchorX, b.y - b.anchorY) > drift) {
+          b.anchorX = b.x;
+          b.anchorY = b.y;
+          b.anchorT = 0;
+          continue;
+        }
+        b.anchorT += h;
+        if (b.anchorT >= SETTLE_WATCHDOG_S) {
+          b.vx = 0;
+          b.vy = 0;
+          b.spin = 0;
+          b.asleep = true;
+          b.calm = 0;
+          b.anchorT = 0;
         }
       }
     };
