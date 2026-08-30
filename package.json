@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "qa:responsive": "node qa/responsive.mjs",
-    "qa:assets": "node qa/assets.mjs"
+    "qa:assets": "node qa/assets.mjs",
+    "publish": "node tools/publish.mjs",
+    "publish:check": "node tools/publish.mjs --check"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
