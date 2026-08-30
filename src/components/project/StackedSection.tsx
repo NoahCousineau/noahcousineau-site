@@ -229,6 +229,36 @@ export default function StackedSection({
         >
           {children}
         </div>
+        {/* A SKIRT OF SURFACE BELOW THE SECTION (2026-08-29). Noah: "there's
+            also a bit of an unintended reveal when scrolling on the mobile."
+
+            These sections recede behind one another, and at a seam they do not
+            abut to the pixel — for a few rows of scrolling a gap opens between
+            one section's bottom edge and the next one's top, and what shows
+            through is whatever is still pinned further back. Traced with
+            elementsFromPoint just above the "Accolades" header on a phone: the
+            topmost element was the POSTER section's photograph, two sections
+            earlier, painting through the gap.
+
+            A background on a shared ancestor cannot fix it, which is worth
+            recording since it is the obvious try: the ancestor is behind every
+            section, so it is behind the stale one too. The cover has to belong
+            to a section that is IN FRONT of it — hence this, anchored to the
+            section's own bottom edge and painted in its own surface. It is
+            out of flow, so it changes no layout, and a viewport tall so no
+            plausible seam outruns it. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            height: "100vh",
+            background: surface,
+            pointerEvents: "none",
+          }}
+        />
       </section>
     </>
   );

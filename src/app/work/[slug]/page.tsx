@@ -117,7 +117,25 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
 
         {/* `stackIndex` drives the stacking-scroll z-order: each group must
             paint over the one before it so a section scrolls up and covers
-            its predecessor. See the STACKING SCROLL note in ProjectGroup. */}
+            its predecessor. See the STACKING SCROLL note in ProjectGroup.
+
+            THE GROUPS SIT ON THEIR OWN SURFACE (2026-08-29). Noah: "there's
+            also a bit of an unintended reveal when scrolling on the mobile."
+
+            The sections are sticky and recede behind one another, and at the
+            seam between two of them they do not abut to the pixel — so for a
+            few rows of scrolling the section TWO below shows through. Traced
+            with elementsFromPoint just above the "Accolades" header: the
+            topmost element was the Poster section's photograph, two sections
+            earlier, painting through the gap.
+
+            `bgColor` is per GROUP, so in principle two sections on a page
+            could differ — in practice every group in projects.json leaves it
+            unset, and the first group's value is therefore the page's. Laying
+            that same colour under the whole stack means a seam reveals the
+            page's own background instead of a stale image. It cannot mask
+            anything that should be visible: it is behind all of them. */}
+        <div style={{ background: groups[0]?.bgColor || "var(--color-paper)" }}>
         {groups.map((group, i) => (
           <ProjectGroup
             key={group.descriptor}
@@ -129,6 +147,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             stackIndex={i}
           />
         ))}
+        </div>
       </main>
     );
   }
