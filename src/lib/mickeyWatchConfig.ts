@@ -1,5 +1,6 @@
 // Single source of truth for the Mickey Watch layout.
-// Produced by /public/mickey-watch-editor.html — when you tweak positions
+// Produced by tools/editors/mickey-watch-editor.html (moved out of public/
+// on 2026-08-30 — it was being served to the internet) — when you tweak positions
 // there, paste the new "Copy Config" JSON in here so the live site matches.
 //
 // All width/height/x/y values are px on a 600x600 reference canvas
