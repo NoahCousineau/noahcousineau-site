@@ -528,8 +528,20 @@ export default function About() {
           // than an inline gridTemplateColumns, because an inline value won a
           // specificity fight against the responsive classes once before and
           // pinned the grid to two columns at every width.
-          className="relative z-10 mt-16 grid grid-cols-1 gap-y-6 text-left"
+          className="relative z-10 mt-16 grid grid-cols-1 text-left"
           style={{
+            /* PARAGRAPH SPACING (2026-08-30). Noah: "add a slight bit more
+               space between the paragraphs of text in the about me section
+               only."
+
+               Was Tailwind's gap-y-6 — a flat 24px at every width, which is
+               under a third of a line at desktop where this copy sets at
+               57.6px with a 1.38 line-height. Proportional now, so the gap
+               grows with the type it separates, with a floor so the phone
+               (where 52 units is only 10px) still gains a little rather than
+               losing what it had. 24 -> 28px at 390 and 900, 24 -> 41px at
+               1512. Scoped to this block, so nothing else on the site moves. */
+            rowGap: "max(28px, calc(var(--u) * 52))",
             maxWidth: "calc(var(--u) * 1600)",
             overflowWrap: "break-word",
             fontFamily: "var(--font-sans)",
