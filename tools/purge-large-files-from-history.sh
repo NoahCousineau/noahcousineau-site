@@ -48,9 +48,15 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Paths removed from every past commit. Files or folders; nothing here is
+# used by the site, and all of it stays on your disk.
 BIG_FILES=(
   "public/assets/corita-art-center/Corita Kent Evergreen Gif.gif"
   "public/images/rotating-head/sprite-sheet-light-smoothed.png"
+  # 144MB of screen recordings, .ai files and a PDF dragged into a chat
+  # window. Never part of the site, and the only cheap moment to take them
+  # out of the history is before the first push.
+  ".hermes"
 )
 
 echo "==> Checking the working tree is clean"
@@ -82,9 +88,10 @@ FILES_BACKUP="../noahcousineau-site-large-files-$STAMP"
 echo "==> Copying the two large files somewhere safe"
 mkdir -p "$FILES_BACKUP"
 for f in "${BIG_FILES[@]}"; do
-  if [ -f "$f" ]; then
+  if [ -e "$f" ]; then
     mkdir -p "$FILES_BACKUP/$(dirname "$f")"
-    cp -p "$f" "$FILES_BACKUP/$f"
+    # -R so a folder is copied whole; -p to keep timestamps.
+    cp -Rp "$f" "$FILES_BACKUP/$f"
     echo "    saved $f"
   else
     echo "    not on disk, nothing to save: $f"
@@ -95,7 +102,7 @@ echo "==> Rewriting history to drop the two files"
 # index-filter edits each commit's file list directly, without checking any
 # files out, which is why this is fast despite the repository's size.
 # --ignore-unmatch so commits made before a file existed are not errors.
-FILTER='git rm --cached --ignore-unmatch'
+FILTER='git rm --cached --ignore-unmatch -r'
 for f in "${BIG_FILES[@]}"; do
   FILTER="$FILTER \"$f\""
 done
@@ -106,9 +113,9 @@ FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force \
 echo "==> Putting the two large files back on disk"
 # See the note above: the reset at the end of filter-branch can take them.
 for f in "${BIG_FILES[@]}"; do
-  if [ ! -f "$f" ] && [ -f "$FILES_BACKUP/$f" ]; then
+  if [ ! -e "$f" ] && [ -e "$FILES_BACKUP/$f" ]; then
     mkdir -p "$(dirname "$f")"
-    cp -p "$FILES_BACKUP/$f" "$f"
+    cp -Rp "$FILES_BACKUP/$f" "$f"
     echo "    restored $f"
   fi
 done
@@ -132,7 +139,7 @@ else
 fi
 echo
 for f in "${BIG_FILES[@]}"; do
-  if [ -f "$f" ]; then
+  if [ -e "$f" ]; then
     echo "    still on disk: $f"
   else
     echo "    MISSING FROM DISK: $f"
