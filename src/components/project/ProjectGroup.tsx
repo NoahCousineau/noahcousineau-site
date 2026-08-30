@@ -2,6 +2,7 @@ import Image from "next/image";
 import { InViewVideo } from "./InViewVideo";
 import { Stage } from "@/components/Stage";
 import StackedSection from "./StackedSection";
+import { videoSrc } from "@/lib/videoSrc";
 
 /*
  * ProjectGroup — one repeating "chunk" of project content: an italic
@@ -290,10 +291,10 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
     return (
       <div className="relative w-full h-full overflow-hidden bg-black" style={{ aspectRatio: cell.aspect ?? aspect ?? "16/9" }}>
         {cell.fit ? (
-          <InViewVideo src={cell.src} objectFit={cell.objectFit} />
+          <InViewVideo src={videoSrc(cell.src)} objectFit={cell.objectFit} />
         ) : (
           <ScaledMedia scale={cell.scale} bgColor={bgColor} phoneUnscaled={cell.phoneUnscaled}>
-            <InViewVideo src={cell.src} objectFit={cell.objectFit} />
+            <InViewVideo src={videoSrc(cell.src)} objectFit={cell.objectFit} />
           </ScaledMedia>
         )}
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { videoSrc } from "@/lib/videoSrc";
 import Link from "next/link";
 import { Stage, Place } from "./Stage";
 import { useIsPhone } from "@/lib/useIsPhone";
@@ -210,7 +211,7 @@ function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits
       {vid && (
         <video
           ref={videoRef}
-          src={vid}
+          src={videoSrc(vid)}
           muted
           loop
           playsInline
