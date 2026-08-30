@@ -67,7 +67,7 @@ const NUDGE = [
  * random and re-rolling until the colours work would usually be fine and
  * occasionally loop for a while.
  */
-function pickFour(rand: () => number): ResumeArrow[] {
+function pickFour(rand: () => number, count = 4): ResumeArrow[] {
   const byColour: Record<string, ResumeArrow[]> = {};
   for (const a of RESUME_ARROWS) (byColour[a.colour] ??= []).push(a);
   const take = (list: ResumeArrow[]) => list[Math.floor(rand() * list.length)];
@@ -86,7 +86,16 @@ function pickFour(rand: () => number): ResumeArrow[] {
     const j = Math.floor(rand() * (i + 1));
     [chosen[i], chosen[j]] = [chosen[j], chosen[i]];
   }
-  return chosen.slice(0, 4);
+  /* Top up from whatever is left if more are wanted than the colour pass
+   * produced, and trim if fewer. 2026-08-29: the arrows are split two at the
+   * résumé and two at the envelope, so this is called with 2 twice rather
+   * than 4 once — at which point "one of each colour" cannot hold within a
+   * single call and is not meant to. */
+  for (const a of RESUME_ARROWS) {
+    if (chosen.length >= count) break;
+    if (!chosen.includes(a)) chosen.push(a);
+  }
+  return chosen.slice(0, count);
 }
 
 export default function ResumeArrows({
@@ -97,8 +106,10 @@ export default function ResumeArrows({
   /** What the arrows aim at, in the caller's own artboard units. Used for the
    *  server render and the first client render only — see `targetRef`. */
   target: { x: number; y: number };
-  /** Where the four arrows sit, same units. Length 4, matching NUDGE. */
-  spots: [ResumeArrowSpot, ResumeArrowSpot, ResumeArrowSpot, ResumeArrowSpot];
+  /** Where the arrows sit, same units. Any length; NUDGE and PARALLAX_UNITS
+   *  below are indexed modulo their own, so a pair gets two different
+   *  rhythms rather than two arrows pulsing in unison. */
+  spots: ResumeArrowSpot[];
   /** The thing they should ACTUALLY point at. See the note on the aiming
    *  effect below for why a written-down coordinate was not enough. */
   targetRef?: React.RefObject<HTMLElement | null>;
@@ -109,11 +120,11 @@ export default function ResumeArrows({
    * and there is nothing to diff; only afterwards does it swap to the real,
    * random pick. Calling Math.random() during render instead would print a
    * hydration mismatch on every single load. */
-  const deterministic = useMemo(() => pickFour(() => 0.5), []);
+  const deterministic = useMemo(() => pickFour(() => 0.5, spots.length), [spots.length]);
   const randomRef = useRef<ResumeArrow[] | null>(null);
   const getServerSnapshot = useCallback(() => deterministic, [deterministic]);
   const getSnapshot = useCallback(() => {
-    randomRef.current ??= pickFour(Math.random);
+    randomRef.current ??= pickFour(Math.random, spots.length);
     return randomRef.current;
   }, []);
   const subscribe = useCallback(() => () => {}, []);
@@ -184,7 +195,7 @@ export default function ResumeArrows({
       `}</style>
       {arrows.map((a, i) => {
         const spot = spots[i];
-        const n = NUDGE[i];
+        const n = NUDGE[i % NUDGE.length];
         const h = spot.w * (a.height / a.width);
         // Bearing from this arrow to the link. Screen coords (y down), which
         // is the same convention CSS rotate() turns in, so no sign flip.
@@ -212,7 +223,7 @@ export default function ResumeArrows({
                 page rather than along whichever way this arrow happens to be
                 aiming — which is what makes four of them read as four depths
                 rather than four arrows sliding along their own shafts. */}
-            <Parallax units={PARALLAX_UNITS[i]}>
+            <Parallax units={PARALLAX_UNITS[i % PARALLAX_UNITS.length]}>
             <div
               ref={(el) => { aimRefs.current[i] = el; }}
               style={{ transform: `rotate(${deg}deg)` }}

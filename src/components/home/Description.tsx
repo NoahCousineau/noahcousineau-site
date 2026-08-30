@@ -153,7 +153,12 @@ const HAND_BOX_H = 524;
 const PHONE_HAND_DROP_UNITS = 753;
 /** A quarter of a phone screen, in this artboard's units: 844px at
  *  u = 390/1000 is 2164 units, so a quarter is 541. */
-const PHONE_GRID_GAP_UNITS = 541;
+/* 541 -> 240, 2026-08-29: "on the mobile home screen, let's reduce the amount
+ * of space between the project grid and the bottom of the hand by a decent
+ * amount." 541 was a quarter of a phone screen, chosen when the hand was more
+ * than three times its current size and needed the room; the hand has since
+ * been cut to 0.84 scale and the gap was left holding nothing. */
+const PHONE_GRID_GAP_UNITS = 240;
 /* The run-out — document space reserved after the pin releases and before
  * Projects begins. On a phone it has to clear the hand, which now hangs well
  * below where the copy ends, plus the quarter-screen gap Noah asked for. */

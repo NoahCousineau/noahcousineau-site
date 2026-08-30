@@ -343,21 +343,32 @@ function DraggableResumeCard({
 // — which is what the arrows aim at, and what its zoom scales about, so it
 // holds still while the card grows — sits at (960, 700).
 const RESUME_CARD_CENTRE = { x: 960, y: 700 };
+/** The envelope's equivalent — the server-render fallback only, since the
+ *  aim is measured from the DOM. Higher up its section than the résumé's,
+ *  matching the smaller top padding. */
+const NEWSLETTER_CARD_CENTRE = { x: 960, y: 430 };
 /* x1.5 on 2026-08-25 — Noah: "on desktop, let's increase the size of the
  * clay arrows by 1.5x." Only `w` is given; each arrow's height follows from
  * its own aspect ratio inside ResumeArrows, so one number per arrow is the
  * whole change. */
 const RESUME_ARROW_SCALE = 1.5;
-const RESUME_ARROW_SPOTS: [
-  ResumeArrowSpot,
-  ResumeArrowSpot,
-  ResumeArrowSpot,
-  ResumeArrowSpot,
-] = [
+/* TWO EACH, 2026-08-29. Noah: "let's distribute the arrows so only two point
+ * at the resume and only two point at the envelope."
+ *
+ * One a side rather than two on one side, so each object is flanked. The
+ * lower-left and upper-right of the original four are kept for the résumé —
+ * they are the pair Noah's own sketch put furthest from the card, and the
+ * aim is measured from the DOM anyway (see targetRef), so a spot only has to
+ * be a plausible place for an arrow to sit. */
+const RESUME_ARROW_SPOTS: ResumeArrowSpot[] = [
   { x: 273, y: 560, w: 150 * RESUME_ARROW_SCALE },
-  { x: 294, y: 850, w: 132 * RESUME_ARROW_SCALE },
-  { x: 1574, y: 555, w: 138 * RESUME_ARROW_SCALE },
   { x: 1600, y: 862, w: 147 * RESUME_ARROW_SCALE },
+];
+/* The newsletter section is shorter than the résumé's — 60 units of top
+ * padding against 260 — so its pair sits higher up the section. */
+const NEWSLETTER_ARROW_SPOTS: ResumeArrowSpot[] = [
+  { x: 294, y: 300, w: 132 * RESUME_ARROW_SCALE },
+  { x: 1574, y: 560, w: 138 * RESUME_ARROW_SCALE },
 ];
 
 export default function About() {
@@ -370,6 +381,8 @@ export default function About() {
   /** The résumé link the clay arrows aim at — measured rather than assumed,
    *  since it travels inside ApproachOnScroll. See ResumeArrows.tsx. */
   const resumeLinkRef = useRef<HTMLAnchorElement>(null);
+  /** The newsletter link its own pair of arrows aims at. */
+  const newsletterLinkRef = useRef<HTMLAnchorElement>(null);
 
   return (
     <main
@@ -640,9 +653,21 @@ export default function About() {
         className="relative w-full flex flex-col items-center"
         style={{ padding: "calc(var(--u) * 60) calc(var(--u) * 120) calc(var(--u) * 340)", marginBottom: "calc(var(--u) * 200)" }}
       >
+        {/* Its own pair, aimed at the envelope — outside ApproachOnScroll for
+            the same two reasons as the résumé's: that wrapper carries the
+            scroll zoom (which would grow the arrows with the card) and is not
+            full width (which would make every x-coordinate land short). */}
+        {!phone && (
+          <ResumeArrows
+            target={NEWSLETTER_CARD_CENTRE}
+            spots={NEWSLETTER_ARROW_SPOTS}
+            targetRef={newsletterLinkRef}
+          />
+        )}
         <ApproachOnScroll>
           <div className="relative w-full flex flex-col items-center">
             <a
+              ref={newsletterLinkRef}
               href="https://docs.google.com/forms/d/e/1FAIpQLSdVU0sAC4ZmMUfeLH3tRPOqwPQC1v7MzKLoMk5YxFoA7Sy3Gg/viewform?usp=header"
               target="_blank"
               rel="noreferrer"

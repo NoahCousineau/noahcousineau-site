@@ -16,12 +16,9 @@ export type ResumeArrow = {
 };
 
 export const RESUME_ARROWS: ResumeArrow[] = [
-  { src: "/assets/home/resume-arrows/1.webp", colour: "red", width: 420, height: 295 },
-  { src: "/assets/home/resume-arrows/2.webp", colour: "red", width: 420, height: 382 },
-  { src: "/assets/home/resume-arrows/3.webp", colour: "red", width: 420, height: 208 },
-  { src: "/assets/home/resume-arrows/4.webp", colour: "blue", width: 420, height: 283 },
-  { src: "/assets/home/resume-arrows/5.webp", colour: "blue", width: 420, height: 430 },
-  { src: "/assets/home/resume-arrows/6.webp", colour: "blue", width: 420, height: 451 },
-  { src: "/assets/home/resume-arrows/7.webp", colour: "yellow", width: 420, height: 420 },
-  { src: "/assets/home/resume-arrows/8.webp", colour: "yellow", width: 420, height: 216 },
+  { src: "/assets/home/resume-arrows/1.webp", colour: "red", width: 420, height: 382 },
+  { src: "/assets/home/resume-arrows/2.webp", colour: "red", width: 420, height: 208 },
+  { src: "/assets/home/resume-arrows/3.webp", colour: "blue", width: 420, height: 283 },
+  { src: "/assets/home/resume-arrows/4.webp", colour: "blue", width: 420, height: 451 },
+  { src: "/assets/home/resume-arrows/5.webp", colour: "yellow", width: 420, height: 216 },
 ];

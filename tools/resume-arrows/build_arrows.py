@@ -104,10 +104,32 @@ SOURCE_ANGLE = {
 # (The old build skipped three for the same kind of reason; they are not the
 # same three, because the numbering changed with the source — see the
 # docstring.)
+#
+#   1, 6, 9   added 2026-08-29, and they are the same failure as 4/8/12 above:
+#             fat pentagons whose "point" and whose notched tail are equally
+#             blunt. Noah has now reported the arrows pointing the wrong way
+#             twice, and both times these three were the ones. The first
+#             attempt at a fix flipped them 180 degrees, which simply moved
+#             the ambiguity to the other side — a shape with no direction
+#             cannot be rotated into having one.
+#
+#             Three separate automated discriminators have now been tried and
+#             all three disagree with the contact sheet: mean vertical ink
+#             extent over the outer fifth (7 of 8), the same over the outer
+#             5% (4 of 8, including calling two unmistakable chevrons
+#             backwards, because an arrowhead's barbs are WIDER than its own
+#             shaft), and the principal-axis test the docstring already
+#             describes. The lesson is not to find a better metric. It is that
+#             these three do not point anywhere, so nothing that reads them
+#             can be right.
+#
+#             That leaves five: red x2, blue x2, yellow x1. pickFour still has
+#             one of every colour to draw from, and only four are ever on
+#             screen at once — now two by the résumé and two by the envelope.
 # That leaves eight — three red, three blue, two yellow. Only four are ever
 # on screen at once, and pickFour still has at least one of every colour to
 # draw from, which is the only guarantee it needs.
-SKIP = {4, 8, 10, 12}
+SKIP = {1, 4, 6, 8, 9, 10, 12}
 
 import json  # noqa: F401  (kept: the TS emitter below has used it before)
 import os
