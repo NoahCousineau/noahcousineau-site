@@ -471,7 +471,7 @@ export default function ProjectHeader({
              the drop was calculated against that rule in the first place. */
           top: `calc(var(--u) * ${
             phone ? PHONE_TITLE_TOP_UNITS : HEADER_INSET_UNITS
-          } + var(--chrome-drop, 0px))`,
+          } + var(--chrome-drop-compensate, 0px))`,
           left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
         }}

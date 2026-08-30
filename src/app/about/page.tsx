@@ -460,7 +460,7 @@ export default function About() {
                desktop position is untouched — which is the requirement. */
             top: phone
               ? `calc(var(--u) * 300)`
-              : `calc(var(--u) * ${HEADER_INSET_UNITS} + var(--chrome-drop, 0px))`,
+              : `calc(var(--u) * ${HEADER_INSET_UNITS} + var(--chrome-drop-compensate, 0px))`,
             left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
             right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           }}

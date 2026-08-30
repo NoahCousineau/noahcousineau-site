@@ -305,6 +305,21 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
         {nextProjectHref && (
           <FallenHand triggerRef={spacerRef} nextHref={nextProjectHref} />
         )}
+        {/* CLEAR THE DROPPED CHROME (2026-08-31, the third place this bit).
+            Between 768 and 1439 the C mark and the theme toggle are pushed
+            down by `--chrome-drop` so they clear the rule under a sticky
+            section title on a project page. The footer fills the viewport, so
+            when it is uncovered the wordmark is right under those two fixed
+            controls: at 1512 the C mark sits just left of the wordmark's own
+            "C" and reads as a mark beside a logo, but anywhere from 1400 down
+            it lands squarely on it, and the toggle lands on the "AU".
+
+            Only the wordmark-and-links block moves. The peeking head is
+            placed separately against the bottom edge and stays exactly where
+            it is, so the composition keeps its top and bottom anchors and
+            only the gap between them changes. Outside the band the variable
+            is undefined and the fallback is 0. */}
+        <div style={{ paddingTop: "var(--chrome-drop-compensate, 0px)" }}>
         {/* Taller on a phone: six stacked link rows instead of two, plus
             the wordmark above them. PHONE_TOP_Y + 6 rows + a rule. */}
         <Stage heightUnits={phone ? PHONE_TOP_Y + PHONE_ROW_H * 6 + 120 : STAGE_HEIGHT}>
@@ -445,6 +460,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             </div>
           ))}
         </Stage>
+        </div>
       </div>
       </footer>
     </>

@@ -425,6 +425,21 @@ html {
      them by separate amounts would silently undo that. Zero here, so the
      desktop is untouched; the phone value is in the media query below. */
   --chrome-drop: 0px;
+  /* HOW FAR THE CHROME HAS MOVED FROM WHERE THE DESKTOP LAYOUT EXPECTS IT
+     (2026-08-31).
+     
+     Not the same thing as --chrome-drop, and the difference matters. The
+     phone has a drop of its own (20px, below) and the phone layout was drawn
+     around it — its title already sits at 300 units, clear of everything. So
+     anything correcting for the chrome must not add the phone's drop back on
+     top of a layout that already accounts for it.
+     
+     This is the SURPLUS over desktop: zero at desktop, zero on a phone, and
+     the band's value only in the band, which is the one place where the
+     chrome moved out from under a layout that had not been redrawn for it.
+     Read by the about-page title, the project header block and the footer's
+     wordmark block, all three of which the chrome had landed on. */
+  --chrome-drop-compensate: 0px;
 }
 
 /*
@@ -510,6 +525,9 @@ html {
     );
     --chrome-drop: calc(var(--section-rule-bottom) + 6px - 13.25px);
     --home-mark-top-floor: calc(13.25px + var(--chrome-drop));
+    /* The band is the only tier that needs compensating — see the note at
+       the root declaration. */
+    --chrome-drop-compensate: var(--chrome-drop);
   }
 }
 
