@@ -212,8 +212,38 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           the fixed footer beneath it. `dvh` (dynamic viewport height)
           rather than `svh` — see the NO GAP AT THE TOP note below; this
           just keeps the reserved scroll distance matched to the footer's
-          own sizing so the reveal still completes at the right point. */}
-      <div ref={spacerRef} aria-hidden className="w-full" style={{ height: "100dvh" }} />
+          own sizing so the reveal still completes at the right point.
+
+          WITH A MARGIN OF SAFETY (2026-08-30). Noah: "the footer isn't
+          showing on some pages."
+
+          I could not reproduce it — the footer was checked on all nine
+          routes at 390/900/1512, on 404s, through client-side navigation,
+          across a live width sweep, at viewport heights from 400 to 1200, on
+          displays up to 3440x1440, under reduced motion, and in both dev and
+          a production build. It appeared every time. So this is hardening
+          against the one failure mode the mechanism actually has rather than
+          a fix for a diagnosed bug.
+
+          That mode is `dvh` itself. On a phone the dynamic viewport CHANGES
+          as the URL bar hides and shows, and this spacer is what buys the
+          exact distance the curtain needs to travel. If the viewport is
+          larger at the moment of measuring than when you arrive at the
+          bottom, the reserved distance comes up short and the curtain's last
+          rows stay parked over the top of the footer — which looks exactly
+          like "the footer isn't showing".
+
+          An extra 15vh costs nothing: past the point where the curtain has
+          cleared, every further pixel of scroll is already fully-revealed
+          footer, so the surplus is invisible. The plain `100vh` line before
+          it is the fallback for anything that does not know `dvh`. The
+          spacer's TOP is unmoved, so the fallen hand's trigger is unaffected. */}
+      <div
+        ref={spacerRef}
+        aria-hidden
+        className="w-full"
+        style={{ height: "100vh", minHeight: "calc(100dvh + 15vh)" }}
+      />
       {/* LAYOUT (2026-08-20, per Noah: "Make it so the 'Cousineau' logo is
           near the top with the page information below the logo. Then at the
           bottom of the browser window, I want my head to just peek out from
