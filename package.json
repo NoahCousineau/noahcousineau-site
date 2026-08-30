@@ -10,7 +10,10 @@
     "qa:responsive": "node qa/responsive.mjs",
     "qa:assets": "node qa/assets.mjs",
     "publish": "node tools/publish.mjs",
-    "publish:check": "node tools/publish.mjs --check"
+    "publish:check": "node tools/publish.mjs --check",
+    "qa:launch": "node qa/launch-check.mjs",
+    "qa:settle": "node qa/header-settle.mjs",
+    "qa:footer": "node qa/footer-overlap.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
