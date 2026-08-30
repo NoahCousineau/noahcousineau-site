@@ -123,10 +123,18 @@ export default function ResumeArrows({
   const deterministic = useMemo(() => pickFour(() => 0.5, spots.length), [spots.length]);
   const randomRef = useRef<ResumeArrow[] | null>(null);
   const getServerSnapshot = useCallback(() => deterministic, [deterministic]);
+  /* Keyed on the count, not just cached once — the same staleness the project
+   * header's own snapshot had, where a pick made before a layout value settled
+   * was kept forever. `??=` alone would hold a four-arrow pick if this
+   * component were ever given two. */
+  const countRef = useRef(0);
   const getSnapshot = useCallback(() => {
-    randomRef.current ??= pickFour(Math.random, spots.length);
+    if (!randomRef.current || countRef.current !== spots.length) {
+      countRef.current = spots.length;
+      randomRef.current = pickFour(Math.random, spots.length);
+    }
     return randomRef.current;
-  }, []);
+  }, [spots.length]);
   const subscribe = useCallback(() => () => {}, []);
   const arrows = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
