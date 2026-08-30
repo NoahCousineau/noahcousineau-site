@@ -134,8 +134,36 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             unset, and the first group's value is therefore the page's. Laying
             that same colour under the whole stack means a seam reveals the
             page's own background instead of a stale image. It cannot mask
-            anything that should be visible: it is behind all of them. */}
-        <div style={{ background: groups[0]?.bgColor || "var(--color-paper)" }}>
+            anything that should be visible: it is behind all of them.
+
+            AND IT CLIPS THE SKIRTS (2026-08-30). Noah: "the footer isn't
+            showing on some pages." This is that bug, and it was mine.
+
+            Each section hangs a viewport-tall skirt of its own surface below
+            itself to cover the seam with the next one (see StackedSection).
+            Those skirts are absolutely positioned and nothing was clipping
+            them, so they kept painting past the end of the stack — and what
+            lies past the end of the stack is the footer, which is a fixed
+            panel the page slides up to uncover rather than a block at the
+            bottom of the document. Measured on /work/socal-earth at full
+            scroll: five white divs, each 900px tall, spanning y=-147..753 of
+            a 900px viewport, with the curtain itself already cleared at
+            -135. All of them, on every project page, at every width — the
+            sections are all pinned in the same place once you reach the end,
+            so their skirts land on top of one another over the footer.
+
+            `clip` and not `hidden`: hidden would make this a scroll
+            container, and the sections inside it are `position: sticky` —
+            they would start sticking to a box that never scrolls instead of
+            to the page, which breaks the stacking scroll outright. `clip`
+            clips without creating a scrollport, so sticky still resolves
+            against the document and only the overhang is cut. */}
+        <div
+          style={{
+            background: groups[0]?.bgColor || "var(--color-paper)",
+            overflow: "clip",
+          }}
+        >
         {groups.map((group, i) => (
           <ProjectGroup
             key={group.descriptor}
