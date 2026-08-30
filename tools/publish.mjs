@@ -206,12 +206,42 @@ if (oversized) {
   ]);
 }
 
-if (!remote) {
-  stop("There's nowhere to publish to yet.", [
-    "The site isn't connected to GitHub or Vercel.",
-    "That's the one-time setup in your launch guide — do that first,",
-    "then this button will work every time after.",
-  ]);
+/* FIRST TIME: connect the GitHub repository, here, rather than sending
+ * someone to Terminal to type `git remote add`. That was the only step of
+ * the whole launch that had no button, and it is a one-liner. */
+let target = remote;
+if (!target) {
+  say(`  ${C.dim}This project isn't connected to GitHub yet.${C.reset}`);
+  say(`  ${C.dim}Create an empty private repository at github.com/new — don't tick${C.reset}`);
+  say(`  ${C.dim}any of the "initialize with" boxes — then paste its address below.${C.reset}\n`);
+  const url = await ask(`  ${C.dim}GitHub address (or press Enter to stop): ${C.reset}`);
+  if (!url) {
+    stop("Nothing published.", [
+      "No problem — run this again once the repository exists.",
+      "The steps are in your launch guide.",
+    ]);
+  }
+  // Accept what GitHub actually shows you, in either of the two forms it
+  // offers, and nothing else. A typo here would otherwise be discovered as a
+  // confusing push failure several steps later.
+  const looksRight =
+    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+?(\.git)?\/?$/.test(url) ||
+    /^git@github\.com:[\w.-]+\/[\w.-]+?(\.git)?$/.test(url);
+  if (!looksRight) {
+    stop("That doesn't look like a GitHub address.", [
+      "It should look like one of these:",
+      `${C.dim}https://github.com/yourname/noahcousineau-site.git${C.reset}`,
+      `${C.dim}git@github.com:yourname/noahcousineau-site.git${C.reset}`,
+      "",
+      "Copy it from the page GitHub shows you right after creating the repository.",
+    ]);
+  }
+  const add = spawnSync("git", ["remote", "add", "origin", url], { encoding: "utf8" });
+  if (add.status !== 0) {
+    stop("Couldn't connect to that repository.", [`${(add.stderr || add.stdout || "").trim()}`]);
+  }
+  target = url;
+  ok(`Connected to ${url}`);
 }
 
 if (changedFiles.length) {
@@ -228,7 +258,9 @@ if (changedFiles.length) {
   ok(`Saved: ${message}`);
 }
 
-const push = spawnSync("git", ["push", "origin", branch], { encoding: "utf8" });
+// -u on every push is harmless and means the very first one sets the branch
+// up to track origin, so later pushes and the "what's waiting" count work.
+const push = spawnSync("git", ["push", "-u", "origin", branch], { encoding: "utf8" });
 if (push.status !== 0) {
   const out = `${push.stdout || ""}${push.stderr || ""}`;
   if (/exceeds .*file size limit|large files/i.test(out)) {
