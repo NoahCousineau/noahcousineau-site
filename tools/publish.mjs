@@ -172,6 +172,40 @@ if (checkOnly) {
 /* 3. Publish */
 step("3. Publishing");
 
+/* CHECK THE SIZE LIMIT BEFORE PUSHING, NOT AFTER.
+ *
+ * GitHub refuses any file over 100MB and checks every commit being sent, not
+ * just the current files. Two large leftovers were committed early in this
+ * project, so the very first push would be rejected until they are taken out
+ * of the history. Finding that out from a failed push is a confusing way to
+ * learn it, so look first and say plainly what to run.
+ *
+ * `%(rest)` in the format is required: paths here contain spaces, and without
+ * it cat-file treats the whole line as an object name, silently reports
+ * nothing, and this check would cheerfully pass on a repository it cannot
+ * push. */
+const oversized = shQuiet(
+  "git rev-list --objects --all | git cat-file --batch-check=" +
+    "'%(objecttype) %(objectname) %(objectsize) %(rest)' | " +
+    "awk '$1==\"blob\" && $3 > 104857600 {print $4, $5, $6, $7, $8}'"
+);
+if (oversized) {
+  const names = oversized.split("\n").filter(Boolean).slice(0, 4);
+  stop("There are files in your history that GitHub won't accept.", [
+    "GitHub refuses anything over 100MB, and it checks every save point,",
+    "not just your current files. These are still in the history:",
+    "",
+    ...names.map((n) => `${C.dim}${n.trim()}${C.reset}`),
+    "",
+    "None of them are used by the site. To take them out, run this once:",
+    "",
+    `${C.bold}bash tools/purge-large-files-from-history.sh${C.reset}`,
+    "",
+    "It backs everything up first and leaves the files on your disk.",
+    "Then publish again.",
+  ]);
+}
+
 if (!remote) {
   stop("There's nowhere to publish to yet.", [
     "The site isn't connected to GitHub or Vercel.",
