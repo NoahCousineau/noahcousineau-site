@@ -453,9 +453,25 @@ export default function ProjectHeader({
       <div
         className="absolute z-20 pointer-events-none"
         style={{
+          /* FOLLOW THE CHROME DOWN (2026-08-31). Between 768 and 1439 the C
+             mark and the theme toggle are pushed down by `--chrome-drop`, so
+             that further down the page they clear the rule under a sticky
+             section title. Both are fixed to the viewport corners, and this
+             block puts the project title and its credits in those same two
+             corners — so the drop landed the C on the first letter of the
+             title and the toggle on the credits. Measured on
+             /work/socal-earth: clear at 1512, overlapping at every width from
+             1400 down to 768.
+
+             Moving this block by the same amount keeps the spacing the
+             desktop layout already had, instead of a second number to keep in
+             step. Outside the band the variable is undefined and the fallback
+             is 0, so desktop is untouched. The falling objects and the rule
+             they land on are NOT moved — they are positioned separately, and
+             the drop was calculated against that rule in the first place. */
           top: `calc(var(--u) * ${
             phone ? PHONE_TITLE_TOP_UNITS : HEADER_INSET_UNITS
-          })`,
+          } + var(--chrome-drop, 0px))`,
           left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
         }}

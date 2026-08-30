@@ -441,7 +441,26 @@ export default function About() {
                which is doubled, and pushed down clear of the "C" mark. Both
                numbers are the project header's, so the two pages stay in
                step. */
-            top: `calc(var(--u) * ${phone ? 300 : HEADER_INSET_UNITS})`,
+            /* FOLLOW THE CHROME DOWN (2026-08-31). Noah: "continue working on
+               optimizing the site in the in-between modes."
+
+               Between 768 and 1439 the C mark is pushed down by
+               `--chrome-drop`, so that on a project page it clears the rule
+               under the section title. That drop is site-wide, and this page
+               has no such rule — what it has is its own title in the very
+               same corner. Measured on /about: at 1512 the C ends at y=45.5
+               and the words start at 47.3, clear by under two pixels; at 1400
+               the C drops to 86.8 and lands squarely on them, and it stays
+               there all the way down to 768.
+
+               Adding the same drop here keeps the two in the relationship the
+               desktop layout already had, rather than inventing a second
+               number that would have to be kept in step by hand. Outside the
+               band the variable is not defined and the fallback is 0, so the
+               desktop position is untouched — which is the requirement. */
+            top: phone
+              ? `calc(var(--u) * 300)`
+              : `calc(var(--u) * ${HEADER_INSET_UNITS} + var(--chrome-drop, 0px))`,
             left: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
             right: `calc(var(--u) * ${HEADER_INSET_UNITS})`,
           }}

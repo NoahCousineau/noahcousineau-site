@@ -815,8 +815,29 @@ export function useDropField({
              * Note this is NOT the same as skipping the push, which was tried
              * and made piles sink: the correction is still applied at full
              * strength, just all of it to the body that can still move. */
-            const aStatic = a.asleep && !a.held;
-            const cStatic = c.asleep && !c.held;
+            /* Two things must still be able to disturb a settled pile, or
+             * "static" would mean "frozen for good":
+             *
+             *   A DRAG. Noah can pick these up and move them, and shoving one
+             *   into a pile has to shove the pile. A held body's position is
+             *   overwritten by the pointer every frame, so if its sleeping
+             *   neighbour were static the whole correction would go to the
+             *   held body and be immediately discarded — the pile would sit
+             *   there and let itself be drawn through. So no body is static
+             *   while either side of the contact is being held.
+             *
+             *   A REAL COLLISION. Something arriving at speed should scatter
+             *   what it lands on. Below PAIR_REST_SPEED a contact is gravity
+             *   settling, which is the case this whole mechanism exists to
+             *   quieten; above it, wake the sleeper and let it be hit. */
+            const closing = -((c.vx - a.vx) * (dx / d) + (c.vy - a.vy) * (dy / d));
+            const disturbed = a.held || c.held || closing > PAIR_REST_SPEED;
+            const aStatic = !disturbed && a.asleep && !a.held;
+            const cStatic = !disturbed && c.asleep && !c.held;
+            if (disturbed) {
+              if (!a.held) a.asleep = false;
+              if (!c.held) c.asleep = false;
+            }
 
             // Mass by area, so a big object shoulders a small one aside.
             const ra = bound(a);
