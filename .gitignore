@@ -48,3 +48,17 @@ __pycache__/
 
 # Throwaway measurement scripts (see the verification habit in CLAUDE.md)
 qa/.scratch/
+
+# Chat attachments Noah dropped into the session — screen recordings, .ai
+# files, a flowchart PDF. Not site content, ~155MB, and they were being
+# committed. Still on disk, just no longer tracked.
+/.hermes
+
+# Two source files the site does not load, both over GitHub's 100MB hard
+# per-file limit, which is what would have made the first `git push` fail:
+#  - the Corita GIF: the page plays /videos/... .mp4, not this 306MB .gif
+#  - the smoothed sprite sheet: the head renders the "staggered" variant,
+#    and even the smooth path loads a -verified.webp, not this 183MB .png
+# Both left on disk untouched; they are just not part of the repo.
+/public/assets/corita-art-center/Corita Kent Evergreen Gif.gif
+/public/images/rotating-head/sprite-sheet-light-smoothed.png
