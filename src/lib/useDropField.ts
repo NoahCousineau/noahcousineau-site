@@ -343,23 +343,60 @@ export function useDropField({
   const specKey = specs.map((s) => `${s.src ?? "disc"}:${s.width}:${s.x}`).join("|");
   useEffect(() => {
     let cancelled = false;
-    bodies.current = specs.map((spec) => ({
-      spec,
-      shape: discSilhouette(),
-      x: 0,
-      y: 0,
-      vx: 0,
-      vy: 0,
-      rot: 0,
-      spin: 0,
-      released: false,
-      inside: false,
-      asleep: false,
-      held: false,
-      calm: 0,
-      w: 0,
-      h: 0,
-    }));
+    /*
+     * KEEP THE PILE WHERE IT IS WHEN THE SPECS CHANGE (2026-08-30). Noah:
+     * "when I adjust the browser width, sometimes the header icons will bunch
+     * up in the top left corner."
+     *
+     * This effect used to build every body from scratch, at x:0, y:0, with
+     * released:false. That is the arena's top-left corner, and it is exactly
+     * where the icons were piling up.
+     *
+     * It fires on a resize because `specKey` contains each object's width,
+     * and `iconWidth` in ProjectHeader is tier-dependent — so crossing the
+     * phone breakpoint rebuilds the specs. The bodies then reset to the
+     * origin, while the ELEMENTS were still visible from the previous drop:
+     * `write` only ever turns visibility on, never back off, and it writes a
+     * transform for an unreleased body just the same. So every object jumped
+     * to the top-left and sat there in a heap until its release timer came
+     * round again.
+     *
+     * Carrying the physical state across fixes it at the source. Nothing
+     * about a width change invalidates where an object has come to rest —
+     * the resize handler in `step` already rescales positions to the new
+     * arena — so the pile simply stays put and takes its new size. Only a
+     * body that has no predecessor (first mount, or the object list actually
+     * changing) starts at the origin, and it starts hidden and unreleased,
+     * which is the case the origin was always meant for.
+     *
+     * State is matched by index AND by src, so a genuinely different object
+     * arriving at a given slot gets a fresh body rather than inheriting the
+     * previous one's position and rotation.
+     */
+    const prev = bodies.current;
+    bodies.current = specs.map((spec, i) => {
+      const old = prev[i];
+      if (old && (old.spec.src ?? null) === (spec.src ?? null)) {
+        return { ...old, spec };
+      }
+      return {
+        spec,
+        shape: discSilhouette(),
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        rot: 0,
+        spin: 0,
+        released: false,
+        inside: false,
+        asleep: false,
+        held: false,
+        calm: 0,
+        w: 0,
+        h: 0,
+      };
+    });
     specs.forEach((spec, i) => {
       if (!spec.src) return;
       const img = new window.Image();
@@ -564,7 +601,17 @@ export function useDropField({
       // Nothing paints until the physics has placed it; the markup starts
       // hidden so an object can't flash at the arena's top-left corner for
       // the frame before its first step.
-      if (b.released && el.style.visibility !== "visible") el.style.visibility = "visible";
+      //
+      // And nothing MOVES until then either. Writing a transform for a body
+      // the physics has not placed yet puts it at the arena's origin, which
+      // is only invisible while the element still happens to be hidden — the
+      // line below turns visibility on and never turns it back off, so once
+      // an object has dropped, any later unreleased frame would park it in
+      // the top-left corner in plain sight. That was the resize bug; the
+      // state now carries across (see the specKey effect), and this makes
+      // the corner unreachable rather than merely unvisited.
+      if (!b.released) return;
+      if (el.style.visibility !== "visible") el.style.visibility = "visible";
       el.style.transformOrigin = `${(b.shape.pivot.x * 100).toFixed(2)}% ${(
         b.shape.pivot.y * 100
       ).toFixed(2)}%`;
