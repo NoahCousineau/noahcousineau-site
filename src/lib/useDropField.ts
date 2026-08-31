@@ -160,6 +160,25 @@ const MAX_TOPPLE_LEVER = 3;
  *  an engine — without a ceiling the torque kept accelerating a body that was
  *  already rotating freely, which is what turned a topple into a spin. */
 const TOPPLE_MAX_SPIN = 80;
+
+/* ROCKING WAS SEEN ONCE AND NOT REPRODUCED (2026-08-31).
+ *
+ * A trace on /work/more-work caught an icon four seconds after everything had
+ * gone quiet, rotation stepping 25 24 23 29 34 26 30 32 27 22 31 16 11 16 23
+ * 32 — swinging about eleven degrees either way with its y frozen. The torque
+ * above is a restoring spring (as the body rocks, the foot changes, `nearest`
+ * flips sign, the push reverses) against an angular drag of only 1.5/s, so a
+ * sustained rock is a plausible thing for it to do.
+ *
+ * A contact damping term was tried here — physically the right idea, since a
+ * dropped coin rings down rather than rocking forever. Across a matched
+ * 72-phase comparison it changed nothing that could be told from noise:
+ * never-settled 10 -> 8, restless 54 -> 55, vibrating 24 -> 28. The rocking
+ * case did not reproduce at its own seed either, so there was nothing to hold
+ * the term against. It was removed rather than shipped on the strength of a
+ * good story, and the `rocking` metric in qa/header-jitter.mjs stays so the
+ * next occurrence is caught with numbers attached.
+ */
 /** How close to the floor still counts as standing on it, in px. The wall
  *  pass clamps a resting body to exactly the floor, so this only has to
  *  absorb the sub-pixel drift between that clamp and this check. */
@@ -257,6 +276,44 @@ const RESTING_SLIDE = 0;
  */
 const PAIR_FRICTION = 0.5;
 
+/*
+ * STATIC FRICTION, WHICH IS THE HALF THAT WAS MISSING (2026-08-31).
+ *
+ * PAIR_FRICTION above is a tangential impulse clamped to the NORMAL impulse —
+ * so it only exists where there is a normal impulse, which means only where
+ * two bodies are actively closing on each other. A body that has come to rest
+ * on another generates no normal impulse at all, and therefore had no
+ * tangential resistance of any kind: not from this, not from the floor (it is
+ * not touching the floor), and not from the separation push, which is
+ * deliberately suppressed sideways for a resting pair.
+ *
+ * With gravity straight down that is invisible, because nothing is pulling it
+ * sideways. Tilt the phone and there is a permanent lateral force on every
+ * object in the pile with nothing whatsoever opposing it, so the pile creeps —
+ * and the old code only stopped the creep by letting it build up until it
+ * tripped a threshold and got kicked back, which is the oscillation this work
+ * started from.
+ *
+ * A resting contact instead damps the tangential velocity BETWEEN the pair
+ * directly, in proportion to how firmly at rest it is (`grip` below is the
+ * complement of the same ramp that governs the positional push, so the two
+ * always agree about what "resting" means). That is what a real contact does,
+ * and it holds a stack against a tilt without any threshold to bounce off.
+ *
+ * Applied per relaxation pass, so the per-frame effect is roughly
+ * (1 - this)^(PASSES * SUBSTEPS) — 0.22 leaves about a fifth of a sideways
+ * slip after one frame, which reads as grip rather than as glue.
+ */
+const RESTING_GRIP = 0.22;
+
+/** Smoothstep between two bounds. Hoisted out of the pair loop, which runs
+ *  PASSES x SUBSTEPS times per frame for every pair — about sixteen thousand
+ *  closures a second on a ten-object pile if it is declared in there. */
+function ramp(v: number, lo: number, hi: number): number {
+  const t = Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+  return t * t * (3 - 2 * t);
+}
+
 
 
 /**
@@ -283,8 +340,48 @@ const PAIR_FRICTION = 0.5;
  * times over in this window, and a dragged body is `held`, which is excluded.
  * Waking works exactly as before — a neighbour arriving, a drag, a resize.
  */
+/*
+ * HOW A HELD PHONE KEPT THE PILE AWAKE FOREVER (2026-08-31).
+ *
+ * Noah: "the jitter or vibration or restlessness of the header icons in
+ * mobile... I'm seeing more of the jitter on mobile rather than desktop."
+ *
+ * Desktop was innocent, and measurably so: with tilt switched off the pile
+ * settles in 2.5-7s and then moves 0.0px with zero direction reversals. With
+ * tilt on it never settles at all, in twelve seconds of complete silence.
+ *
+ * The reason was the wake test, which compared each orientation reading with
+ * the one BEFORE it and woke every body when they differed by 0.02 of a unit
+ * vector — about 1.1 degrees. No hand holds a phone to a degree. So every
+ * reading, sixty times a second, woke all ten objects and reset the `calm`
+ * timer each of them has to fill for REST_TIME (0.15s) before it may sleep.
+ * A body could not physically accumulate that. The pile was not failing to
+ * settle; it was being forbidden to.
+ *
+ * Two changes, and the difference between them matters:
+ *
+ *   SLEW  the physics no longer reads the sensor directly. Gravity eases
+ *         toward the reported direction, so hand tremor — small, fast, and
+ *         self-cancelling — is filtered out before it reaches a body, while
+ *         a real tilt arrives essentially intact because it lasts.
+ *
+ *   WAKE  the comparison is against the direction the pile last woke FOR,
+ *         not against the previous sample. Noise oscillates around a mean and
+ *         so never accumulates against a fixed reference, whereas genuinely
+ *         turning the phone does, and crosses the threshold once — which is
+ *         all it takes, since the objects then have gravity's new direction
+ *         and a full REST_TIME of quiet in which to use it.
+ */
+const TILT_SLEW_PER_SEC = 6;
+/** ~3.4 degrees: past a hand's tremor, well under a deliberate tilt. */
+const TILT_WAKE = 0.06;
+
 const SETTLE_WATCHDOG_S = 1.5;
 const SETTLE_DRIFT_FRACTION = 0.02;
+/** How far a body may WANDER inside a watchdog window and still count as
+ *  having stayed put. Generous next to a buzz (a few px) and tiny next to
+ *  anything genuinely in motion, which crosses the arena in this time. */
+const SETTLE_ESCAPE_FRACTION = 0.12;
 
 export type DropSpec = {
   /** Rendered width, as a fraction of the ARENA's width. */
@@ -333,6 +430,8 @@ type Body = {
   anchorX: number;
   anchorY: number;
   anchorT: number;
+  /** Furthest the body has strayed from its anchor during this window. */
+  anchorMax: number;
 };
 
 export function useDropField({
@@ -388,6 +487,10 @@ export function useDropField({
    * not restart when it changes.
    */
   const gravityDir = useRef({ x: 0, y: 1 });
+  /** The latest raw reading. `gravityDir` eases toward this — see TILT_SLEW. */
+  const gravityTarget = useRef({ x: 0, y: 1 });
+  /** The direction the pile was last deliberately woken for. */
+  const gravityWake = useRef({ x: 0, y: 1 });
   const els = useRef<(HTMLElement | null)[]>([]);
   const bodies = useRef<Body[]>([]);
   const arena = useRef({ w: 0, h: 0 });
@@ -458,6 +561,7 @@ export function useDropField({
         anchorX: 0,
         anchorY: 0,
         anchorT: 0,
+        anchorMax: 0,
       };
     });
     specs.forEach((spec, i) => {
@@ -700,6 +804,7 @@ export function useDropField({
       b.anchorX = b.x;
       b.anchorY = b.y;
       b.anchorT = 0;
+      b.anchorMax = 0;
     };
 
     const substep = (h: number) => {
@@ -854,14 +959,85 @@ export function useDropField({
              * support, and removing it makes the pile sink instead of settle
              * (see the note at RESTING_OVERLAP). Held bodies are excluded:
              * while someone is dragging one, every contact is live again. */
-            const restingPair =
-              !a.held &&
-              !c.held &&
-              overlap < RESTING_OVERLAP &&
-              Math.hypot(a.vx, a.vy) < SLEEP_SPEED &&
-              Math.hypot(c.vx, c.vy) < SLEEP_SPEED;
-            const pushX = nx * push * (restingPair ? RESTING_SLIDE : 1);
-            const pushY = ny * push;
+            /* "SIDEWAYS" MEANS ACROSS GRAVITY, NOT ACROSS THE SCREEN
+             * (2026-08-31).
+             *
+             * This suppression used to zero the push's X component, and X is
+             * only the sideways direction while gravity points straight down.
+             * With tilt on, gravity has a permanent horizontal component — and
+             * that is the exact direction this code had just switched off. So
+             * a resting body was pulled sideways by gravity with nothing
+             * positional resisting it, sank into its neighbour until it broke
+             * the speed or overlap threshold below, got the FULL push back in
+             * one frame, was thrown clear, slowed, dropped under the threshold
+             * again, and started over. Measured on socal-earth: an icon
+             * oscillating between (219,722) and (229,732) indefinitely — a
+             * 14px buzz, which is RESTING_OVERLAP, because that is the
+             * threshold it was bouncing off.
+             *
+             * Splitting along gravity instead fixes the direction. With
+             * gravity straight down the projection is exactly the old
+             * arithmetic — along = pushY, perpendicular = pushX — so desktop
+             * is unchanged to the digit, which is the point. */
+            const gLen = Math.hypot(gx, gy);
+            const ux = gLen > 1e-4 ? gx / gLen : 0;
+            const uy = gLen > 1e-4 ? gy / gLen : 1;
+
+            /* AND IT RAMPS, RATHER THAN SWITCHING.
+             *
+             * The test below was a hard boolean, so the sideways push jumped
+             * between full and nothing the instant a body crossed 18px/s or
+             * 14px of overlap. A discontinuity in a feedback loop is how you
+             * build an oscillator: whichever side of the line the body lands
+             * on pushes it back over. Ramping across a band means a contact
+             * that is nearly at rest keeps nearly none of its sideways push
+             * and one that is clearly moving keeps all of it, with no edge to
+             * bounce off. */
+            const pairSpeed = Math.max(
+              Math.hypot(a.vx, a.vy),
+              Math.hypot(c.vx, c.vy)
+            );
+            const live =
+              a.held || c.held
+                ? 1
+                : Math.max(
+                    ramp(overlap, RESTING_OVERLAP, RESTING_OVERLAP * 2),
+                    ramp(pairSpeed, SLEEP_SPEED, SLEEP_SPEED * 2.5)
+                  );
+            const slide = RESTING_SLIDE + (1 - RESTING_SLIDE) * live;
+
+            const rawX = nx * push;
+            const rawY = ny * push;
+            const along = rawX * ux + rawY * uy;
+            const perpX = rawX - along * ux;
+            const perpY = rawY - along * uy;
+            const pushX = along * ux + perpX * slide;
+            const pushY = along * uy + perpY * slide;
+
+            /* The velocity half of the same idea — see RESTING_GRIP. `grip`
+             * is 1 for a pair fully at rest and 0 for one clearly in motion,
+             * so a thrown object slides over a pile exactly as before and
+             * only a settled one is held. */
+            const grip = (1 - live) * RESTING_GRIP;
+            if (grip > 0 && !a.held && !c.held) {
+              // Tangent to the contact normal.
+              const tx = -ny;
+              const ty = nx;
+              const rel = (c.vx - a.vx) * tx + (c.vy - a.vy) * ty;
+              const j = rel * grip;
+              if (aStatic) {
+                c.vx -= j * tx;
+                c.vy -= j * ty;
+              } else if (cStatic) {
+                a.vx += j * tx;
+                a.vy += j * ty;
+              } else {
+                a.vx += j * tx * (mc / total);
+                a.vy += j * ty * (mc / total);
+                c.vx -= j * tx * (ma / total);
+                c.vy -= j * ty * (ma / total);
+              }
+            }
             if (aStatic) {
               c.x += pushX;
               c.y += pushY;
@@ -1081,21 +1257,50 @@ export function useDropField({
        * first and fails this one. */
       for (const b of list) {
         if (!b.released || b.held || b.asleep) continue;
+        /* JUDGE THE WHOLE WINDOW, NOT EACH INSTANT (2026-08-31).
+         *
+         * Noah: "the jitter or vibration or restlessness of the header icons
+         * in mobile."
+         *
+         * This watchdog exists precisely to park a body that is busy going
+         * nowhere — and it could not, because it restarted its own clock the
+         * moment the body strayed further than `drift` (about a pixel) from
+         * its anchor. A body oscillating two or three pixels crosses that
+         * line on nearly every frame, so the timer was reset before it could
+         * ever reach SETTLE_WATCHDOG_S. The one motion the watchdog was
+         * written to catch was the one motion that switched it off.
+         *
+         * Traced on socal-earth: an icon stepping 348,727 348,726 348,728
+         * 348,725 — x frozen, y sawtoothing under two pixels — still doing it
+         * indefinitely, its watchdog reset on every step.
+         *
+         * So the test is now over the FULL window: where is the body now
+         * compared with where it was 1.5s ago, and how far did it stray in
+         * between? Buzzing in place scores near zero on both. Genuinely
+         * travelling — falling, sliding, thrown — scores far above `escape`
+         * within a fraction of that window, since gravity here is several
+         * thousand px/s² and would carry a body across the whole arena, so
+         * nothing that is actually moving can be frozen by this. */
         const drift = Math.max(0.5, b.w * SETTLE_DRIFT_FRACTION);
-        if (Math.hypot(b.x - b.anchorX, b.y - b.anchorY) > drift) {
-          b.anchorX = b.x;
-          b.anchorY = b.y;
-          b.anchorT = 0;
-          continue;
-        }
+        const escape = Math.max(8, b.w * SETTLE_ESCAPE_FRACTION);
+        const away = Math.hypot(b.x - b.anchorX, b.y - b.anchorY);
+        if (away > b.anchorMax) b.anchorMax = away;
         b.anchorT += h;
-        if (b.anchorT >= SETTLE_WATCHDOG_S) {
+        if (b.anchorT < SETTLE_WATCHDOG_S) continue;
+        if (away <= drift && b.anchorMax <= escape) {
           b.vx = 0;
           b.vy = 0;
           b.spin = 0;
           b.asleep = true;
           b.calm = 0;
           b.anchorT = 0;
+          b.anchorMax = 0;
+        } else {
+          // It went somewhere. Start a fresh window from where it is now.
+          b.anchorX = b.x;
+          b.anchorY = b.y;
+          b.anchorT = 0;
+          b.anchorMax = 0;
         }
       }
     };
@@ -1143,6 +1348,39 @@ export function useDropField({
       for (const b of bodies.current) {
         if (!b.released && arena.current.w > 0 && b.w > 0 && now >= armedAt + b.spec.delay) {
           release(b);
+        }
+      }
+
+      /* EASE GRAVITY, AND DECIDE ONCE A FRAME WHETHER THE PHONE MOVED.
+         See the TILT_SLEW / TILT_WAKE note above. Untouched when tilt is off:
+         gravityDir stays exactly {0, 1} and this whole block is skipped, so
+         desktop keeps the physics it was tuned with. */
+      if (tilt) {
+        const g = gravityDir.current;
+        const t = gravityTarget.current;
+        const k = 1 - Math.exp(-TILT_SLEW_PER_SEC * dt);
+        /* Deliberately NOT renormalised. The vector's LENGTH carries how much
+           of gravity lies in the plane of the screen — a phone lying flat on a
+           table has almost none, which is what makes the objects stop sliding
+           when you put it down. Forcing it back to unit length would give a
+           flat phone full gravity in whatever direction the noise last
+           pointed. */
+        gravityDir.current = { x: g.x + (t.x - g.x) * k, y: g.y + (t.y - g.y) * k };
+
+        const w = gravityWake.current;
+        const moved = Math.hypot(
+          gravityDir.current.x - w.x,
+          gravityDir.current.y - w.y
+        );
+        if (moved > TILT_WAKE) {
+          gravityWake.current = { ...gravityDir.current };
+          for (const b of bodies.current) {
+            if (!b.held) {
+              b.asleep = false;
+              b.calm = 0;
+              b.anchorT = 0;
+            }
+          }
         }
       }
 
@@ -1300,27 +1538,12 @@ export function useDropField({
    * not mounted, nothing was asking at all. */
   useEffect(() => {
     if (!tilt) return;
+    /* Just record it. The smoothing, and the decision about whether this
+     * amounts to the phone actually being turned, both happen once a frame in
+     * the step loop — where there is a real dt to smooth against and where
+     * waking the pile costs one pass instead of one per sensor reading. */
     return subscribeTilt((next) => {
-      const prev = gravityDir.current;
-      gravityDir.current = next;
-
-      /* TILTING HAS TO WAKE THE PILE (2026-08-30). Bodies genuinely sleep
-       * once they come to rest — that is what stopped the fidgeting — and a
-       * sleeping body does not integrate gravity at all. So the phone turned,
-       * gravity moved, and ten sleeping objects ignored it.
-       *
-       * The threshold is there so a phone resting on a desk, jittering by a
-       * fraction of a degree, cannot hold the whole field awake forever,
-       * which would put the fidgeting straight back. */
-      if (Math.hypot(next.x - prev.x, next.y - prev.y) > 0.02) {
-        for (const b of bodies.current) {
-          if (!b.held) {
-            b.asleep = false;
-            b.calm = 0;
-            b.anchorT = 0;
-          }
-        }
-      }
+      gravityTarget.current = next;
     });
   }, [tilt]);
 

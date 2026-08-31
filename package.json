@@ -13,7 +13,8 @@
     "publish:check": "node tools/publish.mjs --check",
     "qa:launch": "node qa/launch-check.mjs",
     "qa:settle": "node qa/header-settle.mjs",
-    "qa:footer": "node qa/footer-overlap.mjs"
+    "qa:footer": "node qa/footer-overlap.mjs",
+    "qa:jitter": "node qa/header-jitter.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
