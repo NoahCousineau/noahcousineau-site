@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "About — Noah Cousineau",
+  title: "About Me",
   description:
     "Graphic Designer, Artist, All Of The Above. Being silly is serious work.",
 };

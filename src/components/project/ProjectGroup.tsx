@@ -226,7 +226,16 @@ const DESCRIPTOR_GAP_UNITS = 10;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
 // All images rendered at full source resolution for maximum PPI.
-const IMAGE_QUALITY = 100;
+/* 100 -> 85 (2026-08-30). Noah: "the site is terribly clunky when in mobile."
+ *
+ * It was not errors. Measured on a real phone viewport against the live site,
+ * one project page pulled 201MB. Quality 100 tells the optimiser to spend
+ * essentially unlimited bytes defending detail no phone screen can resolve;
+ * 85 is the knee of that curve, where a photograph stops getting visibly
+ * better and only gets bigger. Every image on the site is a photograph or a
+ * scan of physical artwork, which is exactly the content that compresses
+ * well and exactly the content 100 wastes the most on. */
+const IMAGE_QUALITY = 85;
 
 /**
  * ScaledMedia — renders the cell's media at a percentage of its natural

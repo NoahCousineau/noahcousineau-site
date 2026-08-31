@@ -561,7 +561,7 @@ export default function About() {
             learning that I gained from my experience; I hated engineering.
           </p>
           <p className="m-0">
-            For a field that seemed to be teaming with creativity and
+            For a field that seemed to be teeming with creativity and
             possibility, I found myself mired by dull calculations,
             regimented procedures, and serious consequences to errors. If I
             was going to devote myself to a career, I wanted to ensure it was

@@ -24,6 +24,20 @@ import { ProjectGroup } from "@/components/project/ProjectGroup";
  * page before the first grid arrives. */
 const FIRST_GROUP_TOP_GAP_UNITS = 780;
 
+/* TAB NAMES, given by Noah on 2026-08-30. Kept as their own map rather than
+ * derived from `project.title`, because that field is the DISPLAY title —
+ * set in caps for the page's own lockup ("SPROUTS FARMERS MARKET"), and it
+ * carries "POSTER" on the Cultural Olympiad, which he does not want in the
+ * tab. Two different jobs, two different strings. */
+const TAB_TITLES: Record<string, string> = {
+  "sprouts-farmers-market": "Sprouts Farmers Market",
+  "corita-art-center": "Corita Art Center",
+  "socal-earth": "SoCal Earth",
+  "cultural-olympiad-poster": "Cultural Olympiad",
+  "valley-strong-credit-union": "Valley Strong Credit Union",
+  "more-work": "More Work",
+};
+
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
 }
@@ -36,7 +50,7 @@ export async function generateMetadata(
   const project = getProject(slug);
   if (!project) return { title: "Not found" };
   return {
-    title: `${project.title} — Noah Cousineau`,
+    title: TAB_TITLES[slug] ?? project.title,
     description: project.intro.slice(0, 160),
   };
 }

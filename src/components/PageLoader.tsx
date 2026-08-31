@@ -107,11 +107,35 @@ function PageLoaderInner() {
     // thinks is current — reproducible by navigating away from a scrolled
     // page and back. `immediate: true` snaps Lenis's own state to 0 in the
     // same frame instead of easing there.
+    /* AND STOP THE BROWSER PUTTING IT BACK (2026-08-30). Noah: "make sure
+       all pages load at the top."
+       
+       The jump below was already here and was already correct — but on a
+       RELOAD, and on back/forward, the browser restores the previous scroll
+       position itself, and it does that after this runs. So the one case
+       where landing at the top matters most, someone refreshing a page they
+       had scrolled down, was the one case still broken. Turning restoration
+       off hands the decision to us, which is what the next two lines are. */
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
     window.scrollTo(0, 0);
     getLenis()?.scrollTo(0, { immediate: true });
 
+    /* THE TAB SAYS SOMETHING WHILE IT LOADS (2026-08-30). Noah's tab names
+       include "Loading Screen: Woah, Partner!" — so the title belongs to the
+       moment rather than to a route. Captured and restored so the page's own
+       name comes back the instant the curtain lifts. */
+    const titleBeforeLoading = document.title;
+    document.title = "Woah, Partner!";
+
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
+    // If this unmounts mid-load (a route change while the curtain is up),
+    // the tab must not be left saying "Woah, Partner!" forever.
+    const restoreTitle = () => {
+      if (document.title === "Woah, Partner!") document.title = titleBeforeLoading;
+    };
     let observer: MutationObserver | null = null;
 
     function getMediaElements(): (HTMLImageElement | HTMLVideoElement)[] {
@@ -150,6 +174,9 @@ function PageLoaderInner() {
     function finish() {
       if (cancelled) return;
       cancelled = true;
+      // Hand the tab back its real name — see the note at the top of this
+      // effect. Guarded so a title Next has set in the meantime wins.
+      if (document.title === "Woah, Partner!") document.title = titleBeforeLoading;
       if (pollId) clearInterval(pollId);
       if (observer) observer.disconnect();
       // The curtain is going up: anything that has been holding an entrance
@@ -189,6 +216,7 @@ function PageLoaderInner() {
       window.clearTimeout(initialDelay);
       if (pollId) clearInterval(pollId);
       if (observer) observer.disconnect();
+      restoreTitle();
     };
   }, []);
 

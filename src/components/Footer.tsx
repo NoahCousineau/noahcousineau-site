@@ -394,6 +394,14 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                         href={item.href}
                         target={external ? "_blank" : undefined}
                         rel={external ? "noreferrer" : undefined}
+                        /* The résumé is a PDF, not a route. Next prefetches
+                           every Link in view as an RSC payload, and asking
+                           the server for a PDF that way is a guaranteed 404
+                           on every page that renders this footer — which is
+                           every page. Measured on a phone against the live
+                           site: one 404 per page load, for a file that is
+                           perfectly fine when actually clicked. */
+                        prefetch={external ? false : undefined}
                         className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
                         /* CLAMPED, NOT SCALED, across the middle band. The
                            phone value is 72 units, which is 14.6px on a 390
@@ -431,6 +439,8 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
               <Place x={col.x} y={ROW1_TEXT_Y}>
                 <Link
                   href={col.items[0].href}
+                  /* Not a route — see the note on the phone columns above. */
+                  prefetch={col.items[0].href.startsWith("http") || col.items[0].href.endsWith(".pdf") ? false : undefined}
                   target={col.items[0].href.startsWith("http") ? "_blank" : undefined}
                   rel={col.items[0].href.startsWith("http") ? "noreferrer" : undefined}
                   className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
@@ -446,6 +456,8 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
               <Place x={col.x} y={ROW2_TEXT_Y}>
                 <Link
                   href={col.items[1].href}
+                  /* Not a route — see the note on the phone columns above. */
+                  prefetch={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? false : undefined}
                   target={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "_blank" : undefined}
                   rel={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "noreferrer" : undefined}
                   className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"

@@ -1,0 +1,1802 @@
+{
+  "sprouts-farmers-market": {
+    "heroImage": "header.png",
+    "credits": [
+      {
+        "role": "NASDAQ Board Animation",
+        "names": [
+          "Rodrigo V."
+        ]
+      },
+      {
+        "role": "Storyboards",
+        "names": [
+          "Yonna Kim"
+        ]
+      },
+      {
+        "role": "creative director",
+        "names": [
+          "Summer Woodward",
+          "Hunter Somerville"
+        ]
+      },
+      {
+        "role": "design",
+        "names": [
+          "Kristy Toyoda",
+          "Chantal Herrera",
+          "Jamie Back",
+          "Spencer Fraye"
+        ]
+      },
+      {
+        "role": "photography",
+        "names": [
+          "Jason Travis"
+        ]
+      }
+    ],
+    "statement": {
+      "lead": "What does",
+      "emphasis": " fresh ",
+      "tail": "look like?"
+    },
+    "paragraph": [
+      "During my time as a designer at Meaningful Works, this was a question that we commonly found ourselves asking. Through various projects, Sprouts Farmers Market always emphasized the importance of connecting their brand with delicious fresh food. Our concern was how do you make \u201cfresh\u201d, a commonly used term in grocery and restaurants, into something that consumers perceive as unique to the Sprouts brand.",
+      "Our solution came about showing fresh not just through imagery, but also through a fresh attitude. We leaned into the feeling of discovery and joyful note taking, known as Sprouts\u2019 \u201cforager spirit\u201d. By embracing this brand attitude, freshness could be exciting, organic, and energizing. While other grocers claim they're fresh, they can't match the feeling of fresh that we are able to display in our work for Sprouts."
+    ],
+    "groups": [
+      {
+        "descriptor": "Times Square Advertisement",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "video",
+                "src": "/videos/Sprouts_013026_Video (1).mp4"
+              }
+            ]
+          },
+          {
+            "aspect": "974/576.45",
+            "cells": [
+              {
+                "type": "image",
+                "file": "sprouts-farmers-market_02_sprouts-marquee.jpg",
+                "scale": 120
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Southern California Campaign",
+        "rows": [
+          {
+            "aspect": "974/531.33",
+            "cells": [
+              {
+                "type": "image",
+                "file": "250829_Sprouts_OOH_Billboard_R3_V1_NC_1.png",
+                "scale": 140
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Sprouts Custom Graphics-03.png"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Sprouts Custom Graphics-05.png"
+              }
+            ]
+          },
+          {
+            "aspect": "8000/3397",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Sprouts Custom Graphics-01.png"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Every Day Low Prices Campaign",
+        "rows": [
+          {
+            "aspect": "8000/3742",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Sprouts Custom Graphics.png"
+              }
+            ]
+          },
+          {
+            "aspect": "1/1",
+            "cells": [
+              {
+                "type": "image",
+                "file": "2026_Sprouts_EDLP_Direction1_AFrame_MOCKUP_02_V2.png",
+                "scale": 168
+              },
+              {
+                "type": "video",
+                "src": "/videos/Sprouts_EDLP_General_Social_Store_Yellow_Large_1080x1080 2.mp4",
+                "scale": 102
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Forager Land Art Direction",
+        "rows": [
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "layout6.png",
+                "fit": true,
+                "cropAspect": "487/694.35"
+              },
+              {
+                "type": "image",
+                "file": "layout7.png",
+                "fit": true,
+                "cropAspect": "487/700.06"
+              }
+            ]
+          },
+          {
+            "aspect": "974/1131.13",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Sprouts_Forager_Land-382.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "Sprouts_Forager_Land-277.jpg",
+                "colWidth": 1.01,
+                "fit": true,
+                "cropAspect": "487/731.86"
+              },
+              {
+                "type": "image",
+                "file": "Sprouts_Forager_Land-226_EDIT edit.jpg",
+                "scale": 120,
+                "colWidth": 0.99
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Sprouts x The Ultimate Human",
+        "rows": [
+          {
+            "aspect": "9/16",
+            "cells": [
+              {
+                "type": "youtube",
+                "id": "ZDCGdQLjw-s"
+              },
+              {
+                "type": "image",
+                "file": "TUH Endcap.png",
+                "scale": 78
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "corita-art-center": {
+    "heroImage": "header.png",
+    "credits": [],
+    "statement": {
+      "lead": "How do you",
+      "emphasis": " promote ",
+      "tail": "a legend?"
+    },
+    "paragraph": [
+      "Corita Art Center is an institution and gallery space that preserves and promotes the art, teachings, and passion for social justice of pop artist Corita Kent. In 2024, I was brought onto the Corita Art Center team and have been assisting with various projects since.",
+      "Through my time with Corita Art Center, I've had the opportunity to make social media assets, material for the gallery space, merchandise, and even a zine for a benefit dinner. I always found a significant challenge for designing for Corita Art Center was how to reference Corita Kent without being too literal to her work. I realized that the best way to reference Corita Kent was to use her philosophies on art making in my design work.",
+      "During Corita's time as the head of the art department at Immaculate Heart College, her and her students created a list of rules for the department, commonly called the \"Ten Rules\". I always took rule nine to heart when designing for Corita Art Center.",
+      "\"Be happy whenever you can manage it. Enjoy yourself. It's lighter than you think.\""
+    ],
+    "groups": [
+      {
+        "descriptor": "\"break bread\" Dinner Program",
+        "rows": [
+          {
+            "aspect": "974/668.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_07_front-cover.png",
+                "scale": 110
+              }
+            ]
+          },
+          {
+            "aspect": "974/554.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_11_spread-1.png",
+                "scale": 104
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_12_spread-2.png"
+              },
+              {
+                "type": "image",
+                "file": "corita-art-center_13_spread-3.png"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_14_spread-4.png"
+              },
+              {
+                "type": "image",
+                "file": "corita-art-center_15_spread-5.png"
+              }
+            ]
+          },
+          {
+            "aspect": "974/510.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_09_full-cover.png",
+                "scale": 108
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Social Media",
+        "rows": [
+          {
+            "aspect": "974/544.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Corita Art Center Custom Graphics.png",
+                "scale": 106
+              }
+            ]
+          },
+          {
+            "aspect": "1080/1920",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Corita Kent Evergreen Gif.gif"
+              },
+              {
+                "type": "video",
+                "src": "/videos/Hallway Reel 051425.mp4"
+              }
+            ]
+          },
+          {
+            "aspect": "1/1",
+            "cells": [
+              {
+                "type": "image",
+                "file": "120725_GraphicCards_IG-01.png",
+                "fit": true,
+                "cropAspect": "408.891/403.891"
+              },
+              {
+                "type": "image",
+                "file": "120725_GraphicCards_IG-04.png",
+                "fit": true,
+                "cropAspect": "324.67/324.67"
+              },
+              {
+                "type": "image",
+                "file": "120725_GraphicCards_IG-02.png",
+                "fit": true,
+                "cropAspect": "324.66/324.66"
+              }
+            ]
+          }
+        ],
+        "bgColor": "#f7ca2c"
+      },
+      {
+        "descriptor": "Merchandising",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Corita Art Center Custom Graphics Stickers.png"
+              }
+            ]
+          },
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Corita Art Center Custom Graphics Pennant.png"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Gallery Material",
+        "rows": [
+          {
+            "aspect": "974/507.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Corita Art Center Custom Graphics-03.png",
+                "scale": 110
+              }
+            ]
+          },
+          {
+            "aspect": "974/509.33",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Unordinary Days Transcription Sheet.jpg",
+                "scale": 94
+              }
+            ]
+          },
+          {
+            "aspect": "974/397.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_05_cac-stationery-03.png",
+                "scale": 50
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_03_cac-stationery-06.png",
+                "scale": 95
+              },
+              {
+                "type": "image",
+                "file": "corita-art-center_04_cac-stationery-02.png",
+                "scale": 95
+              }
+            ]
+          },
+          {
+            "aspect": "974/334.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "corita-art-center_02_cac-stationery-01.png",
+                "scale": 95
+              }
+            ]
+          },
+          {
+            "aspect": "9/16",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Corita Day 2026 Merch Menu Revised_Page_1.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "Corita Day 2026 Merch Menu Revised_Page_2.jpg",
+                "fit": true,
+                "cropAspect": "608.34375/793.578125"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "socal-earth": {
+    "heroImage": "header.png",
+    "credits": [
+      {
+        "role": "developer",
+        "names": [
+          "Steve Goerger"
+        ]
+      }
+    ],
+    "statement": {
+      "lead": "How do you make",
+      "emphasis": " a brand ",
+      "tail": "look resourceful?"
+    },
+    "paragraph": [
+      "SoCal Earth is an environmental data program created by the Robert Redford Conservancy at Pitzer College. The conservancy requested that I design the visual identity for this new program, which was to launch as a website first. Besides appealing to Southern Californians, the conservancy emphasized the importance of communication resourcefulness through design.",
+      "When thinking of how to create a visual identity around an abstraction like \"resourcefulness\", I decided to make the abstraction more literal. Seeing that I had loose pieces of construction paper in my studio, I cut the logo and illustrations out of these pieces of paper. I was designing SoCal Earth around one of its main philosophies; using what we already have available to us.",
+      "Tons of collages of cut paper and pencil drawings were digitized, cleaned and polished, and made into the graphics for SoCal Earth. This held true for all the graphics on the site, as well as the kid's Burrowing Owl mascot, Ollie. To get the full experience, visit socalearth.org"
+    ],
+    "groups": [
+      {
+        "descriptor": "Teaser Video",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "video",
+                "src": "/videos/SoCal Earth Looping Animation - Long - With Sound.mp4"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Logo",
+        "rows": [
+          {
+            "aspect": "974/383.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_02_bright-background-icon.png",
+                "scale": 72
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_03_bright-background-horizontal.svg",
+                "scale": 84
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_04_bright-background-vertical.png",
+                "scale": 84
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Website",
+        "rows": [
+          {
+            "aspect": "974/471.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "Digital Mockup.png"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_07_screenshot-2024-10-05-at-7-23-35-pm.png",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_08_screenshot-2024-10-05-at-7-22-04-pm.png",
+                "fit": true,
+                "cropAspect": "487/239.65"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_09_screenshot-2024-10-05-at-7-25-24-pm.png",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_10_screenshot-2024-10-05-at-7-20-55-pm.png",
+                "fit": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Website Section Illustrations",
+        "rows": [
+          {
+            "aspect": "12502/7500",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_11_biodiversity-with-background.png"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_13_water-with-background.png",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_12_climate-with-background.png",
+                "fit": true,
+                "cropAspect": "324.67/194.77"
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_14_ocean-health-with-background.png",
+                "fit": true,
+                "cropAspect": "324.66/194.76"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_15_built-environment-with-background.png",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_17_food-with-background.png",
+                "fit": true,
+                "cropAspect": "324.67/194.79"
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_16_call-to-action-with-background.png",
+                "fit": true,
+                "cropAspect": "324.66/194.79"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Ollie The Burrowing Owl",
+        "rows": [
+          {
+            "aspect": "974/496.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_18_owl-default.png",
+                "scale": 86
+              }
+            ]
+          },
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_19_owl-happy.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_20_owl-flying.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_21_owl-scholar.png",
+                "scale": 68
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_22_owl-writer.png",
+                "scale": 82
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_23_owl-under-tree.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_25_owl-weatherman.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_28_owl-driving.png",
+                "scale": 90
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_26_owl-farmer.png",
+                "scale": 86
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_24_owl-plumber.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_27_owl-basking.png",
+                "scale": 84
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_29_owl-ranger.png",
+                "scale": 88
+              }
+            ]
+          },
+          {
+            "aspect": "1921/719",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_54_owl-mganifying-glass.png",
+                "scale": 76
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Merchandise",
+        "rows": [
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_35_vertical-logo-tan.png",
+                "scale": 108
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_37_owl-default-green.png",
+                "scale": 108
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_36_sun-tan.png",
+                "scale": 108
+              }
+            ]
+          },
+          {
+            "aspect": "1200/1748",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_40_regular-green.png",
+                "scale": 110
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_39_sun-pattern-orange-on-tan.png",
+                "scale": 118
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_38_landscape-bush.png",
+                "scale": 118
+              }
+            ]
+          },
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "socal-earth_42_sun-orange-on-green.png"
+              },
+              {
+                "type": "image",
+                "file": "socal-earth_41_landscape-climate.png"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "cultural-olympiad-poster": {
+    "heroImage": "header.png",
+    "credits": [
+      {
+        "role": "instructors",
+        "names": [
+          "Samantha Jan Fleming",
+          "Constantin Chopin"
+        ]
+      }
+    ],
+    "statement": {
+      "lead": "What do",
+      "emphasis": "Paris and Los Angeles",
+      "tail": "have in common?"
+    },
+    "paragraph": [
+      "This was a question that plagued me when I was designing a poster for the Paris 2024 Cultural Olympiad. In Spring of 2024, I entered a student contest to design a poster and animation celebrating the transition of the Summer Olympics from Paris in 2024 to Los Angeles in 2028. This was a contest held between three art schools in the Los Angeles area and one in Paris. Despite the cities of Paris and Los Angeles feeling radically different, I had to design something that unified them.",
+      "When thinking of these cities, I realized both were massive tourist cities. With tourist cities come cheap souvenir stores. I saw that I could highlight these two cities by elevating plastic Eiffel Towers and faux Academy Awards into symbols of pride. Using a unifying mid-century cut paper style, an Eiffel Tower, an Olympic torch, and an Academy Award were combined to create a poster of transition between cities."
+    ],
+    "groups": [
+      {
+        "descriptor": "Poster",
+        "rows": [
+          {
+            "aspect": "974/592.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "cultural-olympiad-poster_02_noah-cousineau-poster-online.jpg",
+                "scale": 94
+              }
+            ]
+          },
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "cultural-olympiad-poster_03_olympics-poster-on-display-2.jpg"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "animation",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "video",
+                "src": "/videos/Image_FB_Cousineau_Noah_ArtCenter College of Design.mp4",
+                "fit": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Accolades",
+        "rows": [
+          {
+            "aspect": "974/263.55",
+            "cells": [
+              {
+                "type": "image",
+                "file": "cultural-olympiad-poster_06_wbds-badge.png",
+                "scale": 75
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "valley-strong-credit-union": {
+    "heroImage": "header.png",
+    "credits": [
+      {
+        "role": "Creative Director",
+        "names": [
+          "Summer Woodward"
+        ]
+      }
+    ],
+    "statement": {
+      "lead": "Can you turn a",
+      "emphasis": " loan ",
+      "tail": "into a story?"
+    },
+    "paragraph": [
+      "When I started working at Meaningful Works, my first assignment was to create a visual identity for Valley Strong Credit Union's home loan program. The challenge in this was that a home loan is not an exciting thing on its surface. The idea of going through a loan of any sort can leave people feeling nervous, anxious, or just uninterested overall. The breakthrough moment in the project came when we turned a source of anxiety into a source of excitement. After all, with a home loan comes a new house.",
+      "With this new reframing of a home loan as an exciting path to a new house, creating a visual identity became much easier. We framed the identity around houses, be it short, tall, or wide. These minimalistic houses allowed the user to imagine themselves inside these new spaces, supported by the green colors of Valley Strong Credit Union. To make the metaphor of a house more apparent, roof textures were added to suggest architectural styles. Through play, excitement, and levity, a home loan was no longer a source of anxiety, but a path to an exciting future."
+    ],
+    "groups": [
+      {
+        "descriptor": "Home Loans Visual Identity",
+        "rows": [
+          {
+            "aspect": "974/455.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_03_250724-valleystrong-homeloans-visid-billboards-r.png",
+                "scale": 164
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_04_250725-valleystrong-homeloans-visid-socialpost-r.jpg",
+                "scale": 144
+              },
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_05_250728-valleystrong-homelending-visid-doorhanger.png",
+                "scale": 128
+              }
+            ]
+          },
+          {
+            "aspect": "974/506.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_06_250725-valleystrong-homelending-visid-stationery.jpg",
+                "scale": 122
+              }
+            ]
+          },
+          {
+            "aspect": "974/633.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_07_250718-valleystrong-homelending-visid-webbanner-.jpg",
+                "scale": 130
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "Style Guide Excerpts",
+        "rows": [
+          {
+            "aspect": "5100/3300",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_08_250728-valleystrong-homelending-visid-styleguide.jpg"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_09_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_10_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true,
+                "cropAspect": "487/315.12"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_11_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_12_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true,
+                "cropAspect": "487/315.12"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_14_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_15_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true,
+                "cropAspect": "487/315.12"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_16_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_17_250728-valleystrong-homelending-visid-styleguide.jpg",
+                "fit": true,
+                "cropAspect": "487/315.12"
+              }
+            ]
+          },
+          {
+            "aspect": "5100/3300",
+            "cells": [
+              {
+                "type": "image",
+                "file": "valley-strong-credit-union_18_250728-valleystrong-homelending-visid-styleguide.jpg"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "more-work": {
+    "heroImage": "header.png",
+    "credits": [],
+    "statement": {
+      "lead": "What",
+      "emphasis": " else ",
+      "tail": "is there"
+    },
+    "paragraph": [
+      "This page contains various projects that either showcase student work during my Graduate Graphic Design program at ArtCenter, or other organizations I worked with. My time at ArtCenter resulted in my graduate thesis Forced Perspective: An Exhibit on Brand. This project was focused around creating artwork that commented on branding and its ability to alter our understanding of the world. The artwork and experience was cataloged in a 300 page book written by myself. Other student projects include California State Parks, a branding project that brought old frontier graphics into playful contemporary design, and THE TRADE SHOW!, a mock art catalog of artists who focus on Capitalism in their work.",
+      "This page also includes intern work, such as various projects during my time with Disney's Yellow Shoes, the company's internal marketing firm for Disney Experiences. I also had the opportunity to update KDI's visual identity and create a new visual identity for a Hollywood startup called 10 By Ten Entertainment. There's been many projects I've worked on and there's many more left to do."
+    ],
+    "groups": [
+      {
+        "descriptor": "Forced Perspective - Graduate Thesis and Artwork",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "video",
+                "src": "/videos/Final Thesis Video.mp4"
+              }
+            ]
+          },
+          {
+            "aspect": "3300/5100",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_02_11x17-poster.png"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_14_all-brands.jpg",
+                "fit": true
+              }
+            ]
+          },
+          {
+            "aspect": "1500/1000",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_23_all-boxes-front-copy.png",
+                "scale": 102
+              }
+            ]
+          },
+          {
+            "aspect": "974/499.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_13_personas-full.png",
+                "scale": 98
+              }
+            ]
+          },
+          {
+            "aspect": "974/581.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_06_all-brands-copy.png",
+                "scale": 92,
+                "colWidth": 50
+              }
+            ]
+          },
+          {
+            "aspect": "974/429.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_05_shoes-3-no-background-copy.png",
+                "scale": 98
+              }
+            ]
+          },
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_22_trumpy.jpg",
+                "scale": 110
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_24_mario-iso.png",
+                "scale": 98
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_12_oscar-wilde-white.jpg",
+                "scale": 104
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_37_crowd-at-show.png",
+                "scale": 116,
+                "fit": true,
+                "cropAspect": "974/613.16"
+              }
+            ]
+          },
+          {
+            "aspect": "9/16",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_39_cody-and-gf-with-brands.png",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_40_kitty-and-friends.png",
+                "fit": true,
+                "cropAspect": "324.67/487.13"
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_41_joey-at-work.png",
+                "fit": true,
+                "cropAspect": "324.66/487.11"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_25_front-cover.png",
+                "scale": 126
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_28_back-cover.png",
+                "fit": true
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_30_spread-1-copy.png",
+                "scale": 160
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_31_spread-2-copy.png",
+                "scale": 160
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_32_spread-3-copy.png",
+                "scale": 160
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_33_spread-4-copy.png",
+                "scale": 160
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_34_spread-7-copy.png",
+                "scale": 160
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_35_spread-8-copy.png",
+                "scale": 160
+              },
+              {
+                "type": "image",
+                "file": "forced-perspective/forced-perspective_36_spread-9-copy.png",
+                "scale": 160
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "California State Parks - Student Branding Project",
+        "rows": [
+          {
+            "aspect": "974/291.55",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_02_week-11-logo-01.png",
+                "scale": 90
+              }
+            ]
+          },
+          {
+            "aspect": "974/574.13",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_04_week-14-posters-01.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_05_week-14-posters-05.jpg",
+                "fit": true,
+                "cropAspect": "324.67/487.13"
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_06_week-14-posters-03.jpg",
+                "fit": true,
+                "cropAspect": "324.66/487.11"
+              }
+            ]
+          },
+          {
+            "aspect": "2666/4000",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_08_week-14-posters-04.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_07_week-14-posters-02.jpg",
+                "fit": true,
+                "cropAspect": "324.67/486.76"
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_09_week-14-posters-06.jpg",
+                "fit": true,
+                "cropAspect": "324.66/486.74"
+              }
+            ]
+          },
+          {
+            "aspect": "2666/4000",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_12_week-14-posters-07.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_11_week-14-posters-08.jpg",
+                "fit": true,
+                "cropAspect": "324.67/486.95"
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_10_week-14-posters-09.jpg",
+                "fit": true,
+                "cropAspect": "324.66/486.92"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_15_laptop-1.png",
+                "scale": 94
+              }
+            ]
+          },
+          {
+            "aspect": "1200/2000",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_18_mobile-4.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_19_mobile-menu.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_21_mobile-5.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_22_ocean-lookout.png",
+                "scale": 90
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_23_state-park-sign-copy.png"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_39_california-state-park-shirt.png",
+                "scale": 98
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_41_yellow-shirt-copy.png",
+                "scale": 98
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_40_california-state-parks-hat.png"
+              }
+            ]
+          },
+          {
+            "aspect": "974/808.55",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_45_full-cover.png"
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_42_apple-watch-display-01.png",
+                "scale": 82
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_46_booklet-cover.png",
+                "scale": 128
+              }
+            ]
+          },
+          {
+            "aspect": "974/617.5",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_51_envelope.png",
+                "scale": 96
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_52_yellow-letterhead.png",
+                "scale": 116
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_49_yellow-business-card.png",
+                "scale": 98
+              }
+            ]
+          },
+          {
+            "aspect": "974/432.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_33_f150.png",
+                "scale": 84
+              }
+            ]
+          },
+          {
+            "aspect": "974/333.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_55_brand-bible-front-cover.png",
+                "scale": 86
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_56_brand-bible-example-spread-4.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_57_brand-bible-example-spread-3.jpg",
+                "fit": true,
+                "cropAspect": "487/365.25"
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_58_brand-bible-back-inside-cover.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "california-state-parks/california-state-parks_59_brand-bible-back-cover.jpg",
+                "fit": true,
+                "cropAspect": "487/365.25"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "THE TRADE SHOW! - Student Art Catalog Project",
+        "rows": [
+          {
+            "aspect": "974/483.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_02_the-trade-show-cover.jpg",
+                "scale": 140
+              }
+            ]
+          },
+          {
+            "aspect": "9/16",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_15_final-type-iv-posters-03-copy.png",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_13_final-type-iv-posters-01-copy.png",
+                "fit": true,
+                "cropAspect": "324.67/487.01"
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_14_final-type-iv-posters-02-copy.png",
+                "fit": true,
+                "cropAspect": "324.66/486.98"
+              }
+            ]
+          },
+          {
+            "aspect": "974/649.05",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_16_the-trade-show-posters-copy.png"
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_17_trade-show-banner.jpg",
+                "fit": true
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_19_the-trade-show-wall.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_20_miverva-cuevas-wall.jpg",
+                "fit": true,
+                "cropAspect": "487/324.67"
+              }
+            ]
+          },
+          {
+            "aspect": "974/404.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_03_spread-1.png",
+                "scale": 104
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_04_spread-2.png",
+                "scale": 140
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_05_spread-3.png",
+                "scale": 140
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_06_spread-5.png",
+                "scale": 140
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_07_spread-6.png",
+                "scale": 140
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_08_spread-7.png",
+                "scale": 140
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_09_spread-8.png",
+                "scale": 140
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_10_spread-9.png",
+                "scale": 140
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_11_spread-10.png",
+                "scale": 140
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_12_spread-11.png",
+                "scale": 140
+              }
+            ]
+          },
+          {
+            "aspect": "974/582.25",
+            "cells": [
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_22_tube-man.png",
+                "scale": 96
+              },
+              {
+                "type": "image",
+                "file": "the-trade-show/the-trade-show_21_toilet-stress-toy-3.png",
+                "scale": 90
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "The Walt Disney Company - Misc. Projects",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": []
+          },
+          {
+            "aspect": "1200/2000",
+            "cells": [
+              {
+                "type": "image",
+                "file": "walt-disney-company/walt-disney-company_02_magickey-dm-thankyou-041525-page-1.jpg",
+                "scale": 96
+              },
+              {
+                "type": "image",
+                "file": "walt-disney-company/walt-disney-company_03_magickey-dm-thankyou-041525-page-2.jpg",
+                "scale": 96
+              }
+            ]
+          },
+          {
+            "aspect": "1188/950",
+            "cells": [
+              {
+                "type": "image",
+                "file": "walt-disney-company/walt-disney-company_06_4447257-res-drc-backdrop-sh.png",
+                "scale": 86
+              },
+              {
+                "type": "image",
+                "file": "walt-disney-company/walt-disney-company_09_4447257-res-drc-table-top-poster-sh.png",
+                "scale": 90
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "KDI - Brand Refresh",
+        "rows": [
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "kdi/kdi_18_pages-from-style-guide-09-01-22-page-1.jpg"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "kdi/kdi_19_pages-from-style-guide-09-01-22-page-2.jpg"
+              },
+              {
+                "type": "image",
+                "file": "kdi/kdi_20_pages-from-style-guide-09-01-22-page-3.jpg"
+              },
+              {
+                "type": "image",
+                "file": "kdi/kdi_21_pages-from-style-guide-09-01-22-page-4.jpg"
+              }
+            ]
+          },
+          {
+            "aspect": "16/9",
+            "cells": [
+              {
+                "type": "image",
+                "file": "kdi/kdi_23_pages-from-style-guide-09-01-22-page-6.jpg"
+              },
+              {
+                "type": "image",
+                "file": "kdi/kdi_24_pages-from-style-guide-09-01-22-page-7.jpg"
+              },
+              {
+                "type": "image",
+                "file": "kdi/kdi_25_pages-from-style-guide-09-01-22-page-8.jpg"
+              }
+            ]
+          },
+          {
+            "aspect": "3/4",
+            "cells": [
+              {
+                "type": "image",
+                "file": "kdi/kdi_12_survival-guide-1.jpg",
+                "fit": true
+              },
+              {
+                "type": "image",
+                "file": "kdi/kdi_13_survival-guide-2.jpg",
+                "fit": true,
+                "cropAspect": "324.67/420.16"
+              },
+              {
+                "type": "image",
+                "file": "kdi/kdi_14_survival-guide-5.jpg",
+                "fit": true,
+                "cropAspect": "324.66/420.14"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "descriptor": "10 By Ten Entertainment - Startup Visual Identity",
+        "rows": [
+          {
+            "aspect": "858/482",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_02_10-by-ten-logo-animation-v8-6.gif",
+                "fit": true
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_05_letterhead-portfolio.png",
+                "scale": 90
+              },
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_04_business-card-portfolio.png"
+              }
+            ]
+          },
+          {
+            "aspect": "974/498.88",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_06_cover.png",
+                "scale": 152
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_07_opening-spread.png",
+                "scale": 118
+              },
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_08_values.png",
+                "scale": 118
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_09_visuals.png",
+                "scale": 118
+              },
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_10_powers-of-ten.png",
+                "scale": 118
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_11_logo.png",
+                "scale": 118
+              },
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_12_type.png",
+                "scale": 118
+              }
+            ]
+          },
+          {
+            "aspect": "4/3",
+            "cells": [
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_13_inspo.png",
+                "scale": 118
+              },
+              {
+                "type": "image",
+                "file": "10-by-ten-entertainment/10-by-ten-entertainment_14_closing-spread.png",
+                "scale": 118
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

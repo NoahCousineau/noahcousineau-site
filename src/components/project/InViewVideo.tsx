@@ -166,7 +166,14 @@ export function InViewVideo({
         // restart under the viewer.
         loop={!activated}
         playsInline
-        preload="metadata"
+        /* "none", not "metadata" (2026-08-30). These autoplay when they
+           scroll into view, so the browser was already going to fetch the
+           whole file the moment one appeared — and asking for metadata on top
+           of that started a second fetch of every video on the page before
+           anyone had scrolled anywhere near it. On a phone that is tens of
+           megabytes spent on videos most visitors never reach. Nothing is
+           requested now until the observer actually starts playback. */
+        preload="none"
         controls={activated}
         onClick={handleClick}
         className={`w-full h-full cursor-pointer ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}

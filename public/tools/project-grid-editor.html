@@ -1,0 +1,2036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Project Grid Builder</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .subtitle { color: #999; font-size: 13px; margin-bottom: 16px; }
+
+  .tabs {
+    display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px;
+    border-bottom: 1px solid #333; padding-bottom: 0;
+  }
+  .tab {
+    padding: 10px 16px; background: #232323; border: 1px solid #333; border-bottom: none;
+    border-radius: 6px 6px 0 0; cursor: pointer; font-size: 13px; color: #ccc;
+  }
+  .tab.active { background: #0066ff; color: #fff; border-color: #0066ff; }
+  .tab .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4caf50; margin-left: 6px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr 420px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .shelf-col {
+    position: sticky; top: 20px;
+    background: #232323; border-radius: 8px; padding: 14px;
+    max-height: 88vh; overflow-y: auto;
+  }
+  .shelf-col h3 { margin: 0 0 8px; font-size: 13px; color: #0066ff; }
+  .shelf-hint { font-size: 11px; color: #999; margin-bottom: 10px; line-height: 1.5; }
+  .folder-btn {
+    width: 100%; padding: 10px; background: #0066ff; color: #fff; border: none;
+    border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; margin-bottom: 10px;
+  }
+  .shelf-status { font-size: 11px; color: #4caf50; margin-bottom: 8px; }
+  .shelf-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+  }
+  .shelf-item {
+    cursor: grab; border: 2px solid transparent; border-radius: 4px; overflow: hidden;
+    background: #111; position: relative;
+  }
+  .shelf-item.armed { border-color: #0066ff; }
+  .shelf-item img, .shelf-item video { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+  .shelf-item .video-badge {
+    position: absolute; top: 2px; right: 2px; background: #0066ff; color: #fff;
+    font-size: 8px; padding: 1px 4px; border-radius: 3px; font-weight: 600;
+  }
+  .shelf-item .fname {
+    font-size: 8px; color: #aaa; padding: 2px 4px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; background: #000;
+  }
+
+  .preview-col { position: sticky; top: 20px; }
+  .preview-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; }
+  .preview-controls label { color: #aaa; }
+  .preview-controls input[type="range"] { width: 120px; }
+  .preview-zoom-value { color: #0066ff; font-weight: 600; min-width: 45px; }
+  .preview-controls .laptop-toggle-label { display: flex; align-items: center; gap: 5px; cursor: pointer; color: #aaa; }
+  .preview-shell {
+    background: #fff; color: #111; border-radius: 4px; overflow: hidden; overflow-x: auto; overflow-y: auto; max-height: 88vh;
+    position: relative;
+  }
+  .preview-inner { padding: 30px 40px; transform-origin: top left; transition: transform 0.1s ease; }
+  /* Laptop-screen overlay guide — a fixed 16:9 rectangle (matches
+     standard laptop display aspect ratio Noah wants to judge against),
+     spanning the FULL WIDTH of the preview/site — not a smaller centered
+     box — so it represents an edge-to-edge laptop viewport. Noah can
+     toggle it on to judge how an image/video will read against a laptop
+     screen at a glance, without opening the live site or a mockup.
+     Positioned as a VIEWFINDER fixed within preview-shell's viewport
+     (not scrolled with the grid content) — Noah scrolls the grid
+     underneath it to line up whatever row he's checking against the
+     rectangle, like a camera crop guide. */
+  .laptop-overlay {
+    position: sticky;
+    top: 40px;
+    left: 0;
+    width: 100%;
+    height: 0;
+    pointer-events: none;
+    z-index: 999;
+    display: none;
+  }
+  .laptop-overlay.active { display: block; }
+  .laptop-overlay-rect {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 3px dashed #ff3366;
+    background: rgba(255, 51, 102, 0.06);
+    box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.15);
+  }
+  .laptop-overlay-rect::after {
+    content: "16:9 laptop screen guide";
+    position: absolute;
+    top: -22px;
+    left: 0;
+    font-size: 11px;
+    font-family: monospace;
+    color: #ff3366;
+    background: #111;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  /* Vertical padding above/below each rendered section — a proportional
+     stand-in for the live site's real --u-unit SECTION_PADDING_UNITS
+     (ProjectGroup.tsx). The editor's preview canvas isn't pinned to a
+     fixed 1920px design-canvas width like the live site's --u system, so
+     this can't be pixel-exact to production — but it must move in the
+     SAME RATIO whenever SECTION_PADDING_UNITS changes, so relative
+     section-to-section spacing at least reads correctly in the editor.
+     2026-08-16j: SECTION_PADDING_UNITS went 90 -> 165 (effective between-
+     section gap 180u -> 330u, a 1.833x increase) — scaled 18px -> 33px
+     to match (18 * 330/180 ≈ 33). If SECTION_PADDING_UNITS changes again,
+     recompute this as 18 * (2 * new_units) / 180. */
+  .group-preview { margin-bottom: 8px; padding: 33px 0; }
+  .group-preview:last-child { margin-bottom: 0; }
+  .descriptor { font-style: italic; font-family: Georgia, 'Times New Roman', serif; font-size: 25px; margin-bottom: 10px; }
+  .rule { width: 100%; height: 3px; background: #111; }
+  .row-grid { display: grid; }
+  .cell { position: relative; overflow: visible; background: #eee; display: flex; align-items: center; justify-content: center; }
+  .cell img, .cell video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cell.scaled { display: flex; align-items: center; justify-content: center; }
+  .cell.scaled img, .cell.scaled video { width: 100%; height: 100%; object-fit: contain; transform-origin: center; }
+  .cell .placeholder {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    color: #999; font-size: 11px; text-align: center; padding: 6px;
+    background: repeating-linear-gradient(45deg, #eee, #eee 10px, #e2e2e2 10px, #e2e2e2 20px);
+  }
+  .cell.drop-target { outline: 3px solid #0066ff; outline-offset: -3px; }
+  .cell-border-left { border-left: 3px solid #111; }
+  .hairline { position: absolute; top: 0; height: 100%; background: #111; }
+
+  .controls-col { max-height: 88vh; overflow-y: auto; padding-right: 4px; }
+  .panel { background: #2a2a2a; border-radius: 8px; padding: 16px; margin-bottom: 16px; border-left: 4px solid #0066ff; }
+  .panel h3 { margin: 0 0 12px; font-size: 14px; color: #0066ff; }
+  .panel h4 { margin: 0 0 8px; font-size: 12px; color: #ccc; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: #aaa; margin-bottom: 4px; }
+  .field input[type="text"], .field select {
+    width: 100%; padding: 6px 8px; background: #1a1a1a; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 13px;
+  }
+  .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ccc; }
+  button { padding: 6px 10px; background: #0066ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+  button.secondary { background: #444; }
+  button.danger { background: #a33; }
+  button.small { padding: 4px 8px; font-size: 10px; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .group-block { border: 1px solid #3a3a3a; border-radius: 6px; padding: 12px; margin-bottom: 12px; background: #232323; }
+  .row-block { border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #1e1e1e; }
+  .cell-block {
+    border: 1px dashed #555; border-radius: 4px; padding: 8px; margin-bottom: 6px;
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px; font-size: 11px; cursor: pointer;
+  }
+  .cell-block.dragover, .cell-block.armed-target { border-color: #0066ff; background: #0066ff22; }
+  .cell-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; background: #333; flex-shrink: 0; }
+  .cell-info { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drop-hint { color: #777; }
+  .config-display {
+    background: #111; padding: 12px; border-radius: 4px; font-family: Monaco, monospace; font-size: 11px;
+    max-height: 300px; overflow-y: auto; border: 1px solid #444; white-space: pre-wrap; word-break: break-word;
+  }
+  .instructions {
+    background: #1e2a1e; border-left: 4px solid #4caf50; padding: 12px 16px; border-radius: 6px;
+    font-size: 12px; line-height: 1.6; color: #cde; margin-bottom: 16px;
+  }
+  .instructions code { background: #000; padding: 1px 5px; border-radius: 3px; }
+  hr.divider { border: none; border-top: 1px solid #333; margin: 20px 0; }
+  .armed-banner {
+    background: #0066ff; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px;
+    margin-bottom: 10px; display: none; align-items: center; justify-content: space-between;
+  }
+  .armed-banner.visible { display: flex; }
+</style>
+</head>
+<body>
+
+<h1>Project Grid Builder</h1>
+<div class="subtitle">Design the image grids for every project page — one tab per project, drag-and-drop your assets folder, export ready-to-use layouts.</div>
+
+<div class="instructions">
+  <strong>How to use this:</strong>
+  1. Click a project tab below (Sprouts, Corita Art Center, SoCal Earth, Cultural Olympiad, Valley Strong Credit Union, More Work).
+  2. <strong>Option A: Start fresh:</strong> Build sections with <strong>+ Add Section</strong> — name them in Title Case (e.g. "Times Square Advertisement"). Add rows, set aspect ratios. Then load assets folder (step 4) and assign images.
+  3. <strong>Option B: Import existing JSON:</strong> Paste a previously exported grid JSON into the <strong>Import JSON</strong> field at the bottom and hit <strong>Load JSON</strong> — your layout reconstructs with all section/row/aspect settings. The preview shows filenames in placeholder boxes. Then load the assets folder (step 4) to see actual images.
+  4. In the left panel, click <strong>Load Assets Folder</strong> and pick that project's folder from <code>Desktop/portfolio/assets/&lt;project&gt;</code> — every image AND video shows up as a thumbnail (videos are marked with a blue "VIDEO" badge). Once loaded, all cells with matching filenames will automatically display the images in the preview.
+  5. Assign images: <strong>drag a thumbnail from the left shelf onto a grid cell</strong>, or click a thumbnail to "arm" it then click the cell you want it in. <strong>For a single-image row, the box automatically resizes to match your photo's real shape</strong> — no cropping, no math, no typing numbers. A blue confirmation message flashes at the bottom when this happens. If a row's shape still looks wrong later, click the <strong>📐 Match to Image</strong> button next to that row's Aspect Ratio dropdown to fix it again anytime.
+  6. Need an image or video smaller within its box (not filling the whole cell)? Use the <strong>Size</strong> slider under each assigned cell — 100% fills the cell edge-to-edge like normal, lower values shrink it and center it with white space around it.
+  7. Two images side-by-side and one looks squished or cropped? Hover the thin line between them in the preview — your cursor becomes a resize arrow — and drag it left/right until both photos look right. No JSON editing needed.
+  8. Want a photo shown at its full real shape with zero cropping, but the row is set to a different aspect ratio? Check the <strong>Fit</strong> box under that cell — the box height adjusts to match the photo instead of cropping it.
+  9. Your work is saved automatically in this browser (comes back if you close and reopen the tab).
+  10. When ready, hit <strong>Copy JSON</strong> (current project) or <strong>Copy JSON — All Projects</strong> at the bottom and send it to me. I'll wire it into the site.
+</div>
+
+<div class="tabs" id="tabsRow"></div>
+
+<div class="layout">
+  <div class="shelf-col">
+    <h3>Assets Shelf</h3>
+    <div class="shelf-hint" id="shelfHint">Load this project's assets folder to see thumbnails here.</div>
+    <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" />
+    <button class="folder-btn" id="loadFolderBtn">📁 Load Assets Folder</button>
+    <div class="shelf-status" id="shelfStatus"></div>
+    <div class="armed-banner" id="armedBanner">
+      <span id="armedText"></span>
+      <button class="small secondary" id="cancelArmBtn">Cancel</button>
+    </div>
+    <div class="shelf-grid" id="shelfGrid"></div>
+  </div>
+
+  <div class="preview-col">
+    <div class="panel" style="border-left-color:#4caf50; padding-bottom: 12px;">
+      <h3 style="color:#4caf50; margin-bottom: 8px;">Live Preview — <span id="previewProjectName"></span></h3>
+      <div class="preview-controls">
+        <label>Zoom:</label>
+        <input type="range" id="zoomSlider" min="50" max="200" step="10" value="100" style="width: 100px;" />
+        <span class="preview-zoom-value" id="zoomValue">100%</span>
+        <label class="laptop-toggle-label" style="margin-left:16px;">
+          <input type="checkbox" id="laptopOverlayToggle" />
+          <span>Laptop screen guide (16:9)</span>
+        </label>
+      </div>
+      <div class="preview-shell">
+        <div class="laptop-overlay" id="laptopOverlay"><div class="laptop-overlay-rect"></div></div>
+        <div class="preview-inner" id="previewRoot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls-col">
+    <div class="panel">
+      <h3>Page Text</h3>
+      <div style="font-size:10px; color:#999; margin-bottom:10px; padding:6px 8px; background:#1a1a1a; border-radius:4px;">
+        💡 Want a word or phrase italicized anywhere below? Wrap it in parentheses, e.g. <code>an (important) detail</code> — the parentheses disappear and that word renders in italics on the live site. Works in all the fields below, and you can use it as many times as you want.
+      </div>
+      <div class="field">
+        <label>Statement — lead text (before the emphasized phrase)</label>
+        <input type="text" id="statementLeadInput" placeholder="e.g. What does " />
+      </div>
+      <div class="field">
+        <label>Statement — emphasized phrase (italic serif)</label>
+        <input type="text" id="statementEmphasisInput" placeholder="e.g. fresh" />
+      </div>
+      <div class="field">
+        <label>Statement — tail text (after the emphasized phrase)</label>
+        <input type="text" id="statementTailInput" placeholder="e.g.  look like?" />
+      </div>
+      <div class="field">
+        <label>About / project paragraph (below the statement)</label>
+        <textarea id="paragraphInput" style="width:100%; height:140px; font-family:inherit; font-size:13px; padding:8px; background:#1a1a1a; border:1px solid #444; border-radius:4px; color:#fff; resize:vertical;"></textarea>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div id="groupsContainer"></div>
+    <button id="addGroupBtn">+ Add Section</button>
+
+    <hr class="divider" />
+
+    <div class="panel">
+      <h3>Import JSON</h3>
+      <div class="field">
+        <label>Paste a previously exported grid JSON here:</label>
+        <textarea id="jsonInput" style="width:100%; height:200px; font-family:monospace; font-size:11px; padding:8px; background:#111; border:1px solid #444; border-radius:4px; color:#fff; resize:vertical;"></textarea>
+      </div>
+      <button id="loadJsonBtn">Load JSON</button>
+      <button id="syncFromLiveBtn" class="secondary" title="Pull the current live site's grid for this project into the editor, overwriting any unsaved local edits for this tab">↻ Sync This Tab From Live Site</button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="panel">
+      <h3>Export</h3>
+      <div class="btn-row">
+        <button id="copyBtn">Copy JSON — This Project</button>
+        <button id="copyAllBtn" class="secondary">Copy JSON — All Projects</button>
+        <button id="copyTextBtn" class="secondary">Copy Page Text Only</button>
+        <button id="resetBtn" class="danger">Reset This Project</button>
+      </div>
+      <div class="config-display" id="configDisplay" style="margin-top:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECTS = [
+  { slug: "sprouts-farmers-market", label: "Sprouts Farmers Market" },
+  { slug: "corita-art-center", label: "Corita Art Center" },
+  { slug: "socal-earth", label: "SoCal Earth" },
+  { slug: "cultural-olympiad-poster", label: "Cultural Olympiad" },
+  { slug: "valley-strong-credit-union", label: "Valley Strong Credit Union" },
+  { slug: "more-work", label: "More Work" },
+];
+
+const ASPECT_PRESETS = [
+  { label: "Square (1/1)", value: "1/1" },
+  { label: "Landscape (4/3)", value: "4/3" },
+  { label: "Landscape wide (16/9)", value: "16/9" },
+  { label: "Portrait (9/16)", value: "9/16" },
+  { label: "Ultra-wide banner (1921/719)", value: "1921/719" },
+  { label: "Portrait (3/4)", value: "3/4" },
+  { label: "Portrait tall (1200/1748)", value: "1200/1748" },
+  { label: "Portrait very tall (1200/2000)", value: "1200/2000" },
+  { label: "Custom…", value: "custom" },
+];
+
+const STORAGE_KEY = "projectGridBuilder.v1";
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function cellObj() { return { id: uid(), file: "", scale: 100 }; }
+function defaultGroups() {
+  return [{ id: uid(), descriptor: "New Section", rows: [{ id: uid(), aspect: "4/3", gapped: false, cells: [cellObj()] }] }];
+}
+function defaultProjectState() {
+  return { groups: defaultGroups(), statementLead: "", statementEmphasis: "", statementTail: "", paragraph: "" };
+}
+
+// Per-project persisted state (JSON-safe: no blob URLs stored)
+let allState = loadFromStorage() || {};
+// Ensure every current PROJECTS tab has SOME state object, even if it's
+// missing from a stale localStorage save (e.g. a brand-new tab added
+// after Noah last used the tool in this browser).
+PROJECTS.forEach(p => {
+  if (!allState[p.slug]) allState[p.slug] = defaultProjectState();
+});
+let currentSlug = PROJECTS[0].slug;
+
+// Per-project shelf (session-only, holds live object URLs — not persisted)
+let shelves = {}; // slug -> [{name, url}]
+let armedFile = null; // { name, url } currently armed for click-to-place
+
+/**
+ * isUntouchedDefaultState — true if a project's editor state is still
+ * the pristine placeholder from `defaultProjectState()` (one "New
+ * Section" group, one default row, one empty cell, no statement/
+ * paragraph text) — i.e. Noah has never actually edited or synced this
+ * tab. Used on page load to auto-sync any untouched tab from the live
+ * site, so a brand-new tab (or a stale localStorage save from before a
+ * project existed) doesn't silently sit empty until Noah remembers to
+ * click "Sync This Tab From Live Site" — the actual root cause of the
+ * "More Work still shows Sprouts / still shows nothing" report: the
+ * tool never auto-synced on load, so an untouched tab (or a tab that
+ * still had a stale copy of another project's data from an old
+ * localStorage save) just displayed whatever was already in storage.
+ */
+function isUntouchedDefaultState(state) {
+  if (!state) return true;
+  if (state.statementLead || state.statementEmphasis || state.statementTail || state.paragraph) return false;
+  if (!Array.isArray(state.groups) || state.groups.length !== 1) return false;
+  const g = state.groups[0];
+  if (g.descriptor !== "New Section" || !Array.isArray(g.rows) || g.rows.length !== 1) return false;
+  const r = g.rows[0];
+  if (!Array.isArray(r.cells) || r.cells.length !== 1) return false;
+  return !r.cells[0].file;
+}
+
+/**
+ * autoSyncUntouchedTabsFromLiveSite — on page load, fetch the live-site
+ * snapshot once and silently populate any tab whose state is still the
+ * untouched default placeholder (see isUntouchedDefaultState). Tabs
+ * Noah has actually started editing are left alone — this only fills in
+ * tabs that would otherwise show nothing/wrong content. Runs once on
+ * load; Noah can still manually hit "Sync This Tab From Live Site" any
+ * time afterward to pull a fresh copy and overwrite local edits.
+ */
+async function autoSyncUntouchedTabsFromLiveSite() {
+  try {
+    const res = await fetch("site-projects-snapshot.json?t=" + Date.now());
+    if (!res.ok) return;
+    const allSnapshots = await res.json();
+    let syncedAny = false;
+    PROJECTS.forEach(p => {
+      if (!isUntouchedDefaultState(allState[p.slug])) return;
+      const snap = allSnapshots[p.slug];
+      if (!snap || !snap.groups || snap.groups.length === 0) return;
+      allState[p.slug] = {
+        groups: snap.groups.map(g => ({
+          id: uid(),
+          descriptor: g.descriptor,
+          bgColor: g.bgColor || "",
+          rows: g.rows.map(r => ({
+            id: uid(),
+            aspect: r.aspect,
+            gapped: r.gapped || false,
+            cells: r.cells.map(c => {
+              const isVideo = c.type === "video";
+              const isYoutube = c.type === "youtube";
+              let file = c.file || "";
+              if (isVideo && c.src) file = c.src.replace(/^\/videos\//, "");
+              return {
+                id: uid(),
+                file,
+                scale: c.scale || 100,
+                colWidth: c.colWidth != null ? c.colWidth : 1,
+                fit: c.fit === true,
+                cropAspect: c.fit && c.cropAspect ? c.cropAspect : undefined,
+                isVideo,
+                isYoutube,
+                youtubeId: isYoutube ? (c.id || "") : ""
+              };
+            })
+          }))
+        })),
+        statementLead: snap.statementLead || "",
+        statementEmphasis: snap.statementEmphasis || "",
+        statementTail: snap.statementTail || "",
+        paragraph: snap.paragraph || "",
+      };
+      syncedAny = true;
+    });
+    if (syncedAny) {
+      saveToStorage();
+      renderAll();
+    }
+  } catch (err) {
+    console.warn("Auto-sync from live site skipped:", err.message);
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+function saveToStorage() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allState)); } catch {}
+}
+
+function currentProject() {
+  const proj = allState[currentSlug];
+  if (proj.statementLead === undefined) proj.statementLead = "";
+  if (proj.statementEmphasis === undefined) proj.statementEmphasis = "";
+  if (proj.statementTail === undefined) proj.statementTail = "";
+  if (proj.paragraph === undefined) proj.paragraph = "";
+  return proj;
+}
+
+function renderTabs() {
+  const row = document.getElementById("tabsRow");
+  row.innerHTML = "";
+  PROJECTS.forEach(p => {
+    const tab = document.createElement("div");
+    tab.className = "tab" + (p.slug === currentSlug ? " active" : "");
+    const hasContent = allState[p.slug] && allState[p.slug].groups.some(g => g.rows.some(r => r.cells.some(c => c.file)));
+    tab.innerHTML = p.label + (hasContent ? '<span class="dot"></span>' : "");
+    tab.addEventListener("click", () => {
+      currentSlug = p.slug;
+      armedFile = null;
+      renderAll();
+    });
+    row.appendChild(tab);
+  });
+}
+
+function renderAll() {
+  renderTabs();
+  document.getElementById("previewProjectName").textContent = PROJECTS.find(p => p.slug === currentSlug).label;
+  renderShelf();
+  renderPageTextFields();
+  renderControls();
+  renderPreview();
+  renderConfig();
+  renderArmedBanner();
+}
+
+function renderPageTextFields() {
+  const proj = currentProject();
+  document.getElementById("statementLeadInput").value = proj.statementLead || "";
+  document.getElementById("statementEmphasisInput").value = proj.statementEmphasis || "";
+  document.getElementById("statementTailInput").value = proj.statementTail || "";
+  document.getElementById("paragraphInput").value = proj.paragraph || "";
+}
+
+["statementLeadInput", "statementEmphasisInput", "statementTailInput", "paragraphInput"].forEach(id => {
+  document.getElementById(id).addEventListener("input", (e) => {
+    const proj = currentProject();
+    const key = id === "statementLeadInput" ? "statementLead"
+      : id === "statementEmphasisInput" ? "statementEmphasis"
+      : id === "statementTailInput" ? "statementTail"
+      : "paragraph";
+    proj[key] = e.target.value;
+    saveToStorage();
+    renderConfig();
+  });
+});
+
+// ---------- SHELF ----------
+
+document.getElementById("loadFolderBtn").addEventListener("click", () => {
+  document.getElementById("folderInput").click();
+});
+
+document.getElementById("folderInput").addEventListener("change", (e) => {
+  const files = Array.from(e.target.files || []).filter(f => /\.(jpe?g|png|webp|gif|svg|mp4|mov|webm|m4v)$/i.test(f.name));
+  if (files.length === 0) {
+    document.getElementById("shelfStatus").textContent = "No images or videos found in that folder.";
+    return;
+  }
+  const imgCount = files.filter(f => !isVideoFile(f.name)).length;
+  const vidCount = files.length - imgCount;
+  // Keep BOTH the plain basename (`name`) and the folder-relative path
+  // (`relPath`, from webkitRelativePath minus the top-level folder the
+  // user picked) so matching works for both flat projects (cell.file is
+  // just "image.png") and aggregator pages like "more-work" whose cells
+  // reference a sub-folder-prefixed path (e.g.
+  // "forced-perspective/forced-perspective_02_....png") — see
+  // findShelfItem() below for how both are tried.
+  shelves[currentSlug] = files.map(f => {
+    const rel = f.webkitRelativePath || f.name;
+    // Strip the top-level picked-folder segment (e.g. "more-work/") so
+    // relPath matches the sub-folder-prefixed filenames used in JSON.
+    const relPath = rel.includes("/") ? rel.substring(rel.indexOf("/") + 1) : rel;
+    return { name: f.name, relPath, url: URL.createObjectURL(f), isVideo: isVideoFile(f.name) };
+  });
+  document.getElementById("shelfStatus").textContent = `Loaded ${imgCount} image${imgCount === 1 ? "" : "s"}${vidCount ? `, ${vidCount} video${vidCount === 1 ? "" : "s"}` : ""}.`;
+  renderShelf();
+  // Immediately refresh the preview + row controls so any cell whose
+  // `file` matches a just-loaded asset shows its actual image/video right
+  // away, instead of Noah having to click something else first to force
+  // a re-render. This is the actual fix for "images don't automatically
+  // show up when I load the assets folder" — the shelf itself updated
+  // fine before, but nothing told the preview/controls to re-render
+  // using the newly available files.
+  renderPreview();
+  renderControls();
+});
+
+function isVideoFile(name) { return /\.(mp4|mov|webm|m4v)$/i.test(name); }
+
+function renderShelf() {
+  const grid = document.getElementById("shelfGrid");
+  grid.innerHTML = "";
+  const shelf = shelves[currentSlug] || [];
+  if (shelf.length === 0) {
+    document.getElementById("shelfHint").style.display = "block";
+  } else {
+    document.getElementById("shelfHint").style.display = "none";
+  }
+  shelf.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "shelf-item" + (armedFile && armedFile.name === item.name ? " armed" : "");
+    div.draggable = true;
+    const media = item.isVideo
+      ? `<video src="${item.url}" muted preload="metadata"></video><div class="video-badge">▶ VIDEO</div>`
+      : `<img src="${item.url}" />`;
+    div.innerHTML = `${media}<div class="fname">${escapeHtml(item.name)}</div>`;
+    div.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", item.relPath || item.name);
+      e.dataTransfer.setData("application/x-shelf-url", item.url);
+    });
+    div.addEventListener("click", () => {
+      armedFile = (armedFile && armedFile.name === item.name) ? null : item;
+      renderShelf();
+      renderArmedBanner();
+    });
+    grid.appendChild(div);
+  });
+}
+
+function renderArmedBanner() {
+  const banner = document.getElementById("armedBanner");
+  if (armedFile) {
+    banner.classList.add("visible");
+    document.getElementById("armedText").textContent = `"${armedFile.name}" armed — click a cell to place it`;
+  } else {
+    banner.classList.remove("visible");
+  }
+}
+document.getElementById("cancelArmBtn").addEventListener("click", () => {
+  armedFile = null;
+  renderShelf();
+  renderArmedBanner();
+});
+
+function findShelfItem(filename) {
+  const shelf = shelves[currentSlug] || [];
+  if (!filename) return null;
+  // Try exact match first (covers flat-project cells whose `file` is
+  // just a bare filename, e.g. "header.png"), then fall back to
+  // matching by folder-relative path (covers aggregator-page cells like
+  // more-work whose `file` is "forced-perspective/some-image.png" — the
+  // shelf's `relPath` strips only the top-level folder Noah picked, so
+  // a sub-folder-prefixed cell.file lines up with it directly).
+  return shelf.find(s => s.name === filename) || shelf.find(s => s.relPath === filename) || null;
+}
+function findShelfUrl(filename) {
+  const item = findShelfItem(filename);
+  return item ? item.url : null;
+}
+
+// ---------- STATE HELPERS ----------
+
+function findGroup(groupId) { return currentProject().groups.find(g => g.id === groupId); }
+function findRow(groupId, rowId) { const g = findGroup(groupId); return g && g.rows.find(r => r.id === rowId); }
+function findCell(groupId, rowId, cellId) { const r = findRow(groupId, rowId); return r && r.cells.find(c => c.id === cellId); }
+
+function assignFileToCell(groupId, rowId, cellId, filename) {
+  const cell = findCell(groupId, rowId, cellId);
+  if (!cell) return;
+  cell.file = filename;
+  cell.isYoutube = false; // assigning a shelf file clears any YouTube state on this cell
+  cell.youtubeId = "";
+  const item = findShelfItem(filename);
+  cell.isVideo = item ? !!item.isVideo : isVideoFile(filename);
+  saveToStorage();
+  renderAll();
+
+  // DUMMY-PROOF AUTO-ASPECT: the #1 recurring bug across this whole
+  // project (SoCal Earth, More Work, Forced Perspective, etc.) has been
+  // a row's declared aspect ratio not matching the actual image's real
+  // dimensions, causing silent cropping/zooming that's easy to miss
+  // until Noah spots it live. Rather than requiring Noah to inspect a
+  // file's pixel dimensions and type a fraction by hand, auto-detect the
+  // image's natural aspect ratio the moment it's assigned and set the
+  // row's aspect to match — for the common case of a ROW WITH ONLY ONE
+  // CELL (the vast majority of rows across every project). Multi-cell
+  // rows are left alone: they intentionally share one row-level aspect
+  // across cells that may have different native ratios (that's what the
+  // "Fit" checkbox + colWidth drag handles are for), so auto-overwriting
+  // would fight those features instead of helping.
+  if (item && !item.isVideo) {
+    const group = currentProject().groups.find(g => g.id === groupId);
+    const row = group && group.rows.find(r => r.id === rowId);
+    if (row && row.cells.length === 1) {
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          const newAspect = `${img.naturalWidth}/${img.naturalHeight}`;
+          if (row.aspect !== newAspect) {
+            row.aspect = newAspect;
+            saveToStorage();
+            renderAll();
+            showAutoAspectToast(newAspect);
+          }
+        }
+      };
+      img.src = item.url;
+    }
+  }
+}
+
+/**
+ * showAutoAspectToast — brief, non-blocking confirmation that the aspect
+ * ratio was auto-matched, so Noah sees WHY the row just changed instead
+ * of wondering if something broke. Auto-dismisses; doesn't require a
+ * click, doesn't block any other action.
+ */
+function showAutoAspectToast(aspect) {
+  let toast = document.getElementById("autoAspectToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "autoAspectToast";
+    toast.style.position = "fixed";
+    toast.style.bottom = "20px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.background = "#0066ff";
+    toast.style.color = "#fff";
+    toast.style.padding = "10px 18px";
+    toast.style.borderRadius = "6px";
+    toast.style.fontSize = "13px";
+    toast.style.zIndex = "10000";
+    toast.style.boxShadow = "0 4px 16px rgba(0,0,0,0.3)";
+    toast.style.transition = "opacity 0.3s ease";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = `✓ Row size auto-matched to image (${aspect}) — no cropping`;
+  toast.style.opacity = "1";
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.style.opacity = "0";
+  }, 2600);
+}
+
+// ---------- CONTROLS ----------
+
+function renderControls() {
+  const container = document.getElementById("groupsContainer");
+  container.innerHTML = "";
+  currentProject().groups.forEach((group, gi) => {
+    const block = document.createElement("div");
+    block.className = "group-block";
+    block.innerHTML = `
+      <div class="field">
+        <label>Section Name (e.g. "Times Square Advertisement")</label>
+        <input type="text" data-group="${group.id}" class="descriptor-input" value="${escapeAttr(group.descriptor)}" />
+      </div>
+      <div class="field" style="display:flex; align-items:center; gap:10px;">
+        <label style="margin:0;">Section Background Color</label>
+        <input type="color" data-group="${group.id}" class="bgcolor-input" value="${escapeAttr(group.bgColor || "#ffffff")}" style="width:36px; height:28px; padding:0; border:1px solid #444; border-radius:4px; cursor:pointer; background:none;" />
+        <span style="font-size:11px; color:#999;">${group.bgColor ? group.bgColor : "none (white)"}</span>
+        ${group.bgColor ? `<button type="button" class="small secondary clear-bgcolor-btn" data-group="${group.id}" title="Remove the background color — back to plain white">Clear</button>` : ""}
+      </div>
+      <div id="rows-${group.id}"></div>
+      <div class="btn-row">
+        <button class="small add-row-btn" data-group="${group.id}">+ Add Row</button>
+        <button class="small secondary move-group-up" data-group="${group.id}" ${gi === 0 ? "disabled" : ""}>↑ Move</button>
+        <button class="small secondary move-group-down" data-group="${group.id}" ${gi === currentProject().groups.length - 1 ? "disabled" : ""}>↓ Move</button>
+        <button class="small danger delete-group-btn" data-group="${group.id}">Delete Section</button>
+      </div>
+    `;
+    container.appendChild(block);
+    const rowsContainer = block.querySelector(`#rows-${group.id}`);
+    group.rows.forEach((row, ri) => rowsContainer.appendChild(renderRowControl(group, row, ri)));
+  });
+  attachControlListeners();
+}
+
+function renderRowControl(group, row, ri) {
+  const div = document.createElement("div");
+  div.className = "row-block";
+  const isCustom = !ASPECT_PRESETS.some(p => p.value === row.aspect);
+  const selectValue = isCustom ? "custom" : row.aspect;
+  const canAutoMatch = row.cells.length === 1 && row.cells[0].file && !row.cells[0].isVideo;
+  div.innerHTML = `
+    <h4>Row ${ri + 1}</h4>
+    <div class="field">
+      <label>Aspect Ratio</label>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <select class="aspect-select" data-group="${group.id}" data-row="${row.id}" style="flex:1;">
+          ${ASPECT_PRESETS.map(p => `<option value="${p.value}" ${p.value === selectValue ? "selected" : ""}>${p.label}</option>`).join("")}
+        </select>
+        ${canAutoMatch ? `<button type="button" class="small secondary match-aspect-btn" data-group="${group.id}" data-row="${row.id}" title="Set this row's size to exactly match the assigned image's real dimensions — eliminates cropping/zooming.">📐 Match to Image</button>` : ""}
+      </div>
+    </div>
+    ${isCustom ? `<div class="field"><label>Custom aspect (e.g. 1500/1067)</label><input type="text" class="custom-aspect-input" data-group="${group.id}" data-row="${row.id}" value="${escapeAttr(row.aspect)}" /></div>` : ""}
+    <div class="checkbox-row">
+      <input type="checkbox" class="gapped-checkbox" data-group="${group.id}" data-row="${row.id}" ${row.gapped ? "checked" : ""} />
+      <label>Gapped (visible spacing + hairline between images)</label>
+    </div>
+    <div class="cells-container" id="cells-${row.id}" style="margin-top:8px;"></div>
+    <div class="btn-row">
+      <button class="small add-cell-btn" data-group="${group.id}" data-row="${row.id}">+ Add Image Slot</button>
+      <button class="small secondary move-row-up" data-group="${group.id}" data-row="${row.id}">↑</button>
+      <button class="small secondary move-row-down" data-group="${group.id}" data-row="${row.id}">↓</button>
+      <button class="small danger delete-row-btn" data-group="${group.id}" data-row="${row.id}">Delete Row</button>
+    </div>
+  `;
+
+  const cellsContainer = div.querySelector(`#cells-${row.id}`);
+  row.cells.forEach((cell, ci) => cellsContainer.appendChild(renderCellControl(group, row, cell, ci)));
+  return div;
+}
+
+function renderCellControl(group, row, cell, ci) {
+  const div = document.createElement("div");
+  div.className = "cell-block";
+  const item = cell.file ? findShelfItem(cell.file) : null;
+  const isYoutube = cell.isYoutube === true;
+  const thumb = isYoutube
+    ? (cell.youtubeId
+        ? `<img class="cell-thumb" src="https://img.youtube.com/vi/${escapeAttr(cell.youtubeId)}/mqdefault.jpg" onerror="this.style.opacity=0.3" />`
+        : `<div class="cell-thumb" style="display:flex; align-items:center; justify-content:center; font-size:18px;">▶️</div>`)
+    : item
+    ? (item.isVideo ? `<video class="cell-thumb" src="${item.url}" muted></video>` : `<img class="cell-thumb" src="${item.url}" />`)
+    : `<div class="cell-thumb"></div>`;
+  const label = isYoutube
+    ? (cell.youtubeId ? `📺 YouTube: ${escapeHtml(cell.youtubeId)}` : '<span class="drop-hint">enter a YouTube video ID or URL below</span>')
+    : cell.file
+    ? escapeHtml(cell.file) + (item && item.isVideo ? " 🎬" : "")
+    : '<span class="drop-hint">click shelf image/video, then click here — or drag it here — or paste a YouTube link below</span>';
+  const scaleVal = cell.scale != null ? cell.scale : 100;
+  const fitChecked = cell.fit === true;
+  const hasContent = isYoutube ? true : !!cell.file; // show the settings panel once there's SOME content assigned
+  div.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+      ${thumb}
+      <div class="cell-info" style="flex:1; min-width:0;">${label}</div>
+      <button class="small secondary move-cell-left" ${ci === 0 ? "disabled" : ""}>←</button>
+      <button class="small secondary move-cell-right">→</button>
+      <button class="small danger remove-cell-btn">✕</button>
+    </div>
+    <div class="field" style="margin-top:8px; margin-bottom:0; width:100%;" onclick="event.stopPropagation()">
+      <label style="display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:11px; color:#666;">
+        <span>📺 YouTube video ID or URL (leave blank to use an image/video from the shelf instead):</span>
+      </label>
+      <input type="text" class="youtube-input" placeholder="e.g. ZDCGdQLjw-s or https://youtube.com/watch?v=ZDCGdQLjw-s" value="${escapeAttr(cell.youtubeId || '')}" style="width:100%; padding:6px 8px; font-size:12px; border:1px solid #ccc; border-radius:4px; margin-bottom:8px;" />
+    </div>
+    ${hasContent ? `
+    <div class="field" style="margin-top:0; margin-bottom:0; width:100%;" onclick="event.stopPropagation()">
+      ${!isYoutube ? `
+      <label style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer;">
+        <input type="checkbox" class="fit-checkbox" ${fitChecked ? "checked" : ""} />
+        <span>Fit (grid adapts to image's real size — no cropping/zooming)</span>
+      </label>
+      ${fitChecked && cell.cropAspect ? `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; padding:6px 8px; background:#fff3e6; border:1px solid #ff8c2b; border-radius:4px;">
+        <span style="font-size:11px; color:#994d00;">✂️ Height trimmed (drag the orange handle on the image's bottom edge to adjust)</span>
+        <button type="button" class="small secondary reset-crop-btn" title="Undo the height trim — restore this image's full natural height">Reset</button>
+      </div>` : fitChecked ? `
+      <div style="font-size:9px; color:#999; margin-bottom:8px;">Tip: if this image renders taller than its row-mates, drag the small handle that appears along its bottom edge to trim the excess (crops the bottom only, never stretches).</div>` : ""}
+      ` : `
+      <div style="font-size:9px; color:#999; margin-bottom:8px;">YouTube embeds always fill their cell edge-to-edge (matches the live site) — Fit mode doesn't apply.</div>
+      `}
+      <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; ${fitChecked && !isYoutube ? "opacity:0.4;" : ""}">
+        <span>Size:</span>
+        <span class="scale-value" style="font-weight:600; color:#0066ff;">${scaleVal}%</span>
+      </label>
+      <input type="range" class="scale-slider" min="20" max="200" step="2" value="${scaleVal}" style="width:100%;" ${fitChecked && !isYoutube ? "disabled" : ""} />
+      <div style="font-size:9px; color:#999; margin-top:4px;">20-100% = shrink & center; 100% = fills cell; 100-200% = zoom in.${!isYoutube ? " (Disabled while Fit is on.)" : ""}</div>
+    </div>` : ""}
+  `;
+
+  div.addEventListener("click", (e) => {
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
+    if (armedFile) {
+      // Prefer the folder-relative path when it's meaningfully different
+      // from the bare filename (i.e. the shelf item came from a
+      // sub-folder) — matches how aggregator-page JSON (like more-work)
+      // references files with a folder prefix, e.g.
+      // "forced-perspective/some-image.png".
+      assignFileToCell(group.id, row.id, cell.id, armedFile.relPath || armedFile.name);
+      armedFile = null;
+    }
+  });
+
+  div.addEventListener("dragover", (e) => { e.preventDefault(); div.classList.add("dragover"); });
+  div.addEventListener("dragleave", () => div.classList.remove("dragover"));
+  div.addEventListener("drop", (e) => {
+    e.preventDefault();
+    div.classList.remove("dragover");
+    const filename = e.dataTransfer.getData("text/plain");
+    if (filename) assignFileToCell(group.id, row.id, cell.id, filename);
+  });
+
+  div.querySelector(".move-cell-left").addEventListener("click", (e) => { e.stopPropagation(); moveCell(group.id, row.id, cell.id, -1); });
+  div.querySelector(".move-cell-right").addEventListener("click", (e) => { e.stopPropagation(); moveCell(group.id, row.id, cell.id, 1); });
+  div.querySelector(".remove-cell-btn").addEventListener("click", (e) => { e.stopPropagation(); removeCell(group.id, row.id, cell.id); });
+
+  const youtubeInput = div.querySelector(".youtube-input");
+  if (youtubeInput) {
+    youtubeInput.addEventListener("click", (e) => e.stopPropagation());
+    youtubeInput.addEventListener("change", (e) => {
+      e.stopPropagation();
+      const raw = youtubeInput.value.trim();
+      if (!raw) {
+        // Cleared the field — revert this cell to a plain image/video slot.
+        cell.isYoutube = false;
+        cell.youtubeId = "";
+      } else {
+        // Accept a bare 11-char video ID, or extract it from any of the
+        // common YouTube URL shapes (watch?v=, youtu.be/, embed/,
+        // shorts/) so Noah can just paste whatever's in his browser bar.
+        let extractedId = raw;
+        const patterns = [
+          /(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+        ];
+        for (const p of patterns) {
+          const m = raw.match(p);
+          if (m) { extractedId = m[1]; break; }
+        }
+        cell.isYoutube = true;
+        cell.youtubeId = extractedId;
+        cell.file = ""; // YouTube and file-based content are mutually exclusive on a cell
+        cell.fit = false; // Fit mode doesn't apply to YouTube embeds
+      }
+      saveToStorage();
+      renderControls(); // re-render so the thumbnail/label/settings panel update
+      renderPreview();
+      renderConfig();
+    });
+  }
+
+  const slider = div.querySelector(".scale-slider");
+  if (slider) {
+    slider.addEventListener("click", (e) => e.stopPropagation());
+    slider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      cell.scale = parseInt(slider.value, 10);
+      div.querySelector(".scale-value").textContent = cell.scale + "%";
+      saveToStorage();
+      renderPreview();
+      renderConfig();
+    });
+  }
+
+  const fitCheckbox = div.querySelector(".fit-checkbox");
+  if (fitCheckbox) {
+    fitCheckbox.addEventListener("click", (e) => e.stopPropagation());
+    fitCheckbox.addEventListener("change", (e) => {
+      e.stopPropagation();
+      cell.fit = fitCheckbox.checked;
+      if (!cell.fit) delete cell.cropAspect; // cropAspect only applies in Fit mode
+      saveToStorage();
+      renderControls(); // re-render controls to enable/disable the scale slider for this cell
+      renderPreview();
+      renderConfig();
+    });
+  }
+
+  const resetCropBtn = div.querySelector(".reset-crop-btn");
+  if (resetCropBtn) {
+    resetCropBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      delete cell.cropAspect;
+      saveToStorage();
+      renderControls();
+      renderPreview();
+      renderConfig();
+    });
+  }
+
+  return div;
+}
+
+function moveCell(groupId, rowId, cellId, dir) {
+  const row = findRow(groupId, rowId);
+  const idx = row.cells.findIndex(c => c.id === cellId);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= row.cells.length) return;
+  [row.cells[idx], row.cells[newIdx]] = [row.cells[newIdx], row.cells[idx]];
+  saveToStorage(); renderAll();
+}
+function removeCell(groupId, rowId, cellId) {
+  const row = findRow(groupId, rowId);
+  row.cells = row.cells.filter(c => c.id !== cellId);
+  saveToStorage(); renderAll();
+}
+
+function attachControlListeners() {
+  document.querySelectorAll(".descriptor-input").forEach(input => {
+    input.addEventListener("input", () => { findGroup(input.dataset.group).descriptor = input.value; saveToStorage(); renderPreview(); renderConfig(); renderTabs(); });
+  });
+  document.querySelectorAll(".bgcolor-input").forEach(input => {
+    input.addEventListener("input", () => {
+      findGroup(input.dataset.group).bgColor = input.value;
+      saveToStorage();
+      renderControls(); // re-render so the hex label + Clear button appear
+      renderPreview();
+      renderConfig();
+    });
+  });
+  document.querySelectorAll(".clear-bgcolor-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      findGroup(btn.dataset.group).bgColor = "";
+      saveToStorage();
+      renderControls();
+      renderPreview();
+      renderConfig();
+    });
+  });
+  document.querySelectorAll(".add-row-btn").forEach(btn => {
+    btn.addEventListener("click", () => { findGroup(btn.dataset.group).rows.push({ id: uid(), aspect: "4/3", gapped: false, cells: [cellObj()] }); saveToStorage(); renderAll(); });
+  });
+  document.querySelectorAll(".delete-group-btn").forEach(btn => {
+    btn.addEventListener("click", () => { if (!confirm("Delete this whole section?")) return; currentProject().groups = currentProject().groups.filter(g => g.id !== btn.dataset.group); saveToStorage(); renderAll(); });
+  });
+  document.querySelectorAll(".move-group-up").forEach(btn => btn.addEventListener("click", () => moveGroup(btn.dataset.group, -1)));
+  document.querySelectorAll(".move-group-down").forEach(btn => btn.addEventListener("click", () => moveGroup(btn.dataset.group, 1)));
+  document.querySelectorAll(".aspect-select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const row = findRow(sel.dataset.group, sel.dataset.row);
+      row.aspect = sel.value === "custom" ? (row.aspect && !ASPECT_PRESETS.some(p=>p.value===row.aspect) ? row.aspect : "4/3") : sel.value;
+      saveToStorage(); renderAll();
+    });
+  });
+  document.querySelectorAll(".custom-aspect-input").forEach(input => {
+    input.addEventListener("input", () => { findRow(input.dataset.group, input.dataset.row).aspect = input.value; saveToStorage(); renderPreview(); renderConfig(); });
+  });
+  document.querySelectorAll(".match-aspect-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const row = findRow(btn.dataset.group, btn.dataset.row);
+      if (!row || row.cells.length !== 1 || !row.cells[0].file) return;
+      const item = findShelfItem(row.cells[0].file);
+      if (!item) {
+        alert("Load the assets folder first so the tool can read this image's real dimensions.");
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          row.aspect = `${img.naturalWidth}/${img.naturalHeight}`;
+          saveToStorage();
+          renderAll();
+          showAutoAspectToast(row.aspect);
+        }
+      };
+      img.src = item.url;
+    });
+  });
+  document.querySelectorAll(".gapped-checkbox").forEach(chk => {
+    chk.addEventListener("change", () => { findRow(chk.dataset.group, chk.dataset.row).gapped = chk.checked; saveToStorage(); renderPreview(); renderConfig(); });
+  });
+  document.querySelectorAll(".add-cell-btn").forEach(btn => {
+    btn.addEventListener("click", () => { findRow(btn.dataset.group, btn.dataset.row).cells.push(cellObj()); saveToStorage(); renderAll(); });
+  });
+  document.querySelectorAll(".delete-row-btn").forEach(btn => {
+    btn.addEventListener("click", () => { const group = findGroup(btn.dataset.group); group.rows = group.rows.filter(r => r.id !== btn.dataset.row); saveToStorage(); renderAll(); });
+  });
+  document.querySelectorAll(".move-row-up").forEach(btn => btn.addEventListener("click", () => moveRow(btn.dataset.group, btn.dataset.row, -1)));
+  document.querySelectorAll(".move-row-down").forEach(btn => btn.addEventListener("click", () => moveRow(btn.dataset.group, btn.dataset.row, 1)));
+}
+
+function moveGroup(groupId, dir) {
+  const groups = currentProject().groups;
+  const idx = groups.findIndex(g => g.id === groupId);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= groups.length) return;
+  [groups[idx], groups[newIdx]] = [groups[newIdx], groups[idx]];
+  saveToStorage(); renderAll();
+}
+function moveRow(groupId, rowId, dir) {
+  const group = findGroup(groupId);
+  const idx = group.rows.findIndex(r => r.id === rowId);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= group.rows.length) return;
+  [group.rows[idx], group.rows[newIdx]] = [group.rows[newIdx], group.rows[idx]];
+  saveToStorage(); renderAll();
+}
+
+// ---------- PREVIEW ----------
+
+function renderPreview() {
+  const root = document.getElementById("previewRoot");
+  root.innerHTML = "";
+  const groups = currentProject().groups;
+  groups.forEach(group => {
+    const gDiv = document.createElement("div");
+    gDiv.className = "group-preview";
+    const descriptor = document.createElement("div");
+    descriptor.className = "descriptor";
+    descriptor.textContent = group.descriptor || "Untitled Section";
+    gDiv.appendChild(descriptor);
+    gDiv.appendChild(ruleEl());
+
+    group.rows.forEach(row => {
+      const rowWrap = document.createElement("div");
+      // Parity fix (2026-08-16i): the live site's ProjectGroup.tsx sets
+      // `alignItems: "start"` on any row containing a `fit` cell — CSS
+      // Grid defaults to `align-items: stretch`, which forces every cell
+      // in the row to the height of the row's TALLEST cell. A plain `fit`
+      // cell only grows to its own image's natural height, so without
+      // this override a shorter `fit` cell sitting next to a taller one
+      // gets stretched into an empty box with a visible gap below the
+      // image — exactly the "gap issue not shown in the editor" bug Noah
+      // reported. The editor's `.row-grid` CSS class never set
+      // align-items at all (always defaulting to stretch), so this gap
+      // was invisible in the editor and only appeared on the live site.
+      const rowHasFitCell = row.cells.some(c => c.fit);
+      if (row.gapped) {
+        const outer = document.createElement("div");
+        outer.style.padding = "24px";
+        const grid = document.createElement("div");
+        grid.className = "row-grid";
+        grid.style.gridTemplateColumns = rowGridTemplateColumns(row);
+        grid.style.columnGap = "24px";
+        grid.style.position = "relative";
+        grid.style.alignItems = rowHasFitCell ? "start" : "";
+        row.cells.forEach((cell, ci) => {
+          const cellDiv = document.createElement("div");
+          cellDiv.className = "cell" + (cell.scale != null && cell.scale !== 100 ? " scaled" : "");
+          // Parity fix (2026-08-16h): the live site fills a cell's own
+          // background with the group's bgColor (e.g. SoCal Earth's
+          // "Merchandise" section, #ebe49a) — this shows through behind
+          // transparent-background PNGs (product mockups, cutout
+          // merchandise shots, etc.) instead of leaving them on plain
+          // white. Mirror that here so the editor preview matches.
+          cellDiv.style.backgroundColor = group.bgColor || "";
+          if (cell.fit) {
+            // "Fit" mode: the GRID adapts to the image, not the other way
+            // around — no fixed aspect-ratio box to crop into. The cell
+            // sizes itself to the image's own natural proportions (see
+            // cellContentEl/applyFitStyle below), matching the live site.
+            // EXCEPTION: cropAspect (manual crop-height override, set via
+            // the vertical drag handle) DOES lock a fixed aspect + hides
+            // overflow, matching the live site's cell.cropAspect branch.
+            cellDiv.style.position = "relative";
+            if (cell.cropAspect) {
+              cellDiv.style.display = "flex";
+              cellDiv.style.flexDirection = "column";
+              cellDiv.style.aspectRatio = cell.cropAspect;
+              cellDiv.style.height = "";
+              cellDiv.style.overflow = "hidden";
+            } else {
+              cellDiv.style.display = "block";
+              cellDiv.style.aspectRatio = "";
+              cellDiv.style.overflow = "";
+            }
+          } else {
+            cellDiv.style.aspectRatio = row.aspect || "4/3";
+            cellDiv.style.position = "relative";
+            cellDiv.style.display = "flex";
+            cellDiv.style.flexDirection = "column";
+            cellDiv.style.height = "100%";
+            cellDiv.style.overflow = "hidden";
+          }
+          cellDiv.appendChild(cellContentEl(cell));
+          if (ci < row.cells.length - 1) {
+            const hairline = document.createElement("div");
+            hairline.className = "hairline";
+            hairline.style.right = "-15px";
+            hairline.style.width = "3px";
+            cellDiv.appendChild(hairline);
+          }
+          grid.appendChild(cellDiv);
+        });
+        addWidthDragHandles(grid, row);
+        addCropHeightHandle(grid, row);
+        addRowHeightHandle(grid, row);
+        outer.appendChild(grid);
+        rowWrap.appendChild(outer);
+      } else {
+        const grid = document.createElement("div");
+        grid.className = "row-grid";
+        grid.style.gridTemplateColumns = rowGridTemplateColumns(row);
+        grid.style.position = "relative";
+        grid.style.alignItems = rowHasFitCell ? "start" : "";
+        row.cells.forEach((cell, ci) => {
+          const cellDiv = document.createElement("div");
+          cellDiv.className = "cell" + (ci > 0 ? " cell-border-left" : "") + (cell.scale != null && cell.scale !== 100 ? " scaled" : "");
+          cellDiv.style.backgroundColor = group.bgColor || "";
+          if (cell.fit) {
+            if (cell.cropAspect) {
+              cellDiv.style.aspectRatio = cell.cropAspect;
+              cellDiv.style.display = "flex";
+              cellDiv.style.flexDirection = "column";
+              cellDiv.style.overflow = "hidden";
+            } else {
+              cellDiv.style.display = "block";
+              cellDiv.style.aspectRatio = "";
+              cellDiv.style.overflow = "";
+            }
+          } else {
+            cellDiv.style.aspectRatio = row.aspect || "4/3";
+            cellDiv.style.display = "flex";
+            cellDiv.style.flexDirection = "column";
+            cellDiv.style.height = "100%";
+            cellDiv.style.overflow = "hidden";
+          }
+          cellDiv.appendChild(cellContentEl(cell));
+          grid.appendChild(cellDiv);
+        });
+        addWidthDragHandles(grid, row);
+        addCropHeightHandle(grid, row);
+        addRowHeightHandle(grid, row);
+        rowWrap.appendChild(grid);
+      }
+      rowWrap.appendChild(ruleEl());
+      gDiv.appendChild(rowWrap);
+    });
+    root.appendChild(gDiv);
+  });
+  if (groups.length === 0) root.innerHTML = '<p style="color:#999;">No sections yet — click "+ Add Section" to start.</p>';
+}
+
+/**
+ * rowGridTemplateColumns — computes the CSS grid-template-columns value
+ * for a row. If any cell in the row has a `colWidth` (relative width
+ * weight, e.g. 60/40 split), use those weights as fr units; otherwise
+ * fall back to equal columns. Mirrors the same logic used by the live
+ * site's ProjectGroup component so the editor preview matches
+ * production exactly.
+ *
+ * NOTE: deliberately named `colWidth`, NOT `w` — `w`/`h` are already
+ * used elsewhere in the data model as pixel-dimension fallbacks for
+ * aspect-ratio calculation (e.g. `{ w: 2500, h: 1667 }` on image cells
+ * that don't specify an explicit `aspect`). Reusing `w` for a totally
+ * different purpose (a small 0.5–3ish relative weight) would silently
+ * corrupt aspect ratios on any existing cell that happens to have a
+ * `w` dimension set.
+ */
+function rowGridTemplateColumns(row) {
+  const hasCustomWidths = row.cells.some(c => c.colWidth != null);
+  if (hasCustomWidths) {
+    return row.cells.map(c => `${c.colWidth != null ? c.colWidth : 1}fr`).join(" ");
+  }
+  return `repeat(${row.cells.length || 1}, minmax(0,1fr))`;
+}
+
+/**
+ * addWidthDragHandles — overlays a thin draggable handle on top of each
+ * internal column boundary in a row's grid. Dragging left/right adjusts
+ * the `w` (width weight) of the two adjacent cells so their shared
+ * boundary moves, while every other cell in the row keeps its current
+ * proportion. This lets Noah visually fix cropping/clipping (e.g. an
+ * image needing more width than an even split gives it) without typing
+ * numbers — matches the same asymmetric-width feature the live site's
+ * ProjectGroup component already supports via cell.w.
+ *
+ * Implementation: cells default to an implicit weight of 1 if no `w` is
+ * set. On drag start we snapshot each cell's current effective weight
+ * (using computed pixel widths, so dragging feels 1:1 with the mouse
+ * regardless of whether weights were previously customized). On drag we
+ * convert the new pixel split for the two adjacent cells back into
+ * weights, scaled against the row's total weight sum, and write `w`
+ * onto every cell in the row (so the grid-template-columns stays
+ * consistent). Re-renders the preview + JSON export live during drag for
+ * instant feedback, and persists via saveState() on drag end.
+ */
+function addWidthDragHandles(grid, row) {
+  if (row.cells.length < 2) return;
+  // Wait a frame so the grid has been laid out and we can read real
+  // column boundary positions via getBoundingClientRect().
+  requestAnimationFrame(() => {
+    const cellEls = Array.from(grid.children).filter(el => el.classList.contains("cell"));
+    if (cellEls.length !== row.cells.length) return;
+
+    for (let i = 0; i < row.cells.length - 1; i++) {
+      const leftCellEl = cellEls[i];
+      const rightCellEl = cellEls[i + 1];
+      if (!leftCellEl || !rightCellEl) continue;
+
+      const handle = document.createElement("div");
+      handle.className = "width-drag-handle";
+      handle.title = "Drag to resize columns";
+      handle.style.position = "absolute";
+      handle.style.top = "0";
+      handle.style.bottom = "0";
+      handle.style.width = "16px";
+      handle.style.marginLeft = "-8px";
+      handle.style.cursor = "col-resize";
+      handle.style.zIndex = "50";
+      handle.style.background = "transparent";
+
+      // Position the handle at the boundary between leftCellEl and rightCellEl.
+      const gridRect = grid.getBoundingClientRect();
+      const leftRect = leftCellEl.getBoundingClientRect();
+      handle.style.left = `${leftRect.right - gridRect.left}px`;
+
+      // Visual affordance on hover: a thin vertical line.
+      const indicator = document.createElement("div");
+      indicator.style.position = "absolute";
+      indicator.style.top = "0";
+      indicator.style.bottom = "0";
+      indicator.style.left = "50%";
+      indicator.style.width = "2px";
+      indicator.style.marginLeft = "-1px";
+      indicator.style.background = "#2b6fff";
+      indicator.style.opacity = "0";
+      indicator.style.transition = "opacity 0.15s";
+      indicator.style.pointerEvents = "none";
+      handle.appendChild(indicator);
+      handle.addEventListener("mouseenter", () => { indicator.style.opacity = "0.6"; });
+      handle.addEventListener("mouseleave", () => { if (!handle.dataset.dragging) indicator.style.opacity = "0"; });
+
+      handle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        handle.dataset.dragging = "1";
+        indicator.style.opacity = "1";
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        const startX = e.clientX;
+        const startLeftRect = leftCellEl.getBoundingClientRect();
+        const startRightRect = rightCellEl.getBoundingClientRect();
+        const pairWidthPx = startLeftRect.width + startRightRect.width;
+        // Total weight currently assigned across ALL cells in the row
+        // (defaulting missing `colWidth` to 1), so we can rescale the
+        // dragged pair's weights without disturbing other cells' proportions.
+        const weights = row.cells.map(c => (c.colWidth != null ? c.colWidth : 1));
+        const pairWeight = weights[i] + weights[i + 1];
+        const pxPerWeightUnit = pairWidthPx / pairWeight;
+        const MIN_PX = 60; // never let a cell shrink below this many px while dragging
+
+        function onMouseMove(moveEvt) {
+          const dx = moveEvt.clientX - startX;
+          let newLeftPx = startLeftRect.width + dx;
+          let newRightPx = pairWidthPx - newLeftPx;
+          if (newLeftPx < MIN_PX) { newLeftPx = MIN_PX; newRightPx = pairWidthPx - MIN_PX; }
+          if (newRightPx < MIN_PX) { newRightPx = MIN_PX; newLeftPx = pairWidthPx - MIN_PX; }
+
+          const newLeftWeight = newLeftPx / pxPerWeightUnit;
+          const newRightWeight = newRightPx / pxPerWeightUnit;
+
+          // Write weights onto every cell so grid-template-columns stays
+          // internally consistent (untouched cells keep their existing
+          // weight, defaulted to 1 if it was previously unset).
+          row.cells.forEach((c, ci) => {
+            if (ci === i) c.colWidth = round2(newLeftWeight);
+            else if (ci === i + 1) c.colWidth = round2(newRightWeight);
+            else if (c.colWidth == null) c.colWidth = 1;
+          });
+
+          grid.style.gridTemplateColumns = rowGridTemplateColumns(row);
+
+          // BUG FIX (2026-08-16g): the handle's own position was computed
+          // ONCE before the drag started (via getBoundingClientRect() in
+          // the outer requestAnimationFrame) and never updated as the
+          // grid reflowed live during the drag. That left the draggable
+          // hitbox — and its blue indicator line — visually frozen at the
+          // OLD boundary while the real column edge (and every cell's
+          // content) moved with the mouse, so the blue guide line
+          // drifted away from the actual black divider the further you
+          // dragged. Recompute and reapply `left` every frame so the
+          // handle (and the line inside it) tracks the real, live
+          // boundary between the two cells being resized.
+          const liveGridRect = grid.getBoundingClientRect();
+          const liveLeftRect = leftCellEl.getBoundingClientRect();
+          handle.style.left = `${liveLeftRect.right - liveGridRect.left}px`;
+        }
+
+        function onMouseUp() {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+          delete handle.dataset.dragging;
+          indicator.style.opacity = "0";
+          saveToStorage();
+          renderPreview(); // re-run to reposition all handles at their new boundaries
+          renderConfig(); // reflect final colWidth values in the JSON output panel
+        }
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+
+      grid.appendChild(handle);
+    }
+  });
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * addRowHeightHandle — a horizontal drag handle at the bottom edge of
+ * EVERY row (regardless of Fit mode) that lets Noah adjust the row's
+ * height directly by dragging up/down, instead of typing numbers into
+ * the Aspect Ratio dropdown/custom field. Keeps the row's current
+ * rendered WIDTH fixed and only changes height, writing the result back
+ * as `row.aspect = "width/height"` — the exact same field the Aspect
+ * Ratio dropdown and "📐 Match to Image" button already control, so
+ * dragging this handle and picking a dropdown preset stay perfectly in
+ * sync (whichever was used last wins, same as any other row.aspect
+ * write). This is the general-purpose "make the row shorter/taller"
+ * control Noah asked for across all projects, distinct from
+ * addCropHeightHandle below (which is a PER-CELL crop tool that only
+ * applies inside Fit-mode cells specifically).
+ */
+function addRowHeightHandle(grid, row) {
+  // If EVERY cell in the row is in Fit mode, none of them respond to
+  // row.aspect (fit cells size to their own image's natural dimensions,
+  // optionally cropped via cell.cropAspect instead) — dragging this
+  // handle would visibly do nothing and just confuse Noah. Only render
+  // it when there's at least one non-fit cell that will actually react.
+  if (row.cells.length > 0 && row.cells.every(c => c.fit)) return;
+
+  requestAnimationFrame(() => {
+    const gridRect = grid.getBoundingClientRect();
+    if (!gridRect.width || !gridRect.height) return;
+
+    grid.style.position = grid.style.position || "relative";
+
+    const handle = document.createElement("div");
+    handle.className = "row-height-handle";
+    handle.title = "Drag to make this row shorter/taller (all cells in the row resize together)";
+    handle.style.position = "absolute";
+    handle.style.left = "0";
+    handle.style.right = "0";
+    handle.style.bottom = "0";
+    handle.style.height = "16px";
+    handle.style.marginBottom = "-8px";
+    handle.style.cursor = "row-resize";
+    handle.style.zIndex = "52";
+    handle.style.background = "transparent";
+
+    const indicator = document.createElement("div");
+    indicator.style.position = "absolute";
+    indicator.style.left = "0";
+    indicator.style.right = "0";
+    indicator.style.top = "50%";
+    indicator.style.height = "2px";
+    indicator.style.marginTop = "-1px";
+    indicator.style.background = "#2bff8c";
+    indicator.style.opacity = "0";
+    indicator.style.transition = "opacity 0.15s";
+    indicator.style.pointerEvents = "none";
+    handle.appendChild(indicator);
+    handle.addEventListener("mouseenter", () => { indicator.style.opacity = "0.7"; });
+    handle.addEventListener("mouseleave", () => { if (!handle.dataset.dragging) indicator.style.opacity = "0"; });
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handle.dataset.dragging = "1";
+      indicator.style.opacity = "1";
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
+
+      const startY = e.clientY;
+      const startRect = grid.getBoundingClientRect();
+      const rowWidth = startRect.width; // fixed for the whole drag
+      const MIN_HEIGHT = 40; // never let Noah drag a row down to nothing
+
+      function onMouseMove(moveEvt) {
+        const dy = moveEvt.clientY - startY;
+        const newHeight = Math.max(MIN_HEIGHT, startRect.height + dy);
+        row.aspect = `${round2(rowWidth)}/${round2(newHeight)}`;
+        // Live-update every cell's aspect ratio directly (cheaper than a
+        // full renderPreview() re-render on every mousemove frame) — only
+        // touches cells that actually use row.aspect (plain non-fit cells,
+        // and fit cells with no per-cell cropAspect override).
+        Array.from(grid.children).forEach((cellEl, ci) => {
+          if (!cellEl.classList.contains("cell")) return;
+          const cell = row.cells[ci];
+          if (cell && cell.fit) return; // fit cells ignore row.aspect entirely
+          cellEl.style.aspectRatio = row.aspect;
+        });
+        // Keep every other cell's height locked to the row's new height
+        // too — CSS grid rows already stretch children to match by
+        // default, but cells with an explicit height set (fit-mode
+        // cells with no cropAspect) opt out of that; leave those alone
+        // since they're intentionally independent of row.aspect.
+      }
+
+      function onMouseUp() {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        delete handle.dataset.dragging;
+        indicator.style.opacity = "0";
+        saveToStorage();
+        renderControls(); // reflect the new row.aspect in the Aspect Ratio dropdown/custom field
+        renderPreview();
+        renderConfig();
+      }
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    });
+
+    grid.appendChild(handle);
+  });
+}
+
+/**
+ * addCropHeightHandle — lets Noah manually trim excess height off a
+ * "Fit" cell that renders taller than its row-mates, by dragging a
+ * horizontal handle at the bottom edge of the image up/down. This is
+ * the fix for the "one image is slightly taller, leaving a gap below
+ * the others" problem: plain "Fit" mode (see applyFitStyle) sizes each
+ * cell to ITS OWN image's natural height with no cropping at all, which
+ * is correct for single-image rows but leaves a visible gap under
+ * SHORTER cells when a row has multiple "Fit" images of different
+ * natural aspect ratios side by side. Dragging this handle sets
+ * `cell.cropAspect` (a fixed width/height ratio), which switches that
+ * one cell to object-fit: cover + object-position: top — cropping only
+ * off the BOTTOM of the image, never stretching or zooming it, and
+ * never touching any other cell in the row.
+ *
+ * Only rendered on cells with `cell.fit === true` (plain non-fit cells
+ * already have a fixed row-level aspect ratio and their own existing
+ * crop behavior via object-fit: cover, so this control would be
+ * redundant there).
+ *
+ * DRAG MATH: aspect ratio is unitless (width/height), so we can compute
+ * it directly from the cell's current rendered pixel dimensions at drag
+ * time — CSS `aspect-ratio` will preserve that same proportion at any
+ * later render width. The drag is clamped so Noah can never drag PAST
+ * the image's true natural height (that would require stretching, which
+ * this feature explicitly does not do) — the max is read from the
+ * actual <img>/<video> element's naturalWidth/naturalHeight (or
+ * videoWidth/videoHeight), scaled to the cell's current rendered width.
+ */
+function addCropHeightHandle(grid, row) {
+  if (!row.cells.some(c => c.fit)) return;
+  requestAnimationFrame(() => {
+    const cellEls = Array.from(grid.children).filter(el => el.classList.contains("cell"));
+    if (cellEls.length !== row.cells.length) return;
+
+    row.cells.forEach((cell, ci) => {
+      if (!cell.fit) return;
+      const cellEl = cellEls[ci];
+      if (!cellEl) return;
+      const mediaEl = cellEl.querySelector("img, video");
+      if (!mediaEl) return; // nothing loaded yet (placeholder) — nothing to crop
+
+      // Natural (uncropped) dimensions of the source media, used to cap
+      // how far Noah can drag the height back UP (can't exceed the
+      // image's real size without stretching it).
+      const naturalW = mediaEl.tagName === "VIDEO" ? mediaEl.videoWidth : mediaEl.naturalWidth;
+      const naturalH = mediaEl.tagName === "VIDEO" ? mediaEl.videoHeight : mediaEl.naturalHeight;
+      if (!naturalW || !naturalH) return; // media not loaded yet
+
+      cellEl.style.position = "relative"; // anchor point for the handle
+
+      const handle = document.createElement("div");
+      handle.className = "crop-height-handle";
+      handle.title = "Drag to trim excess height off this image (crops the bottom only — never stretches)";
+      handle.style.position = "absolute";
+      handle.style.left = "0";
+      handle.style.right = "0";
+      handle.style.bottom = "0";
+      handle.style.height = "16px";
+      handle.style.marginBottom = "-8px";
+      handle.style.cursor = "row-resize";
+      handle.style.zIndex = "51";
+      handle.style.background = "transparent";
+
+      const indicator = document.createElement("div");
+      indicator.style.position = "absolute";
+      indicator.style.left = "0";
+      indicator.style.right = "0";
+      indicator.style.top = "50%";
+      indicator.style.height = "2px";
+      indicator.style.marginTop = "-1px";
+      indicator.style.background = "#ff8c2b";
+      indicator.style.opacity = "0";
+      indicator.style.transition = "opacity 0.15s";
+      indicator.style.pointerEvents = "none";
+      handle.appendChild(indicator);
+      handle.addEventListener("mouseenter", () => { indicator.style.opacity = "0.7"; });
+      handle.addEventListener("mouseleave", () => { if (!handle.dataset.dragging) indicator.style.opacity = "0"; });
+
+      handle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handle.dataset.dragging = "1";
+        indicator.style.opacity = "1";
+        document.body.style.cursor = "row-resize";
+        document.body.style.userSelect = "none";
+
+        const startY = e.clientY;
+        const startRect = cellEl.getBoundingClientRect();
+        const cellWidth = startRect.width;
+        const maxHeight = cellWidth * (naturalH / naturalW); // uncropped height at this width
+        const MIN_HEIGHT = 40; // never let Noah crop a cell down to nothing
+
+        function onMouseMove(moveEvt) {
+          const dy = moveEvt.clientY - startY;
+          let newHeight = startRect.height + dy;
+          newHeight = Math.max(MIN_HEIGHT, Math.min(maxHeight, newHeight));
+          const newAspect = `${round2(cellWidth)}/${round2(newHeight)}`;
+          cell.cropAspect = newAspect;
+          cellEl.style.aspectRatio = newAspect;
+          cellEl.style.display = "flex";
+          cellEl.style.flexDirection = "column";
+          cellEl.style.overflow = "hidden";
+          applyFitStyle(mediaEl, newAspect);
+        }
+
+        function onMouseUp() {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+          delete handle.dataset.dragging;
+          indicator.style.opacity = "0";
+          saveToStorage();
+          renderPreview();
+          renderConfig();
+        }
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+
+      cellEl.appendChild(handle);
+    });
+  });
+}
+
+function cellContentEl(cell) {
+  if (cell.isYoutube) {
+    // Live-site parity note: the real page embeds a full YouTube
+    // <iframe> player (see ProjectGroup.tsx's "youtube" cell type). An
+    // iframe embed inside a draggable/reorderable editor grid is fragile
+    // (autoplay policies, reload-on-every-render, N simultaneous
+    // players), so the editor instead shows the video's real static
+    // thumbnail with a play-button overlay — visually identifies WHICH
+    // video is placed and confirms the ID resolved to a real video,
+    // without the overhead/flakiness of live iframes in the grid.
+    const wrap = document.createElement("div");
+    wrap.style.position = "relative";
+    wrap.style.width = "100%";
+    wrap.style.height = "100%";
+    wrap.style.background = "#000";
+    if (cell.youtubeId) {
+      const img = document.createElement("img");
+      img.src = `https://img.youtube.com/vi/${cell.youtubeId}/hqdefault.jpg`;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
+      img.style.display = "block";
+      wrap.appendChild(img);
+    }
+    const playBtn = document.createElement("div");
+    playBtn.textContent = "▶";
+    playBtn.style.position = "absolute";
+    playBtn.style.top = "50%";
+    playBtn.style.left = "50%";
+    playBtn.style.transform = "translate(-50%, -50%)";
+    playBtn.style.fontSize = "32px";
+    playBtn.style.color = "#fff";
+    playBtn.style.textShadow = "0 2px 6px rgba(0,0,0,0.6)";
+    playBtn.style.pointerEvents = "none";
+    wrap.appendChild(playBtn);
+    return wrap;
+  }
+  const item = cell.file ? findShelfItem(cell.file) : null;
+  const treatAsVideo = item ? item.isVideo : cell.isVideo;
+  const scale = cell.scale != null ? cell.scale : 100;
+  if (item) {
+    if (item.isVideo) {
+      const video = document.createElement("video");
+      video.src = item.url;
+      video.muted = true;
+      video.loop = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      if (cell.fit) applyFitStyle(video, cell.cropAspect); else applyScaleStyle(video, scale, true);
+      return video;
+    }
+    const img = document.createElement("img");
+    img.src = item.url;
+    if (cell.fit) applyFitStyle(img, cell.cropAspect); else applyScaleStyle(img, scale);
+    return img;
+  }
+  const ph = document.createElement("div");
+  ph.className = "placeholder";
+  ph.style.fontSize = "9px";
+  ph.style.wordBreak = "break-word";
+  if (cell.file) {
+    const label = cell.file + (treatAsVideo ? " 🎬" : "") + (cell.fit ? " (fit)" : "");
+    ph.innerHTML = `<strong>${escapeHtml(label)}</strong><br/><span style="font-size:8px; color:#777;">(load assets folder to preview)</span>`;
+  } else {
+    ph.textContent = "empty — assign an image or video";
+  }
+  return ph;
+}
+
+
+/**
+ * applyScaleStyle — mirrors the live site's ScaledMedia component
+ * exactly (see ProjectGroup.tsx). Two distinct behaviors depending on
+ * the scale range, NOT just a single transform:
+ *
+ * 20–100%: shrink-and-center. The element renders at `scale`% of the
+ *   cell's box, centered, with the cell's own background color filling
+ *   the remaining space — object-fit: contain is correct here since the
+ *   element is deliberately smaller than its box and must not crop.
+ *
+ * 100–200%: zoom IN via CSS transform: scale(). At this range the live
+ *   site renders the media at object-fit: cover (matching the default,
+ *   non-scaled cell behavior) and then transform-scales it up, letting
+ *   the cell's `overflow: hidden` crop the overflow — object-fit:
+ *   contain would be WRONG here, since contain letterboxes instead of
+ *   filling, and a zoomed-in contain'd image can show visible empty
+ *   bars around it that never appear on the live site. This was a real
+ *   editor/live mismatch (2026-08-16i): the editor previously always
+ *   set object-fit: contain regardless of scale, so any cell zoomed
+ *   above 100% could show letterboxing/gaps in the editor that don't
+ *   exist in production.
+ */
+function applyScaleStyle(el, scale, keepCover) {
+  // BUGFIX (2026-08-16k): the old implementation hard-switched object-fit
+  // between "contain" (scale < 100) and "cover" (scale >= 100) exactly at
+  // the 100% boundary. For any cell whose image aspect doesn't exactly
+  // match its box aspect, that produced a jarring visual "jump" right at
+  // 100%: at 99% the whole image was visible (small, letterboxed via
+  // contain), and at 100% it suddenly ballooned to fill/crop the entire
+  // box edge-to-edge (cover) — reported by Noah as "when you reach 100%
+  // on the zoom-in, it jumps to a massive amount." Root cause: two
+  // different rendering algorithms glued together at one threshold value.
+  // Fix: use a SINGLE object-fit mode across the ENTIRE 20-200% range,
+  // and let one continuous CSS transform: scale() do 100% of the sizing
+  // work. This makes the slider strictly monotonic/continuous — moving
+  // from 99% to 100% to 101% now only ever changes the transform scale by
+  // 1%, with zero discontinuity.
+  // `keepCover` (video cells only): the live site's InViewVideo component
+  // always uses object-fit: cover intrinsically, at every scale value —
+  // unlike images, it never switches to contain. Pass true for video
+  // cells so the editor preview matches that live-site behavior exactly;
+  // images always use contain here (matching the fixed ProjectGroup.tsx
+  // <Image> className logic).
+  el.style.width = "100%";
+  el.style.height = "100%";
+  const clamped = Math.max(20, Math.min(200, scale));
+  el.style.objectFit = keepCover ? "cover" : "contain";
+  el.style.transformOrigin = "center";
+  el.style.transform = `scale(${clamped / 100})`;
+}
+
+/**
+ * applyFitStyle — "Fit" mode: force the image/video to cover the cell
+ * edge-to-edge (cropping as needed), ignoring any scale transform. This
+ * is what removes vertical (or horizontal) whitespace gaps that appear
+ * when a cell's aspect ratio doesn't exactly match the source media's
+ * natural aspect ratio. Mirrors the live site's `cell.fit` behavior in
+ * ProjectGroup.tsx exactly, so the editor preview matches production.
+ */
+function applyFitStyle(el, cropAspect) {
+  // Mirrors the live-site fix: "Fit" means the GRID adapts to the image
+  // (top/bottom bars hug the image's real height), NOT the image getting
+  // cropped/zoomed to cover a fixed-aspect-ratio box. Full width, auto
+  // height — the browser sizes the element from its own intrinsic
+  // dimensions, so the cell (and the CSS Grid row containing it) grows
+  // or shrinks to match.
+  //
+  // EXCEPTION: when `cropAspect` is set (via the vertical crop-height
+  // drag handle below), Noah has manually chosen to trim excess height
+  // off THIS specific fit image — e.g. a 3-across row where this image's
+  // natural aspect renders taller than its row-mates, leaving a gap
+  // below the shorter ones. In that case we DO lock the element to a
+  // fixed aspect ratio and crop with object-fit: cover, but anchored to
+  // the TOP so only the bottom gets trimmed (never stretching, never
+  // cropping from the top) — mirrors the live site's Cell renderer
+  // exactly (see the `cell.cropAspect` branch in ProjectGroup.tsx).
+  if (cropAspect) {
+    el.style.width = "100%";
+    el.style.height = "100%";
+    el.style.objectFit = "cover";
+    el.style.objectPosition = "top";
+    el.style.transform = "none";
+    el.style.display = "block";
+    return;
+  }
+  el.style.width = "100%";
+  el.style.height = "auto";
+  el.style.objectFit = "";
+  el.style.objectPosition = "";
+  el.style.transform = "none";
+  el.style.display = "block";
+}
+
+function ruleEl() { const r = document.createElement("div"); r.className = "rule"; return r; }
+
+// ---------- EXPORT ----------
+
+function buildExportConfig(slug) {
+  const project = allState[slug];
+  const config = {
+    slug,
+    statement: {
+      lead: project.statementLead || "",
+      emphasis: project.statementEmphasis || "",
+      tail: project.statementTail || "",
+    },
+    paragraph: project.paragraph || "",
+    groups: project.groups.map(g => {
+      const groupOut = {
+        descriptor: g.descriptor,
+        rows: g.rows.map(r => {
+          const row = {
+            aspect: r.aspect,
+            cells: r.cells.map(c => {
+              const scaleField = c.scale != null && c.scale !== 100 ? { scale: c.scale } : {};
+              const widthField = c.colWidth != null && c.colWidth !== 1 ? { colWidth: c.colWidth } : {};
+              const fitField = c.fit ? { fit: true } : {};
+              const cropField = c.fit && c.cropAspect ? { cropAspect: c.cropAspect } : {};
+              if (c.isYoutube) {
+                // YouTube cells never carry fit/cropAspect (Fit mode
+                // doesn't apply to iframe embeds) — only scale/colWidth.
+                return { type: "youtube", id: c.youtubeId || "REPLACE_ME", ...scaleField, ...widthField };
+              }
+              if (c.isVideo) {
+                return { type: "video", src: c.file ? `/videos/${c.file}` : "REPLACE_ME.mp4", ...scaleField, ...widthField, ...fitField, ...cropField };
+              }
+              return { type: "image", file: c.file || "REPLACE_ME.webp", ...scaleField, ...widthField, ...fitField, ...cropField };
+            }),
+          };
+          if (r.gapped) row.gapped = true;
+          return row;
+        }),
+      };
+      // Parity fix (2026-08-16h): bgColor previously round-tripped through
+      // production JSON (e.g. SoCal Earth's "Merchandise" section, #ebe49a)
+      // but had NO editor UI, no import/sync support, and no export
+      // support — every editor JSON round-trip silently dropped it. Now
+      // preserved end to end: imported into the internal group object,
+      // editable via the color field in group controls, previewed live,
+      // and exported here.
+      if (g.bgColor) groupOut.bgColor = g.bgColor;
+      return groupOut;
+    }),
+  };
+  return config;
+}
+
+function renderConfig() {
+  document.getElementById("configDisplay").textContent = JSON.stringify(buildExportConfig(currentSlug), null, 2);
+}
+
+document.getElementById("copyBtn").addEventListener("click", () => {
+  navigator.clipboard.writeText(JSON.stringify(buildExportConfig(currentSlug), null, 2)).then(() => {
+    alert(`JSON for "${currentSlug}" copied! Paste it into your message.`);
+  });
+});
+
+document.getElementById("copyAllBtn").addEventListener("click", () => {
+  const all = PROJECTS.map(p => buildExportConfig(p.slug)).filter(c => c.groups.some(g => g.rows.some(r => r.cells.some(cell => cell.file))));
+  navigator.clipboard.writeText(JSON.stringify(all, null, 2)).then(() => {
+    alert(`JSON for ${all.length} project(s) with content copied!`);
+  });
+});
+
+document.getElementById("copyTextBtn").addEventListener("click", () => {
+  const proj = currentProject();
+  const textOnly = {
+    slug: currentSlug,
+    statement: {
+      lead: proj.statementLead || "",
+      emphasis: proj.statementEmphasis || "",
+      tail: proj.statementTail || "",
+    },
+    paragraph: proj.paragraph || "",
+  };
+  navigator.clipboard.writeText(JSON.stringify(textOnly, null, 2)).then(() => {
+    alert(`Page text for "${currentSlug}" copied! Paste it into your message — no need to send the whole grid JSON.`);
+  });
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (!confirm(`Clear all grid content for "${currentSlug}"? This cannot be undone.`)) return;
+  allState[currentSlug] = defaultProjectState();
+  saveToStorage();
+  renderAll();
+});
+
+document.getElementById("addGroupBtn").addEventListener("click", () => {
+  currentProject().groups.push({ id: uid(), descriptor: "New Section", rows: [{ id: uid(), aspect: "4/3", gapped: false, cells: [cellObj()] }] });
+  saveToStorage(); renderAll();
+});
+
+/**
+ * loadProjectDataIntoEditor — shared logic for loading a single project's
+ * exported-JSON shape (`{ slug, statement, paragraph, groups }` OR the
+ * lightweight text-only shape) into `allState[currentSlug]`. Used by both
+ * the manual "Load JSON" paste flow and the "Sync This Tab From Live
+ * Site" button, so both paths get identical, tested behavior (video
+ * src-vs-file normalization, colWidth/fit round-tripping, etc.) instead
+ * of duplicating import logic that can drift out of sync.
+ * Returns true on success, false (and shows an alert) on failure.
+ */
+function loadProjectDataIntoEditor(projectData, { silent = false } = {}) {
+  if (!projectData) {
+    if (!silent) alert("Invalid JSON format.");
+    return false;
+  }
+
+  // Text-only format (from "Copy Page Text Only"): has statement/paragraph
+  // but no groups — update just the text fields, leave the grid untouched.
+  if (!projectData.groups) {
+    if (!projectData.statement && projectData.paragraph === undefined) {
+      if (!silent) alert("Invalid JSON format. Make sure it has a 'groups' array, or is a page-text-only export (statement/paragraph).");
+      return false;
+    }
+    const proj = currentProject();
+    proj.statementLead = (projectData.statement && projectData.statement.lead) || "";
+    proj.statementEmphasis = (projectData.statement && projectData.statement.emphasis) || "";
+    proj.statementTail = (projectData.statement && projectData.statement.tail) || "";
+    proj.paragraph = Array.isArray(projectData.paragraph) ? projectData.paragraph.join("\n\n") : (projectData.paragraph || "");
+    saveToStorage();
+    renderAll();
+    return true;
+  }
+
+  // Convert imported JSON to our internal format (add IDs)
+  const importedGroups = projectData.groups.map(g => ({
+    id: uid(),
+    descriptor: g.descriptor,
+    bgColor: g.bgColor || "",
+    rows: g.rows.map(r => ({
+      id: uid(),
+      aspect: r.aspect,
+      gapped: r.gapped || false,
+      cells: r.cells.map(c => {
+        // Video cells store their path in `src` (e.g. "/videos/foo.mp4"),
+        // image cells store it in `file`. Normalize both back to the
+        // editor's internal `file` field (bare filename, no directory
+        // prefix) so re-importing a previously-exported video row
+        // doesn't silently lose its file reference. YouTube cells store
+        // their video ID in `id` in the exported JSON schema — read that
+        // into `youtubeId` internally (NOT `id`, which the editor's own
+        // cell objects already use as their unique DOM/state key).
+        const isVideo = c.type === "video";
+        const isYoutube = c.type === "youtube";
+        let file = c.file || "";
+        if (isVideo && c.src) {
+          file = c.src.replace(/^\/videos\//, "");
+        }
+        return {
+          id: uid(),
+          file,
+          scale: c.scale || 100,
+          colWidth: c.colWidth != null ? c.colWidth : 1,
+          fit: c.fit === true,
+          cropAspect: c.fit && c.cropAspect ? c.cropAspect : undefined,
+          isVideo,
+          isYoutube,
+          youtubeId: isYoutube ? (c.id || "") : ""
+        };
+      })
+    }))
+  }));
+
+  allState[currentSlug] = {
+    groups: importedGroups,
+    statementLead: (projectData.statement && projectData.statement.lead) || "",
+    statementEmphasis: (projectData.statement && projectData.statement.emphasis) || "",
+    statementTail: (projectData.statement && projectData.statement.tail) || "",
+    paragraph: Array.isArray(projectData.paragraph) ? projectData.paragraph.join("\n\n") : (projectData.paragraph || ""),
+  };
+  saveToStorage();
+  renderAll();
+  return true;
+}
+
+document.getElementById("loadJsonBtn").addEventListener("click", () => {
+  const jsonText = document.getElementById("jsonInput").value.trim();
+  if (!jsonText) {
+    alert("Paste JSON first.");
+    return;
+  }
+  try {
+    const imported = JSON.parse(jsonText);
+    // Handle both single-project and array format
+    const projectData = Array.isArray(imported)
+      ? imported.find(p => p.slug === currentSlug)
+      : imported;
+
+    const isTextOnly = projectData && !projectData.groups;
+    const ok = loadProjectDataIntoEditor(projectData);
+    if (ok) {
+      document.getElementById("jsonInput").value = "";
+      if (isTextOnly) {
+        alert("Page text loaded! Grid content was left untouched.");
+      } else {
+        alert("JSON loaded! To see images, load the assets folder first (Desktop/portfolio/assets/" + currentSlug + "). Then re-import the JSON.");
+      }
+    }
+  } catch (err) {
+    alert("Error parsing JSON: " + err.message);
+  }
+});
+
+/**
+ * "Sync This Tab From Live Site" — fetches site-projects-snapshot.json
+ * (a snapshot of the CURRENT src/content/projects.json, regenerated by
+ * the agent whenever the live JSON changes) and loads the current tab's
+ * data from it, giving Noah a true 1:1 mirror of what's actually live
+ * without needing to paste JSON manually. This snapshot file lives
+ * alongside this tool at public/tools/site-projects-snapshot.json and
+ * must be regenerated (by the agent, from projects.json) any time the
+ * live site's grid content changes — it is NOT auto-synced on every
+ * page load, since the editor has no server-side access to the Next.js
+ * content file directly.
+ */
+document.getElementById("syncFromLiveBtn").addEventListener("click", async () => {
+  if (!confirm(`This will overwrite any unsaved local edits on the "${currentSlug}" tab with what's currently live on the site. Continue?`)) {
+    return;
+  }
+  try {
+    const res = await fetch("site-projects-snapshot.json?t=" + Date.now());
+    if (!res.ok) throw new Error("Snapshot file not found (status " + res.status + ")");
+    const allSnapshots = await res.json();
+    const projectData = allSnapshots[currentSlug];
+    if (!projectData) {
+      alert(`No live-site snapshot found for "${currentSlug}". The snapshot file may be stale — ask the agent to regenerate it.`);
+      return;
+    }
+    // Snapshot shape is { groups, statementLead, statementEmphasis, statementTail, paragraph }
+    // — normalize it into the same { statement: {...}, paragraph, groups } shape
+    // loadProjectDataIntoEditor expects.
+    const normalized = {
+      groups: projectData.groups || [],
+      statement: {
+        lead: projectData.statementLead || "",
+        emphasis: projectData.statementEmphasis || "",
+        tail: projectData.statementTail || "",
+      },
+      paragraph: projectData.paragraph || "",
+    };
+    const ok = loadProjectDataIntoEditor(normalized);
+    if (ok) {
+      alert(`Synced "${currentSlug}" from the live site! To see images, load the assets folder for this project.`);
+    }
+  } catch (err) {
+    alert("Error syncing from live site: " + err.message);
+  }
+});
+
+function escapeAttr(str) { return String(str).replace(/"/g, "&quot;"); }
+function escapeHtml(str) { const div = document.createElement("div"); div.textContent = str; return div.innerHTML; }
+
+// ---------- ZOOM CONTROL ----------
+document.getElementById("zoomSlider").addEventListener("input", (e) => {
+  const zoomLevel = parseInt(e.target.value, 10) / 100;
+  const previewInner = document.getElementById("previewRoot");
+  previewInner.style.transform = `scale(${zoomLevel})`;
+  document.getElementById("zoomValue").textContent = e.target.value + "%";
+});
+
+// ---------- LAPTOP SCREEN GUIDE OVERLAY ----------
+// A toggleable 16:10 rectangle (standard MacBook/laptop display aspect
+// ratio) overlaid on the preview so Noah can judge how a row/image will
+// read against a laptop screen without opening the live site or a mockup
+// tool. Persisted in localStorage (separate key from project state) so
+// the toggle state survives a refresh, since it's a viewing preference
+// rather than project data.
+const LAPTOP_OVERLAY_STORAGE_KEY = "projectGridBuilder.laptopOverlay";
+const laptopOverlayToggle = document.getElementById("laptopOverlayToggle");
+const laptopOverlayEl = document.getElementById("laptopOverlay");
+
+function setLaptopOverlayActive(active) {
+  laptopOverlayEl.classList.toggle("active", active);
+  laptopOverlayToggle.checked = active;
+  try { localStorage.setItem(LAPTOP_OVERLAY_STORAGE_KEY, active ? "1" : "0"); } catch {}
+}
+
+laptopOverlayToggle.addEventListener("change", (e) => {
+  setLaptopOverlayActive(e.target.checked);
+});
+
+// Restore last-used toggle state on load.
+try {
+  setLaptopOverlayActive(localStorage.getItem(LAPTOP_OVERLAY_STORAGE_KEY) === "1");
+} catch {}
+
+renderAll();
+autoSyncUntouchedTabsFromLiveSite();
+</script>
+</body>
+</html>

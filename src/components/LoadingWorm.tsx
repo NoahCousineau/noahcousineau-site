@@ -70,9 +70,39 @@ export default function LoadingWorm() {
   const SCALE_NOW = phone ? PHONE_SCALE : compact ? SCALE * 0.8 : SCALE;
   const [tick, setTick] = useState(0);
 
+  /* DRIVEN BY THE CLOCK, NOT BY A TIMER (2026-08-30). Noah: "the worm
+   * animation feels a little laggier than in the demo site."
+   *
+   * This was `setInterval(..., STEP_MS)`, which is the same mistake the
+   * résumé card was built with and had rewritten for the same reason (see
+   * the note above DraggableResumeCard): setInterval callbacks are not tied
+   * to the browser's paint, so under load they drift, bunch up, and skip.
+   * And the load here is not incidental — this worm exists precisely WHILE
+   * the page is decoding every image it has, which is the busiest the main
+   * thread ever gets. Locally, with warm assets, it never showed; over a
+   * real connection it does.
+   *
+   * requestAnimationFrame runs in step with the paint, and the frame is
+   * computed from elapsed wall-clock time rather than from a count of
+   * callbacks — so a frame that arrives late lands on the pose it should
+   * have, instead of pushing the whole animation behind. A dropped frame now
+   * costs nothing; before, it cost the animation its timing for good. */
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), STEP_MS);
-    return () => clearInterval(id);
+    let raf = 0;
+    const t0 = performance.now();
+    let last = -1;
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      const t = Math.floor((now - t0) / STEP_MS);
+      // Only ask React for a render when the pose actually changes, rather
+      // than sixty times a second for a ten-pose animation.
+      if (t !== last) {
+        last = t;
+        setTick(t);
+      }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const n = WORM_STEPS.length;

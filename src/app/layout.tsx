@@ -10,8 +10,11 @@ import HomeLink from "@/components/HomeLink";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
+  /* Tab names, set by Noah on 2026-08-30. The template is "%s" — a bare
+     passthrough — so a page's own title is the whole tab name with nothing
+     appended. Anything without its own title falls back to the default. */
   title: {
-    default: "Noah Cousineau — Graphic Designer",
+    default: "Noah Cousineau",
     template: "%s",
   },
   description:

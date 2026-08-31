@@ -76,7 +76,8 @@ const nextConfig: NextConfig = {
   images: {
     // 150 = high quality for 150 PPI minimum across site
     // (Next.js caps at 100, so this becomes 100; registered here for clarity)
-    qualities: [75, 100],
+    // 85 is what the grids ask for now — see IMAGE_QUALITY in ProjectGroup.
+    qualities: [75, 85, 100],
     ...(reviewBuild ? { unoptimized: true } : {}),
   },
   ...(reviewBuild ? { output: "export" as const } : {}),
