@@ -405,10 +405,36 @@ export default function Description() {
        * a bare 100 covers the mask's descender padding too (see the masks
        * in the markup below), so nothing peeks above the rule at rest. */
       const lines = gsap.utils.toArray<HTMLElement>(".js-desc-line");
-      gsap.set(lines, { yPercent: 135 });
 
+      /* NO REVEAL ON A PHONE — THE TEXT IS SIMPLY THERE (2026-08-30).
+       *
+       * Noah, with screenshots: bare rules and no type, three screens of it.
+       * That is this line. Every `.js-desc-line` starts pushed 135% down
+       * behind its mask and is brought back by a scroll-driven timeline, so
+       * if that timeline does not run — or runs late, or is still waiting for
+       * its trigger while the reader is already past it — the page shows the
+       * rules with nothing between them. On a phone that timeline was never
+       * going to be reliable: Lenis does not smooth touch scrolling, iOS runs
+       * it off-thread, and the trigger is computed from a scroll position the
+       * main thread is not being given frames to sample.
+       *
+       * Noah: "If we can't do an animation on mobile, then let's remove the
+       * text appear animation on the mobile homepage only. Have all the text
+       * already appear. We'll still have the hand come down."
+       *
+       * So on a phone the lines are never hidden in the first place. Nothing
+       * to reveal, nothing to mistime, nothing that can leave the page empty.
+       * The hand still falls — it is a separate timeline (see the throw
+       * below) and has never depended on this one. */
+      if (!phone) gsap.set(lines, { yPercent: 135 });
+
+      /* The whole scrubbed reveal is desktop-only now. On a phone the lines
+       * are already in place, so there is nothing for it to do — and a
+       * timeline that exists only to move things that are already where they
+       * belong is a timeline that can still get them wrong. */
       const tl = gsap.timeline({
-        scrollTrigger: {
+        paused: phone,
+        scrollTrigger: phone ? undefined : {
           trigger: pinRef.current,
           /* CENTRED, not top-aligned. A numeric start (a scroll position in
            * px) rather than "top top": the pin has to begin wherever puts
@@ -509,7 +535,11 @@ export default function Description() {
        * near-halt. Travelling the CONTENT instead of releasing the pin is
        * what keeps that stop under the timeline's control. */
       const line4 = root.current?.querySelector<HTMLElement>(".js-desc-line-4");
-      if (line4) gsap.set(line4, { yPercent: 135 });
+      /* Line 4 is hidden and revealed separately from the other three, so it
+       * needs the same phone guard — otherwise the timeline that would have
+       * brought it back is paused and it stays behind its mask forever, which
+       * is one of the empty-rule screenshots Noah sent. */
+      if (line4 && !phone) gsap.set(line4, { yPercent: 135 });
 
       /* Δ = (how far the block's centre sits above the viewport middle) +
        * (how far line 4 sits below that centre on the artboard), which lands

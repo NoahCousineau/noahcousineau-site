@@ -123,7 +123,7 @@ function TrackedEye({
       }px, ${screenX * sin + screenY * cos}px)`;
     }
 
-    function handleMove(e: MouseEvent) {
+    function handleMove(e: { clientX: number; clientY: number }) {
       const el = eyeRef.current;
       if (!el) return;
       // Clear any existing offset before measuring so the rect reflects the
@@ -176,9 +176,28 @@ function TrackedEye({
      * never once run on a phone. */
     const unsubscribe = subscribeTilt(({ x, y }) => aim(x, y));
 
-    window.addEventListener("mousemove", handleMove);
+    /* AND THE FINGER, ON A PHONE (2026-08-30). Noah: "I would also like for
+     * the eyes to follow the user's finger when interacting with the site on
+     * mobile."
+     *
+     * `touchmove` rather than `pointermove`, because pointer events for touch
+     * only fire while the pointer is DOWN and are suppressed once the browser
+     * decides the gesture is a scroll — which is most of them. touchmove
+     * keeps coming through a scroll, so the eyes track a thumb dragging down
+     * the page and not merely a deliberate press.
+     *
+     * Passive: this only reads a coordinate and must never be able to hold
+     * up a scroll. */
+    function handleTouch(e: TouchEvent) {
+      const t = e.touches[0];
+      if (t) handleMove({ clientX: t.clientX, clientY: t.clientY });
+    }
+
+    window.addEventListener("mousemove", handleMove as (e: MouseEvent) => void);
+    window.addEventListener("touchmove", handleTouch, { passive: true });
     return () => {
-      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mousemove", handleMove as (e: MouseEvent) => void);
+      window.removeEventListener("touchmove", handleTouch);
       unsubscribe();
     };
   }, [rotationRef]);
