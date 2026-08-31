@@ -41,9 +41,26 @@ export default function RotatingHead({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spriteSheetRef = useRef<HTMLImageElement | null>(null);
 
-  const [currentFrame, setCurrentFrame] = useState(0);
+  /* ONE rAF OWNS THE FRAME, AND NOTHING RE-RENDERS TO TURN THE HEAD
+   * (2026-08-30). Noah: "the head dragging rotation is still a bit stiff on
+   * the mobile home page, please work to make this feel more natural."
+   *
+   * It was stiff because every touchmove wrote React state TWICE — the frame
+   * and the velocity — so a 120Hz flick asked for 240 renders a second, each
+   * one re-running effects and tearing down and rebuilding the momentum rAF,
+   * because `velocity` was in its own dependency array. The head was being
+   * animated by the reconciler, which is not what the reconciler is for.
+   *
+   * Now the frame and the velocity are refs, one loop reads them and draws,
+   * and React is only told when a drag starts and stops — which is the only
+   * thing it renders anything for. */
+  const frameRef = useRef(0);
+  /** Frames per SECOND, so drag and friction are both measured against time. */
+  const velRef = useRef(0);
+  const draggingRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [velocity, setVelocity] = useState(0);
+  /** The rounded frame currently on the canvas, so a still head isn't redrawn. */
+  const drawnRef = useRef<number | null>(null);
 
   /* WHEN THE HEAD CAME TO REST AFTER A SPIN, or null if it is simply
    * turning on its own (2026-08-24). Noah: "If the user spins the head, the
@@ -78,6 +95,14 @@ export default function RotatingHead({
    *  Long enough that the acceleration is legible as acceleration; short
    *  enough that it is back to normal before anyone wonders if it is. */
   const RESUME_RAMP_MS = 2600;
+  /* Friction as a fraction of speed retained per SECOND. 0.06 lands within a
+     hair of the old per-frame 0.95 at 60Hz (0.95^60 = 0.046) while being the
+     same on every refresh rate — see the loop below. */
+  const FRICTION_PER_SEC = 0.06;
+  /** Frames/s under which the head is standing still. */
+  const MIN_VEL = 0.35;
+  /** About three turns a second. A flick should feel strong, not unreadable. */
+  const MAX_VEL = 90;
   const FRAME_WIDTH = 960;
   const FRAME_HEIGHT = 1440;
   // The canvas BACKING STORE, in device-independent pixels — how much detail
@@ -172,7 +197,10 @@ export default function RotatingHead({
 
     spriteSheet.onload = () => {
       spriteSheetRef.current = spriteSheet;
-      drawFrame(currentFrame);
+      // Force the loop to repaint: a new sprite sheet at the same frame
+      // number is still a different picture.
+      drawnRef.current = null;
+      drawFrame(frameRef.current);
     };
 
     return () => {
@@ -181,223 +209,255 @@ export default function RotatingHead({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDarkMode, variant, drawFrame]);
 
-  /* Auto-rotation, and the wait-then-ramp back to it after a spin.
+  /* THE ONE LOOP.
    *
-   * A requestAnimationFrame loop rather than the setInterval this used to be,
-   * because the rate is no longer constant: "slowly accelerating back to its
-   * original speed" needs a speed that can be a fraction of the cruise rate
-   * and change every frame, and setInterval only offers whole-millisecond
-   * periods reset by tearing the timer down. Driving it off elapsed time also
-   * means the head turns at the same real-world rate whatever the display's
-   * refresh rate, which the old one-frame-per-tick timer did not guarantee.
+   * Everything that can turn the head lands here: a drag writes the frame
+   * directly, a release leaves a velocity behind for this to spend, and when
+   * there is neither it winds back up to the idle turntable speed. A single
+   * owner is what lets those three hand over cleanly — the arrangement before
+   * this had an auto-rotate rAF and a momentum rAF each suppressing itself
+   * when it believed the other should be running, negotiating through React
+   * state that arrived a render late. That gap is what you felt at the end of
+   * a flick.
    *
-   * `currentFrame` is fractional and already was — drag momentum has always
-   * written fractional frames into it, and drawFrame rounds — so advancing by
-   * a fractional amount per animation frame needs nothing else to change.
-   *
-   * Suppressed entirely while a drag is in progress or momentum is still
-   * carrying the head, so there is only ever one thing writing the frame. */
+   * Everything is per-second and multiplied by real elapsed time, so the head
+   * turns at the same rate on a 60Hz phone and a 120Hz one. The old friction
+   * was `v *= 0.95` PER FRAME, which on a ProMotion iPhone decayed twice as
+   * fast as it was tuned for: a flick that should coast for a second died in
+   * half of one, on the exact devices Noah was testing. */
+  const tickRef = useRef(0);
+  const prevFrameRef = useRef<number | null>(null);
   useEffect(() => {
-    if (isDragging || velocity !== 0) return;
-
     const framesPerSec = 1000 / autoRotateSpeed;
     let raf = 0;
     let last: number | null = null;
 
+    /* A HEAD NOBODY CAN SEE DOES NOT NEED PAINTING (2026-08-31).
+     *
+     * This canvas is 900x1350 and lives at the top of the home page, and it
+     * was repainting every frame for the whole length of the document — so
+     * the entire time a reader was down at the project grid, the main thread
+     * was still drawing a head three screens above them. On a phone that is
+     * paint bandwidth taken directly out of the scroll. It picks up again
+     * from wherever it left off, and `last` is cleared on the way back in so
+     * the time spent away is not integrated in one jump. */
+    const canvas = canvasRef.current;
+    let onScreen = true;
+    const io = canvas
+      ? new IntersectionObserver(
+          ([e]) => {
+            onScreen = e.isIntersecting;
+            if (onScreen) last = null;
+          },
+          { rootMargin: "15% 0px" }
+        )
+      : null;
+    if (io && canvas) io.observe(canvas);
+
     const step = (t: number) => {
-      const dt = last === null ? 0 : (t - last) / 1000;
+      raf = requestAnimationFrame(step);
+      if (!onScreen) return;
+      /* Clamped: returning from a background tab hands you a dt of several
+         seconds, and spending it in one go teleports the head. */
+      const dt = last === null ? 0 : Math.min((t - last) / 1000, 0.05);
       last = t;
 
-      let rate = 1;
-      const pausedAt = pausedAtRef.current;
-      if (pausedAt !== null) {
-        const since = t - pausedAt;
-        if (since < resumeRotationDelay) {
-          rate = 0; // "stay still for five seconds"
+      if (!draggingRef.current) {
+        if (velRef.current !== 0) {
+          frameRef.current += velRef.current * dt;
+          velRef.current *= Math.pow(FRICTION_PER_SEC, dt);
+          if (Math.abs(velRef.current) < MIN_VEL) {
+            velRef.current = 0;
+            /* The wait starts when the head actually STOPS, not when the
+               finger lifted — starting the clock at the release would spend
+               most of it on a head that is still visibly spinning. */
+            pausedAtRef.current = t;
+          }
         } else {
-          // Quadratic rather than linear: a linear ramp leaves the head at
-          // half speed halfway through, which reads as it already being back
-          // to normal. Squaring keeps the first half of the ramp genuinely
-          // slow, so the acceleration is the thing you notice.
-          const p = Math.min(1, (since - resumeRotationDelay) / RESUME_RAMP_MS);
-          rate = p * p;
-          if (p >= 1) pausedAtRef.current = null;
+          let rate = 1;
+          const pausedAt = pausedAtRef.current;
+          if (pausedAt !== null) {
+            const since = t - pausedAt;
+            if (since < resumeRotationDelay) {
+              rate = 0; // "stay still for five seconds"
+            } else {
+              // Quadratic rather than linear: a linear ramp leaves the head at
+              // half speed halfway through, which reads as it already being
+              // back to normal. Squaring keeps the first half of the ramp
+              // genuinely slow, so the acceleration is the thing you notice.
+              const p = Math.min(1, (since - resumeRotationDelay) / RESUME_RAMP_MS);
+              rate = p * p;
+              if (p >= 1) pausedAtRef.current = null;
+            }
+          }
+          if (rate > 0) frameRef.current += framesPerSec * rate * dt;
         }
       }
 
-      if (rate > 0) {
-        setCurrentFrame((prev) => (prev + framesPerSec * rate * dt) % TOTAL_FRAMES);
+      // Kept in range so a long session can't drift into huge numbers.
+      frameRef.current =
+        ((frameRef.current % TOTAL_FRAMES) + TOTAL_FRAMES) % TOTAL_FRAMES;
+
+      /* Only when the picture would actually differ. drawFrame rounds, so
+         redrawing between two thirds of a frame paints the same pixels — and
+         during the post-spin pause the head is not moving at all. This is the
+         difference between a canvas repaint every frame forever and one only
+         when the head turns, which is worth having on a phone that is also
+         trying to scroll. */
+      const rounded = Math.round(frameRef.current) % TOTAL_FRAMES;
+      if (drawnRef.current !== rounded) {
+        drawFrame(frameRef.current);
+        drawnRef.current = rounded;
+
+        /* Publish the rotation as a monotonic tick, so the stars and pencil
+           marks behind the head run on the same beat — see lib/headFrame.ts
+           for why this accumulates a signed step rather than exporting the
+           frame directly. */
+        const prev = prevFrameRef.current;
+        if (prev !== null && rounded !== prev) {
+          let s = rounded - prev;
+          // The short way round: 30 -> 0 is one frame forward, not thirty back.
+          if (s > TOTAL_FRAMES / 2) s -= TOTAL_FRAMES;
+          if (s < -TOTAL_FRAMES / 2) s += TOTAL_FRAMES;
+          tickRef.current += s;
+          setHeadTick(tickRef.current);
+        }
+        prevFrameRef.current = rounded;
       }
-      raf = requestAnimationFrame(step);
     };
 
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [isDragging, velocity, autoRotateSpeed, resumeRotationDelay, TOTAL_FRAMES]);
-
-  /* Start the five-second wait at the moment the head actually stops, which
-   * is when momentum has run out — not when the pointer came up. Releasing a
-   * fast flick and having the clock start there would spend most of the wait
-   * on a head that is still visibly spinning. */
-  useEffect(() => {
-    if (isDragging) {
-      spunRef.current = true;
-      pausedAtRef.current = null;
-      return;
-    }
-    if (velocity !== 0) return;
-    if (spunRef.current) {
-      spunRef.current = false;
-      pausedAtRef.current = performance.now();
-    }
-  }, [isDragging, velocity]);
-
-  // Momentum/inertia animation
-  useEffect(() => {
-    if (isDragging || velocity === 0) return;
-
-    let animationId: number;
-    const animate = () => {
-      setVelocity((prev) => {
-        const newVelocity = prev * 0.95; // Friction factor
-
-        if (Math.abs(newVelocity) < 0.01) {
-          return 0; // Stop when velocity is negligible
-        }
-
-        setCurrentFrame((frame) => (frame + newVelocity / dragSensitivity) % TOTAL_FRAMES);
-        return newVelocity;
-      });
-
-      animationId = requestAnimationFrame(animate);
+    return () => {
+      io?.disconnect();
+      cancelAnimationFrame(raf);
     };
+  }, [autoRotateSpeed, resumeRotationDelay, TOTAL_FRAMES, drawFrame]);
 
-    animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
-  }, [isDragging, velocity, dragSensitivity, TOTAL_FRAMES]);
+  /* A RELEASE IS MEASURED OVER A WINDOW, NOT OFF THE LAST TWO POINTS.
+   *
+   * The velocity a flick leaves behind used to be whichever pair of samples
+   * happened to be last, divided by a `Math.max(dt, 16)` floor — so a pair
+   * 4ms apart, which is ordinary on a 120Hz screen, was read as if it had
+   * taken 16ms and came out four times too slow, while a stray jitter on the
+   * final point came out as a throw. Averaging the tail of the gesture is
+   * both steadier and closer to what the hand actually did. */
+  const samplesRef = useRef<{ x: number; t: number }[]>([]);
+  const startRef = useRef({ x: 0, frame: 0 });
 
-  // Draw whenever frame changes
-  useEffect(() => {
-    drawFrame(currentFrame);
-  }, [currentFrame, isDarkMode, variant, drawFrame]);
-
-  /* Publish the rotation as a monotonic tick, so the stars and pencil marks
-   * behind the head can run on the same beat — see lib/headFrame.ts for why
-   * this accumulates a signed step instead of exporting `currentFrame`
-   * directly. Kept here rather than in the parent because this is the only
-   * place the frame actually advances (auto-rotation AND drag momentum both
-   * land in `currentFrame`). Writing to a module store is not React state,
-   * so this doesn't re-render anything that hasn't subscribed. */
-  const tickRef = useRef(0);
-  const prevFrameRef = useRef<number | null>(null);
-  useEffect(() => {
-    // `currentFrame` is fractional and can go negative while a drag has
-    // momentum, so this needs a true modulo, not `%`.
-    const f = ((Math.round(currentFrame) % TOTAL_FRAMES) + TOTAL_FRAMES) % TOTAL_FRAMES;
-    const prev = prevFrameRef.current;
-    if (prev !== null && f !== prev) {
-      let step = f - prev;
-      // The short way round: 30 -> 0 is one frame forward, not thirty back.
-      if (step > TOTAL_FRAMES / 2) step -= TOTAL_FRAMES;
-      if (step < -TOTAL_FRAMES / 2) step += TOTAL_FRAMES;
-      tickRef.current += step;
-      setHeadTick(tickRef.current);
-    }
-    prevFrameRef.current = f;
-  }, [currentFrame, TOTAL_FRAMES]);
-
-  // Drag handler
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const beginDrag = (x: number) => {
+    draggingRef.current = true;
     setIsDragging(true);
-    setVelocity(0); // Reset velocity when starting new drag
-
-    const startX = e.clientX;
-    const startFrame = currentFrame;
-    let lastX = startX;
-    let lastTime = Date.now();
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const currentX = e.clientX;
-      const currentTime = Date.now();
-      const deltaX = currentX - startX;
-      const frameDelta = deltaX / dragSensitivity; // Use decimal for smooth movement
-      setCurrentFrame(startFrame + frameDelta);
-
-      // Calculate velocity for momentum
-      const deltaPixels = currentX - lastX;
-      const deltaTime = Math.max(currentTime - lastTime, 16); // Min 16ms (60fps)
-      const instantVelocity = (deltaPixels / deltaTime) * 16; // Pixels per frame
-      setVelocity(instantVelocity);
-
-      lastX = currentX;
-      lastTime = currentTime;
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      // Don't resume auto-rotation - just let momentum play out
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    velRef.current = 0;
+    pausedAtRef.current = null;
+    startRef.current = { x, frame: frameRef.current };
+    samplesRef.current = [{ x, t: performance.now() }];
   };
 
-  /* Touch handler.
+  const moveDrag = (x: number) => {
+    frameRef.current =
+      startRef.current.frame + (x - startRef.current.x) / dragSensitivity;
+    const now = performance.now();
+    const s = samplesRef.current;
+    s.push({ x, t: now });
+    // The last 90ms only — the tail of the gesture is what a flick is.
+    while (s.length > 2 && now - s[0].t > 90) s.shift();
+  };
+
+  const endDrag = () => {
+    draggingRef.current = false;
+    setIsDragging(false);
+    const s = samplesRef.current;
+    const first = s[0];
+    const last = s[s.length - 1];
+    let v = 0;
+    if (first && last) {
+      const ms = last.t - first.t;
+      /* A finger that came to rest before lifting has no throw in it, however
+         fast it was moving a moment earlier — so a stale window is zero
+         rather than the velocity it used to have. This is what stops a head
+         you positioned deliberately from drifting off as you let go. */
+      if (ms > 8 && performance.now() - last.t < 120) {
+        v = (last.x - first.x) / (ms / 1000) / dragSensitivity;
+      }
+    }
+    velRef.current = Math.max(-MAX_VEL, Math.min(MAX_VEL, v));
+    if (velRef.current === 0) pausedAtRef.current = performance.now();
+    samplesRef.current = [];
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    beginDrag(e.clientX);
+    const onMove = (ev: MouseEvent) => moveDrag(ev.clientX);
+    const onUp = () => {
+      endDrag();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  /* THE HEAD MUST NOT EAT THE PAGE'S SCROLL (2026-08-30).
    *
-   * THE PAGE USED TO WIN THIS GESTURE (2026-08-30). Noah: "the drag head spin
-   * doesn't work well on mobile. The head barely moves when I try to flick it
-   * and the page can sometimes move up and down."
+   * Noah: "scrolling at a fast speed seems to freeze the site." Measured on a
+   * 390x844 phone, this canvas is 398x597 — the full width of the screen and
+   * seven tenths of its height — and it carried `touch-action: none`. So a
+   * thumb that began a flick anywhere on the head produced EXACTLY ZERO
+   * scroll. Not slow, not janky: nothing moved. Confirmed by driving real
+   * compositor touch gestures at the middle of the screen and reading a
+   * scrollY of 0, while the same gesture 6px from the left edge scrolled
+   * 1199px. On the home page the head is the first thing under your thumb,
+   * so this was most of "the site freezes".
    *
-   * Three things, all of them the same story. The canvas had no touch-action,
-   * so the browser was free to read a horizontal drag as the start of a
-   * scroll. The move handler never called preventDefault, so nothing told it
-   * otherwise. And the listener was registered without `{ passive: false }`,
-   * which since Chrome 56 and Safari 11.3 means document-level touchmove is
-   * passive by default and preventDefault would have been ignored even if it
-   * had been called. So the page scrolled, the browser cancelled the touch
-   * sequence, and the head stopped turning part-way through the flick —
-   * exactly "barely moves". */
+   * `pan-y` hands vertical back to the browser and keeps horizontal for the
+   * turntable, which is the axis the head actually spins on — so the two
+   * gestures stop competing for the same pixels. The direction is then
+   * settled here on the first movement large enough to read: sideways is the
+   * head's, up or down is the page's, and once the page has it this lets go
+   * entirely rather than fighting a scroll it cannot win. */
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    setIsDragging(true);
-    setVelocity(0);
+    const t0 = e.touches[0];
+    if (!t0) return;
+    const originX = t0.clientX;
+    const originY = t0.clientY;
+    /** 0 undecided, 1 the head's gesture, -1 the page's. */
+    let claim = 0;
 
-    const startX = e.touches[0].clientX;
-    const startFrame = currentFrame;
-    let lastX = startX;
-    let lastTime = Date.now();
-
-    const handleTouchMove = (e: TouchEvent) => {
-      // This gesture belongs to the head, not to the document.
-      if (e.cancelable) e.preventDefault();
-      const currentX = e.touches[0].clientX;
-      const currentTime = Date.now();
-      const deltaX = currentX - startX;
-      const frameDelta = deltaX / dragSensitivity; // Use decimal for smooth movement
-      setCurrentFrame(startFrame + frameDelta);
-
-      // Calculate velocity for momentum
-      const deltaPixels = currentX - lastX;
-      const deltaTime = Math.max(currentTime - lastTime, 16);
-      const instantVelocity = (deltaPixels / deltaTime) * 16;
-      setVelocity(instantVelocity);
-
-      lastX = currentX;
-      lastTime = currentTime;
+    const detach = () => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+    const onMove = (ev: TouchEvent) => {
+      const p = ev.touches[0];
+      if (!p) return;
+      if (claim === 0) {
+        const dx = p.clientX - originX;
+        const dy = p.clientY - originY;
+        // Under 6px is a fingertip resting, not a direction.
+        if (Math.hypot(dx, dy) < 6) return;
+        claim = Math.abs(dx) > Math.abs(dy) ? 1 : -1;
+        if (claim === -1) {
+          detach();
+          return;
+        }
+        beginDrag(p.clientX);
+        return;
+      }
+      // This gesture belongs to the head, and `{ passive: false }` below is
+      // what makes saying so effective — document-level touchmove has been
+      // passive by default since Chrome 56 and Safari 11.3.
+      if (ev.cancelable) ev.preventDefault();
+      moveDrag(p.clientX);
+    };
+    const onEnd = () => {
+      if (claim === 1) endDrag();
+      detach();
     };
 
-    const handleTouchEnd = () => {
-      setIsDragging(false);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('touchcancel', handleTouchEnd);
-      // Auto-rotation resumes on its own — see the wait-then-ramp above.
-    };
-
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd);
-    document.addEventListener('touchcancel', handleTouchEnd);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
   };
 
   return (
@@ -409,7 +469,7 @@ export default function RotatingHead({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         className={`
-          touch-none select-none
+          touch-pan-y select-none
           cursor-grab active:cursor-grabbing
           ${isDragging ? 'opacity-90' : 'opacity-100'}
           transition-opacity

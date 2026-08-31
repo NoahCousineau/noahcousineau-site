@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { subscribeTilt } from "@/lib/deviceTilt";
 import { defaultSilhouette, measureSilhouette, supportAt, type Silhouette } from "./silhouette";
 
 /**
@@ -57,6 +58,8 @@ export function useThrowable({
   frameRef,
   onClick,
   enabled = true,
+  tilt = false,
+  draggable = true,
 }: {
   /** The element that moves. Must be absolutely positioned in the container. */
   elementRef: React.RefObject<HTMLElement | null>;
@@ -69,6 +72,22 @@ export function useThrowable({
   /** Fired on release when the press never became a drag. */
   onClick?: () => void;
   enabled?: boolean;
+  /* WHICH WAY IS DOWN COMES FROM THE PHONE (2026-08-31). Noah: "I got one of
+   * the projects to work with the mobile tilt and it was great! If possible,
+   * let's have this on the mobile home page as well."
+   *
+   * The project header's icon pile already tilts, through useDropField. This
+   * is the same idea for the objects that sit in the home grid's tiles: each
+   * one slides around inside its own square as the phone leans, instead of
+   * only ever falling straight down. Off by default, so every existing caller
+   * keeps plain downward gravity to the pixel. */
+  tilt?: boolean;
+  /* Physics WITHOUT the pointer handlers. Separating these is what makes tilt
+   * safe on a phone: dragging an object requires claiming the touch with
+   * `touch-action: none`, and on the home page that claim is what stopped the
+   * page scrolling at all when a thumb landed on a tile. Tilt needs no touch
+   * at all, so it can have the motion without taking the gesture. */
+  draggable?: boolean;
 }) {
   /* ONE OUTLINE PER FRAME, not one for the whole animation. Noah: "do a more
    * accurate job of capturing the silhouettes of the objects at all frames."
@@ -87,6 +106,9 @@ export function useThrowable({
       shapes.current[0],
     [frameRef]
   );
+  /** Unit vector pointing the way gravity pulls. Straight down until a phone
+   *  says otherwise. */
+  const gravityDir = useRef({ x: 0, y: 1 });
   const pos = useRef({ x: 0, y: 0 });
   const vel = useRef({ x: 0, y: 0 });
   const rot = useRef(0);
@@ -138,6 +160,22 @@ export function useThrowable({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageSrcs.join("|")]);
+
+  useEffect(() => {
+    if (!tilt || !enabled) return;
+    return subscribeTilt((t) => {
+      const m = Math.hypot(t.x, t.y);
+      const next = m > 0.05 ? { x: t.x / m, y: t.y / m } : { x: 0, y: 1 };
+      const moved = Math.hypot(next.x - gravityDir.current.x, next.y - gravityDir.current.y);
+      gravityDir.current = next;
+      /* A SLEEPING BODY IGNORES GRAVITY — which is the whole feature. An
+       * object that has settled has its integrator switched off, so turning
+       * the phone would change the direction of a force nothing was reading.
+       * This is the same trap that made tilt look broken on the project
+       * header once settling was added there. */
+      if (moved > 0.02) asleep.current = false;
+    });
+  }, [tilt, enabled]);
 
   useEffect(() => {
     const el = elementRef.current;
@@ -192,8 +230,31 @@ export function useThrowable({
       y: el.offsetTop + shapeNow().pivot.y * el.offsetHeight + pos.current.y,
     });
 
+    /* NOTHING IS SIMULATED THAT NOBODY CAN SEE (2026-08-31).
+     *
+     * The loop below runs every frame whether or not the object is on screen,
+     * and even a resting object costs a getBoundingClientRect, a centroid
+     * sync and four support lookups each time. On the home page that is six
+     * of them, and all six were running while the reader scrolled past parts
+     * of the page none of them were in — main-thread work during a scroll,
+     * which is the exact budget this page has been fighting for. Objects are
+     * already reset when they leave the viewport (see the IntersectionObserver
+     * in ProjectFrameAnimation), so there is no state here worth advancing
+     * off screen. The rAF stays alive so it picks straight back up. */
+    let onScreen = true;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        onScreen = e.isIntersecting;
+        // A gap spent off screen is not a gap the physics should integrate.
+        if (onScreen) lastTs.current = null;
+      },
+      { rootMargin: "10% 0px" }
+    );
+    io.observe(container);
+
     const step = (ts: number) => {
       raf.current = requestAnimationFrame(step);
+      if (!onScreen) return;
       if (lastTs.current == null) lastTs.current = ts;
       const dt = Math.min((ts - lastTs.current) / 1000, 1 / 30);
       lastTs.current = ts;
@@ -217,7 +278,12 @@ export function useThrowable({
       const W = el.offsetWidth;
 
       if (!idle && !dragging.current) {
-        vel.current.y += cr.height * GRAVITY_PER_HEIGHT * dt;
+        /* Along the gravity vector rather than straight down. With the
+           default {0,1} this is arithmetically identical to the single line
+           it replaces, so nothing that does not opt into tilt changes. */
+        const g = cr.height * GRAVITY_PER_HEIGHT * dt;
+        vel.current.x += gravityDir.current.x * g;
+        vel.current.y += gravityDir.current.y * g;
         const drag = Math.max(0, 1 - AIR_DRAG * dt);
         vel.current.x *= drag;
         vel.current.y *= drag;
@@ -386,16 +452,19 @@ export function useThrowable({
       asleep.current = false;
     };
 
-    el.style.touchAction = "none";
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onUp);
-    el.addEventListener("pointercancel", onUp);
-    window.addEventListener("pointerup", onUp);
+    if (draggable) {
+      el.style.touchAction = "none";
+      el.addEventListener("pointerdown", onDown);
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
+      window.addEventListener("pointerup", onUp);
+    }
     raf.current = requestAnimationFrame(step);
     apply();
 
     return () => {
+      io.disconnect();
       window.removeEventListener("pointerup", onUp);
       el.removeEventListener("pointerdown", onDown);
       el.removeEventListener("pointermove", onMove);
@@ -406,7 +475,7 @@ export function useThrowable({
         raf.current = null;
       }
     };
-  }, [elementRef, containerRef, enabled, shapeNow]);
+  }, [elementRef, containerRef, enabled, shapeNow, draggable]);
 
   /** Let gravity take over again — used when the artwork changes shape, so a
    *  newly grown object settles back onto a border instead of hanging where

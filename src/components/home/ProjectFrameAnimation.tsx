@@ -142,7 +142,24 @@ export default function ProjectFrameAnimation({
     imageSrcs: frames,
     frameRef,
     onClick: play,
-    enabled: !phone,
+    /* TILT ON THE HOME GRID (2026-08-31). Noah: "I got one of the projects to
+     * work with the mobile tilt and it was great! If possible, let's have this
+     * on the mobile home page as well. ONLY DO THIS IF IT WILL MEAN THERE
+     * WON'T BE ANY ISSUES OR ERRORS ON THE HOME PAGE."
+     *
+     * The condition is the important half, and it is why this is `draggable:
+     * !phone` rather than simply turning the physics back on. Dragging is what
+     * forces `touch-action: none` onto the element, and that claim over six
+     * tiles is precisely what was stopping the page from scrolling when a
+     * thumb landed on one. Tilt asks for no touch at all, so the phone gets
+     * the motion and the page keeps every gesture.
+     *
+     * Each object now slides around inside its own tile as the phone leans —
+     * 95px of artwork in a 374x265 square, so there is real room to move —
+     * and taps still play the animation exactly as before. */
+    enabled: true,
+    tilt: phone,
+    draggable: !phone,
   });
 
   /* Run the stroke.
@@ -217,7 +234,15 @@ export default function ProjectFrameAnimation({
   return (
     <div
       ref={hostRef}
-      className={`absolute select-none touch-none ${className}`}
+      /* `touch-none` ONLY WHERE SOMETHING IS DRAGGABLE (2026-08-30).
+         Noah: "scrolling at a fast speed seems to freeze the site."
+         Physics is already off on phones, so on a phone this element has
+         nothing to drag — but it was still telling the browser not to scroll
+         over it, across six ~95px squares spread down the grid. A thumb that
+         started a flick on one got no scroll at all, which is exactly the
+         freeze, in miniature, that the head was causing at full size. The
+         tap-to-play handler below is a click and needs no such claim. */
+      className={`absolute select-none ${phone ? "" : "touch-none"} ${className}`}
       style={style}
       // The tile is a <Link>; these objects handle their own presses and must
       // not also navigate. Noah: "The apple should be it's own clickable
@@ -280,7 +305,21 @@ export default function ProjectFrameAnimation({
                 priority={i === 0}
                 loading="eager"
                 draggable={false}
-                className="object-contain pointer-events-none"
+                /* PENCIL ARTWORK HAS TO FLIP IN DARK MODE (2026-08-30). Noah,
+                   with a screenshot of the Valley Strong tile: "notice how the
+                   pencil drawing isn't white."
+                   
+                   The project PAGE header already does this — it sets
+                   invertOnDark from `object.style === "draw"` — but the home
+                   grid never did, so the same artwork read as ink on paper on
+                   the page and as near-invisible dark lines on the black grid.
+                   A "draw" animation is by definition line art on a
+                   transparent ground, which is exactly what a plain invert is
+                   safe on; photographic frames are not marked "draw" and are
+                   left alone. */
+                className={`object-contain pointer-events-none${
+                  motion === "draw" ? " invert-on-dark" : ""
+                }`}
                 style={{ opacity: i === index || isUnderneath ? 1 : 0 }}
               />
             );

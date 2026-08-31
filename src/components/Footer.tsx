@@ -293,9 +293,17 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
         className={`bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start overflow-hidden ${
           phone ? "relative w-full" : "fixed inset-0 z-0"
         }`}
-        /* In flow on a phone it needs a height of its own; fixed inset-0 gave
-           it one for free. A viewport tall keeps the composition Noah drew. */
-        style={phone ? { minHeight: "100dvh" } : undefined}
+        /* A DEFINITE height, not a minimum (2026-08-30). Noah: "it looks like
+           the head and finger got moved up too much on the mobile footer."
+           
+           The artboard inside this is `h-full`, and a percentage height only
+           resolves against a parent with a definite height. `fixed inset-0`
+           gave it one for free; `min-height` does not — so the artboard
+           collapsed to its content and the head and the fallen hand, which
+           are both placed with `bottom: <units>` against it, anchored to a
+           much shorter box and rose up into the links. An exact height puts
+           them back where they were drawn. */
+        style={phone ? { height: "100dvh" } : undefined}
       >
       <div
         className="artboard relative mx-auto max-w-[1920px] w-full h-full"
