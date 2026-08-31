@@ -641,6 +641,20 @@ body {
    browser." 16 artboard units is 3.3px at 390. Desktop is untouched. */
 @media (max-width: 767px) {
   :root {
-    --section-title-top-min: 14px;
+    /* 14px -> 78px (2026-08-30, second pass). Noah: "I also don't see much
+       of a change to the space above section titles on mobile."
+       
+       He was right, and measuring showed why 14px could never have looked
+       like enough. With a section header stuck to the top of a 390px screen,
+       the title occupied y14-33 and its rule sat at y35 — while the C mark
+       spans y25-71 and the theme toggle y32-64. The title was not merely
+       close to the top edge, it was running straight through both corner
+       controls, and the rule was crossing them. Nudging it a few pixels just
+       moved it around inside them.
+       
+       78px puts the whole block clear below the lower of the two (the C mark
+       ends at 71), so the title has the corner to itself and reads as a band
+       under the chrome rather than tangled in it. */
+    --section-title-top-min: 78px;
   }
 }

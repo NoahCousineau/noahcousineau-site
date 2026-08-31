@@ -418,36 +418,37 @@ export default function Description() {
            * so a resize re-centres rather than drifting. */
           start: () =>
             docTop() - (window.innerHeight / 2 - linesCentre * uPx()),
-          /* Three reveals and their holds, then the travel down to the last
-             line and its own beat — see the phases below.
-
-             HALF AS LONG ON A PHONE (2026-08-30). Noah: "there's too much
-             space between the individual sections." Measured at 390px, this
-             was the entire complaint: 320% of the viewport is 2701px of
-             scrolling between the pointing hand and the first project, and
-             the measurement of the page's largest empty run came back at
-             exactly 2701px. On a desktop that is a mouse wheel and a big
-             screen; on a phone it is three and a third screens of thumb for
-             two lines of type, with nothing arriving in between.
-
-             The reveal itself is unchanged — the same phases, the same
-             holds, scrubbed against a shorter runway, so it simply plays at
-             a pace that suits the way the page is actually being scrolled. */
-          /* 320% -> 220% on a desktop, 160% -> 110% on a phone (2026-08-30).
-             Noah: "remove a lot of the blank space... the site feels void at
-             times when scrolling. Use your best judgement."
+          /* ON A PHONE THIS IS NOT A SCROLL ANIMATION AT ALL (2026-08-30).
+             Noah: "the text appearing from the lines isn't smooth like it is
+             on desktop. Rather, it feels almost low-frame like. It's choppy
+             and seems to be in segments."
              
-             This number IS the blank space. It is the scroll distance the
-             pinned reveal occupies, and measured as the page's largest empty
-             run at every width: 2388px on a desktop and 1428px on a phone
-             even after the first halving. The reveal itself is unchanged —
-             same phases, same holds, scrubbed against a shorter runway — so
-             what goes is the dead scrolling between beats, not any of the
-             beats. */
-          end: () => (phone ? "+=110%" : "+=220%"),
-          pin: true,
+             That is what a pinned, scrubbed timeline does on iOS, and it is
+             structural rather than a matter of tuning. Lenis smooths the
+             mouse WHEEL only — syncTouch is off — so on a phone the scroll
+             position comes from native touch scrolling, which iOS runs on a
+             separate thread and which starves the main thread during
+             momentum. The pin then has to be re-placed from JavaScript that
+             is not being given frames, and the scrub lands wherever the next
+             scroll event says. Segments, exactly as described.
+             
+             So on a phone the reveal plays itself, once, when it comes into
+             view: same timeline, same phases, driven by gsap's own ticker at
+             whatever frame rate the device can manage rather than by a scroll
+             position it cannot sample smoothly. No pin to re-place, no scrub
+             to quantise, and — since the runway existed only to give the
+             scrub something to scrub through — no 1000px of empty scrolling
+             either. Three complaints, one cause.
+             
+             Desktop is untouched: wheel scrolling IS Lenis-driven there, the
+             scrub is smooth, and the pinned reveal is the designed
+             experience. */
+          end: () => (phone ? "+=1" : "+=220%"),
+          scrub: phone ? false : 0.6,
+          once: phone,
+          toggleActions: phone ? "play none none none" : undefined,
+          pin: !phone,
           anticipatePin: 1,
-          scrub: 0.6,
           invalidateOnRefresh: true,
           /* BOTH EXITS HIDE IT NOW (2026-08-25). Noah: "the arrow hand is
            * 'glitching' in and out when we scroll back up. Have it completely

@@ -390,7 +390,18 @@ export default function ProjectHeader({
      * the mobile version will have them react to the orientation of the
      * phone... similar to how the Wii motion control worked." */
     tilt: phone,
-    draggable: !phone,
+    /* DRAGGABLE EVERYWHERE (2026-08-30). Noah: "if the user can't have tilt
+     * on mobile, then have the icons draggable and throwable like they are
+     * on desktop."
+     *
+     * Tilt is not something the site can guarantee: iOS will not deliver
+     * orientation events until the reader has tapped once AND accepted a
+     * permission dialog, and if they ever dismissed it the browser will not
+     * ask again. That is a real chance of a header that simply never moves.
+     * Dragging always works, costs nothing when tilt is granted, and the two
+     * coexist — a held body is excluded from the tilt wake-up, so picking one
+     * up while the phone moves does what you would expect. */
+    draggable: true,
   });
 
   return (

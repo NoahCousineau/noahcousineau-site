@@ -238,7 +238,25 @@ export default function ProjectFrameAnimation({
                 alt=""
                 fill
                 sizes="25vw"
+                /* EAGER, ALL OF THEM (2026-08-30). Noah: "the grid isn't
+                   already loaded when the mobile home page is loaded. I'll
+                   scroll past it to the footer, only for it to appear and
+                   make me get lost on my position on the page... When I
+                   scroll, everything should be ready."
+                   
+                   Only frame 0 was eager and the rest were lazy, so a tile
+                   held one frame and fetched the others the moment it came
+                   into view — which is the tile visibly assembling itself
+                   under the reader's thumb. Eager means the loading screen
+                   waits for them instead, which is the trade Noah asked for:
+                   "I'm okay with the loading screen taking longer if it
+                   equates to a smoother experience."
+                   
+                   Affordable because these are small: measured, each frame
+                   renders into a 97px box on a phone, so the optimiser is
+                   serving thumbnails, not artwork. */
                 priority={i === 0}
+                loading="eager"
                 draggable={false}
                 className="object-contain pointer-events-none"
                 style={{ opacity: i === index || isUnderneath ? 1 : 0 }}
