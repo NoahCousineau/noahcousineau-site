@@ -7,6 +7,7 @@ import AwayOverlay from "@/components/AwayOverlay";
 import ThemeProvider, { THEME_INIT_SCRIPT } from "@/components/ThemeProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 import HomeLink from "@/components/HomeLink";
+import GateOverlay from "@/components/GateOverlay";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -61,6 +62,11 @@ export default function RootLayout({
             outside SmoothScroll because it's viewport-fixed and must not
             participate in scrolling at all. */}
         <AwayOverlay />
+        {/* Raises the password hand over the page you are on, instead of
+            navigating away to a password screen. The server gate in
+            src/proxy.ts is unchanged and still protects a URL typed
+            directly — see the note in GateOverlay. */}
+        <GateOverlay />
         </ThemeProvider>
       </body>
     </html>

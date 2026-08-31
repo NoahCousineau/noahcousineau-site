@@ -14,6 +14,8 @@ import type { NextRequest } from "next/server";
  */
 
 const COOKIE = "nc_gate";
+/** Readable by script, grants nothing — see issueGate. */
+export const UI_HINT = "nc_gate_open";
 
 /*
  * THE SIGNING SECRET, AND WHY PRODUCTION REFUSES THE FALLBACK (2026-08-29,
@@ -93,10 +95,32 @@ export function issueGate(request?: Pick<Request, "headers" | "url">): NextRespo
     secure: isHttps(request),
     maxAge: 60 * 60 * 24 * 365,
   });
+  /* A READABLE COMPANION, FOR THE INTERFACE ONLY (2026-08-30).
+   *
+   * The real cookie above is httpOnly, which is the whole point: script
+   * cannot read it, so nothing on the page can leak it. But that also means
+   * the page cannot tell whether the reader is already through the gate —
+   * and it now needs to, because clicking a project no longer navigates to a
+   * password screen, it raises the hand over wherever you are (see
+   * GateOverlay). Something has to decide whether to raise it.
+   *
+   * So this carries no signature and grants nothing. Forging it lets you see
+   * the hand you would have seen anyway; the actual check is still the signed
+   * httpOnly cookie, verified in src/proxy.ts on the server, and a project
+   * page will still refuse to render without it. This only answers "should
+   * the interface bother asking?". */
+  res.cookies.set(UI_HINT, "1", {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    secure: isHttps(request),
+    maxAge: 60 * 60 * 24 * 365,
+  });
   return res;
 }
 
 export function clearGate(res: NextResponse) {
+  res.cookies.set(UI_HINT, "", { path: "/", maxAge: 0 });
   res.cookies.set(COOKIE, "", {
     path: "/",
     httpOnly: true,
