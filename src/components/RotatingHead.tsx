@@ -344,7 +344,21 @@ export default function RotatingHead({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Touch handler
+  /* Touch handler.
+   *
+   * THE PAGE USED TO WIN THIS GESTURE (2026-08-30). Noah: "the drag head spin
+   * doesn't work well on mobile. The head barely moves when I try to flick it
+   * and the page can sometimes move up and down."
+   *
+   * Three things, all of them the same story. The canvas had no touch-action,
+   * so the browser was free to read a horizontal drag as the start of a
+   * scroll. The move handler never called preventDefault, so nothing told it
+   * otherwise. And the listener was registered without `{ passive: false }`,
+   * which since Chrome 56 and Safari 11.3 means document-level touchmove is
+   * passive by default and preventDefault would have been ignored even if it
+   * had been called. So the page scrolled, the browser cancelled the touch
+   * sequence, and the head stopped turning part-way through the flick —
+   * exactly "barely moves". */
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
     setVelocity(0);
@@ -355,6 +369,8 @@ export default function RotatingHead({
     let lastTime = Date.now();
 
     const handleTouchMove = (e: TouchEvent) => {
+      // This gesture belongs to the head, not to the document.
+      if (e.cancelable) e.preventDefault();
       const currentX = e.touches[0].clientX;
       const currentTime = Date.now();
       const deltaX = currentX - startX;
@@ -375,11 +391,13 @@ export default function RotatingHead({
       setIsDragging(false);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
       // Auto-rotation resumes on its own — see the wait-then-ramp above.
     };
 
-    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
   };
 
   return (
@@ -391,6 +409,7 @@ export default function RotatingHead({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         className={`
+          touch-none select-none
           cursor-grab active:cursor-grabbing
           ${isDragging ? 'opacity-90' : 'opacity-100'}
           transition-opacity

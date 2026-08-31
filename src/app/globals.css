@@ -658,3 +658,18 @@ body {
     --section-title-top-min: 78px;
   }
 }
+
+/* THE CURTAIN IS A DESKTOP DEVICE (2026-08-30).
+   
+   .site-content is opaque and stacked above a footer fixed behind it, which
+   is what makes the desktop reveal work. On a phone that footer is in normal
+   flow instead (see Footer.tsx), so there is nothing behind this to hide —
+   and keeping it as its own isolated, stacked, opaque layer only gives iOS
+   another composited surface to get wrong. Flattened here so a phone paints
+   one ordinary document. */
+@media (max-width: 767px) {
+  .site-content {
+    isolation: auto;
+    z-index: auto;
+  }
+}

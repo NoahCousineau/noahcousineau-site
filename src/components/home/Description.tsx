@@ -154,7 +154,12 @@ const HAND_BOX_H = 524;
  *  difference between two written-out numbers (3000 against a rule at 2247);
  *  kept as that same 753 now that the closer's position is derived, so the
  *  hand travels with it instead of being left behind when the gap grows. */
-const PHONE_HAND_DROP_UNITS = 753;
+/* 753 -> 280 (2026-08-30). Noah: "reduce the amount of space between 'his
+ * work can be seen below' and the project grid by half on mobile."
+ * Measured at 390px, line 4's bottom to the first tile's top was 487px, of
+ * which 314 was empty and 173 was the hand itself. This closes the gap above
+ * the hand from 221px to about 37. */
+const PHONE_HAND_DROP_UNITS = 280;
 /** A quarter of a phone screen, in this artboard's units: 844px at
  *  u = 390/1000 is 2164 units, so a quarter is 541. */
 /* 541 -> 240, 2026-08-29: "on the mobile home screen, let's reduce the amount
@@ -162,7 +167,9 @@ const PHONE_HAND_DROP_UNITS = 753;
  * amount." 541 was a quarter of a phone screen, chosen when the hand was more
  * than three times its current size and needed the room; the hand has since
  * been cut to 0.84 scale and the gap was left holding nothing. */
-const PHONE_GRID_GAP_UNITS = 240;
+/* 240 -> 90, the other half of the same measurement — the gap below the hand
+ * goes from 93px to about 35. Together the 487px becomes roughly 245. */
+const PHONE_GRID_GAP_UNITS = 90;
 /* The run-out — document space reserved after the pin releases and before
  * Projects begins. On a phone it has to clear the hand, which now hangs well
  * below where the copy ends, plus the quarter-screen gap Noah asked for. */

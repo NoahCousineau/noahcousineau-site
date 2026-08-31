@@ -238,12 +238,34 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           footer, so the surplus is invisible. The plain `100vh` line before
           it is the fallback for anything that does not know `dvh`. The
           spacer's TOP is unmoved, so the fallen hand's trigger is unaffected. */}
-      <div
-        ref={spacerRef}
-        aria-hidden
-        className="w-full"
-        style={{ height: "100vh", minHeight: "calc(100dvh + 15vh)" }}
-      />
+      {/* ON A PHONE THERE IS NO CURTAIN AND NO SPACER (2026-08-30).
+          
+          Noah, with two screenshots: "the grid will flash out of existence and
+          then back in when I scroll down or up."
+          
+          It was not the grid disappearing. It was THIS footer showing through
+          it. The desktop effect is a full-viewport panel fixed behind the page
+          at z-0, with .site-content as an opaque curtain at z-10 sliding up to
+          uncover it, and this spacer buying the scroll distance. On iOS that
+          is the exact arrangement Safari is worst at: a position:fixed layer
+          behind a tall, scrolling, composited layer. When it declines to
+          repaint the curtain for a frame, what shows is the thing behind it —
+          which is why Noah's screenshots have the black footer sitting in the
+          middle of the project grid, above "socal earth" scrolling up and
+          below "cultural olympiad" scrolling down.
+          
+          A phone gets an ordinary footer instead: in normal flow, at the end
+          of the document, nothing fixed and nothing to uncover. It cannot
+          flicker because there is nothing behind anything. The reveal is a
+          desktop flourish and desktop keeps it. */}
+      {!phone && (
+        <div
+          ref={spacerRef}
+          aria-hidden
+          className="w-full"
+          style={{ height: "100vh", minHeight: "calc(100dvh + 15vh)" }}
+        />
+      )}
       {/* LAYOUT (2026-08-20, per Noah: "Make it so the 'Cousineau' logo is
           near the top with the page information below the logo. Then at the
           bottom of the browser window, I want my head to just peek out from
@@ -267,7 +289,14 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           anchors all four edges directly to the actual current viewport
           instead of computing a height from any vh-flavoured unit at all,
           so there's no unit to fall short regardless of toolbar state. */}
-      <footer className="fixed inset-0 bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start z-0 overflow-hidden">
+      <footer
+        className={`bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start overflow-hidden ${
+          phone ? "relative w-full" : "fixed inset-0 z-0"
+        }`}
+        /* In flow on a phone it needs a height of its own; fixed inset-0 gave
+           it one for free. A viewport tall keeps the composition Noah drew. */
+        style={phone ? { minHeight: "100dvh" } : undefined}
+      >
       <div
         className="artboard relative mx-auto max-w-[1920px] w-full h-full"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
