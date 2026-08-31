@@ -305,7 +305,10 @@ export default function PasswordHand({
   onFinished,
 }: {
   /** Resolves true when the value is the site password. */
-  onSubmit: (value: string) => Promise<boolean>;
+  /** "ok" opens the gate. "wrong" is remembered and never re-sent.
+   *  "wait" is neither — a rate-limit or a dropped request says nothing
+   *  about the password, so the value stays retryable. */
+  onSubmit: (value: string) => Promise<"ok" | "wrong" | "wait">;
   /** Called once the thumbs up has faded — hand off to the loading screen. */
   onFinished: () => void;
 }) {
@@ -441,8 +444,10 @@ export default function PasswordHand({
     const t = window.setTimeout(() => {
       queue.current = queue.current.then(async () => {
         if (refused.current.has(v)) return;
-        if (await onSubmit(v)) setPhase("go");
-        else refused.current.add(v);
+        const verdict = await onSubmit(v);
+        if (verdict === "ok") setPhase("go");
+        // Only a real rejection is remembered. See the note on onSubmit.
+        else if (verdict === "wrong") refused.current.add(v);
       });
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(t);

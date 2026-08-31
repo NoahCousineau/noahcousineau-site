@@ -32,22 +32,30 @@ function Gate() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const check = useCallback(async (pass: string) => {
+  const check = useCallback(async (pass: string): Promise<"ok" | "wrong" | "wait"> => {
     try {
       /* A static review build has no /api/unlock to ask — see the note in
        * next.config.ts. Only that build sets this, and only that build ships
        * the password to the browser. */
       if (process.env.NEXT_PUBLIC_REVIEW_BUILD === "1") {
-        return pass === process.env.NEXT_PUBLIC_REVIEW_PASSWORD;
+        return pass === process.env.NEXT_PUBLIC_REVIEW_PASSWORD ? "ok" : "wrong";
       }
       const res = await fetch("/api/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pass }),
       });
-      return res.ok;
+      if (res.ok) return "ok";
+      /* 429 IS NOT A WRONG PASSWORD, and the difference matters more than it
+       * looks. The gate remembers every value the server turned down and
+       * never offers it again, so treating a rate-limit as a rejection
+       * poisons the CORRECT password for the rest of the page's life: the
+       * lockout expires, the reader types the right thing, and nothing
+       * happens. Noah hit exactly this on launch day. */
+      return res.status === 429 ? "wait" : "wrong";
     } catch {
-      return false;
+      /* A dropped request is not evidence about the password either. */
+      return "wait";
     }
   }, []);
 

@@ -5,8 +5,17 @@
 // MAX_ATTEMPTS tries — the point is not to be a wall, it is to make a script
 // that walks the dictionary from one address stop being free.
 
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_ATTEMPTS = 12;
+/* 10 minutes/12 -> 5 minutes/30 (2026-08-30, launch day).
+ *
+ * The original numbers were picked against the attack and never against the
+ * cost of a false positive, and on this site those are wildly unequal: what
+ * is behind the gate is design work, while a locked-out visitor is a
+ * prospective client who sees a password box quietly refusing a password
+ * that is correct. Thirty tries is far past any human typo streak and still
+ * makes a dictionary run pointless, and a five-minute window means a lockout
+ * that does happen clears itself before anyone gives up. */
+const WINDOW_MS = 5 * 60 * 1000;
+const MAX_ATTEMPTS = 30;
 const MAX_TRACKED = 5000; // bound memory against spoofed client addresses
 
 /*
