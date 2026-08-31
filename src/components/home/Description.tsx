@@ -418,9 +418,22 @@ export default function Description() {
            * so a resize re-centres rather than drifting. */
           start: () =>
             docTop() - (window.innerHeight / 2 - linesCentre * uPx()),
-          // Three reveals and their holds, then the travel down to the last
-          // line and its own beat — see the phases below.
-          end: "+=320%",
+          /* Three reveals and their holds, then the travel down to the last
+             line and its own beat — see the phases below.
+
+             HALF AS LONG ON A PHONE (2026-08-30). Noah: "there's too much
+             space between the individual sections." Measured at 390px, this
+             was the entire complaint: 320% of the viewport is 2701px of
+             scrolling between the pointing hand and the first project, and
+             the measurement of the page's largest empty run came back at
+             exactly 2701px. On a desktop that is a mouse wheel and a big
+             screen; on a phone it is three and a third screens of thumb for
+             two lines of type, with nothing arriving in between.
+
+             The reveal itself is unchanged — the same phases, the same
+             holds, scrubbed against a shorter runway, so it simply plays at
+             a pace that suits the way the page is actually being scrolled. */
+          end: () => (phone ? "+=160%" : "+=320%"),
           pin: true,
           anticipatePin: 1,
           scrub: 0.6,
