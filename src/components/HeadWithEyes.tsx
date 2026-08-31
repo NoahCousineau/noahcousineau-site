@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { subscribeTilt } from "@/lib/deviceTilt";
 import Image from "next/image";
 import { useTheme } from "./ThemeProvider";
 import { headAsset } from "@/lib/headAssets";
@@ -167,24 +168,18 @@ function TrackedEye({
      * of pinning them to the rim the moment the phone is off level. Clamped
      * so they can never leave the socket.
      */
-    function handleTilt(e: DeviceOrientationEvent) {
-      if (e.beta == null || e.gamma == null) return;
-      const rad = Math.PI / 180;
-      let x = Math.sin(e.gamma * rad);
-      let y = Math.sin(e.beta * rad);
-      const m = Math.hypot(x, y);
-      if (m > 1) {
-        x /= m;
-        y /= m;
-      }
-      aim(x, y);
-    }
+    /* The tilt reading, and crucially the iOS permission ask, come from
+     * lib/deviceTilt — see the note at the top of that module. This listener
+     * used to be attached directly to `deviceorientation`, which on iOS
+     * delivers nothing until permission is granted, and nothing on the home
+     * page ever asked. The eyes have had this code the whole time and it has
+     * never once run on a phone. */
+    const unsubscribe = subscribeTilt(({ x, y }) => aim(x, y));
 
     window.addEventListener("mousemove", handleMove);
-    window.addEventListener("deviceorientation", handleTilt);
     return () => {
       window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("deviceorientation", handleTilt);
+      unsubscribe();
     };
   }, [rotationRef]);
 

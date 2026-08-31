@@ -8,6 +8,7 @@ import {
   supportAt,
   type Silhouette,
 } from "./silhouette";
+import { subscribeTilt } from "./deviceTilt";
 
 /**
  * Several objects falling into a box, piling up, and staying draggable.
@@ -1290,45 +1291,27 @@ export function useDropField({
   }, [arenaRef, enabled, armDelay, dropFrom, specKey, draggable]);
 
   /* Reads the device's own orientation into `gravityDir` — see the note on
-   * that ref for the mapping and why it is one expression.
+   * that ref for the mapping.
    *
-   * iOS 13 and later will not deliver these events at all until the page has
-   * asked for permission, and the ask is only honoured from inside a user
-   * gesture. So the request rides on the first touch anywhere on the page and
-   * then removes itself. Until that happens — and on any device that refuses
-   * or does not support it — `gravityDir` keeps its default of straight down,
-   * which is the behaviour everything else on the site already assumes. There
-   * is no broken state to fall into. */
+   * The permission gate and the listener both live in lib/deviceTilt now, so
+   * that this and the head's eyes share one ask instead of each attaching
+   * their own listener and only one of them ever requesting access. See the
+   * note at the top of that module: on the home page, where the drop field is
+   * not mounted, nothing was asking at all. */
   useEffect(() => {
-    if (!tilt || typeof window === "undefined") return;
-
-    const onOrient = (e: DeviceOrientationEvent) => {
-      if (e.beta == null || e.gamma == null) return;
-      const rad = Math.PI / 180;
-      const x = Math.sin(e.gamma * rad);
-      const y = Math.sin(e.beta * rad);
-      // Cap the magnitude so a steep tilt cannot make gravity stronger than
-      // it is standing up — only differently aimed.
-      const m = Math.hypot(x, y);
-      const next = m > 1 ? { x: x / m, y: y / m } : { x, y };
+    if (!tilt) return;
+    return subscribeTilt((next) => {
       const prev = gravityDir.current;
       gravityDir.current = next;
 
-      /* TILTING HAS TO WAKE THE PILE (2026-08-30). Noah: "the motion feature
-       * isn't working on the mobile site. Everything is stationery."
+      /* TILTING HAS TO WAKE THE PILE (2026-08-30). Bodies genuinely sleep
+       * once they come to rest — that is what stopped the fidgeting — and a
+       * sleeping body does not integrate gravity at all. So the phone turned,
+       * gravity moved, and ten sleeping objects ignored it.
        *
-       * This is a regression from the settling work earlier today, and it is
-       * the whole cause. Bodies now genuinely sleep once they come to rest —
-       * that is what stopped the fidgeting — and a sleeping body does not
-       * integrate gravity at all. So the phone turned, this handler dutifully
-       * moved gravity, and ten sleeping objects ignored it. Before the pile
-       * could sleep, the same code worked, because nothing was ever asleep to
-       * ignore it.
-       *
-       * Any real change of direction wakes everything. The threshold is there
-       * so a phone resting on a desk, jittering by a fraction of a degree,
-       * cannot hold the whole field awake forever — which would put the
-       * fidgeting straight back. */
+       * The threshold is there so a phone resting on a desk, jittering by a
+       * fraction of a degree, cannot hold the whole field awake forever,
+       * which would put the fidgeting straight back. */
       if (Math.hypot(next.x - prev.x, next.y - prev.y) > 0.02) {
         for (const b of bodies.current) {
           if (!b.held) {
@@ -1338,44 +1321,7 @@ export function useDropField({
           }
         }
       }
-    };
-
-    let attached = false;
-    const attach = () => {
-      if (attached) return;
-      attached = true;
-      window.addEventListener("deviceorientation", onOrient);
-    };
-
-    type PermissionCapable = {
-      requestPermission?: () => Promise<"granted" | "denied">;
-    };
-    const DOE = window.DeviceOrientationEvent as
-      | (typeof window.DeviceOrientationEvent & PermissionCapable)
-      | undefined;
-
-    if (DOE && typeof DOE.requestPermission === "function") {
-      const GESTURES = ["touchend", "pointerup", "click"] as const;
-      const ask = () => {
-        GESTURES.forEach((g) => window.removeEventListener(g, ask));
-        DOE.requestPermission?.()
-          .then((r) => {
-            if (r === "granted") attach();
-          })
-          .catch(() => {});
-      };
-      /* Any first gesture, not just a touchend. iOS only honours the ask
-       * from inside a user gesture, and a reader whose first interaction is a
-       * tap on a link rather than a scroll was never being asked at all. */
-      GESTURES.forEach((g) => window.addEventListener(g, ask, { once: true }));
-      return () => {
-        GESTURES.forEach((g) => window.removeEventListener(g, ask));
-        window.removeEventListener("deviceorientation", onOrient);
-      };
-    }
-
-    attach();
-    return () => window.removeEventListener("deviceorientation", onOrient);
+    });
   }, [tilt]);
 
   return { register };

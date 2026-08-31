@@ -231,11 +231,9 @@ const BLUE_GAIT = { range: [0, 3] as const, every: 2, phase: 3 };
 function FrameStack({
   set,
   index,
-  sizes,
 }: {
   set: { frames: string[]; width: number; height: number };
   index: number;
-  sizes: string;
 }) {
   return (
     <div className="relative w-full" style={{ aspectRatio: `${set.width} / ${set.height}` }}>
@@ -245,17 +243,35 @@ function FrameStack({
           src={src}
           alt=""
           fill
-          sizes={sizes}
-          // UNOPTIMIZED, and that is the point. These frames are already
-          // WEBP at exactly the size they are drawn, written by our own
-          // build step — handing them to next/image's optimizer re-encodes
-          // them for nothing. Worse, measured: with `fill` it picked the
-          // 3840px candidate off the device-size list and asked the server
-          // to scale a 1000px source UP to 3840, nineteen times over. In dev
-          // that stalled the page (9 of 55 images still pending after 12s,
-          // so PageLoader never lifted); in production it would be the same
-          // wasted bytes, just precomputed.
-          unoptimized
+          /* OPTIMISED AFTER ALL, because the premise turned out to be false
+             on a phone (2026-08-30). Noah: "the page jumps and skitters as
+             projects and content load in."
+             
+             The old note said these were already at exactly the size they
+             are drawn — true at 1512, where 820px of source covers a 213px
+             box on a retina screen. Measured at 390px, the same box is 106px
+             wide, and 820px of source is 6.7 times the pixels needed. There
+             are 37 of these frames and every one is mounted so no frame
+             flashes empty, so that is ~23 of the 20.3 megapixels this page
+             decodes on a 390x844 screen. The decoding lands while the reader
+             is scrolling, which is exactly what "skitters" describes.
+             
+             What actually went wrong before was the `sizes` string, not the
+             optimiser: with `fill` and a generous sizes, Next picked the
+             3840px candidate and scaled a 1000px source UP to it. The fix is
+             to tell it the truth. Measured, this box is 27vw on a phone and
+             14vw at every larger size, so that is what it now says, and the
+             candidate chosen lands just above what the box needs instead of
+             nineteen times over. */
+          /* Declared at twice the measured box (27vw on a phone, 14vw
+             above it) rather than exactly it. A truthful `sizes` leaves the
+             candidate choice entirely to the browser's device-pixel-ratio
+             handling, and headless Chrome at dpr 3 was seen picking a 1x
+             variant for a 3x screen — which on a real phone would be visibly
+             soft artwork. Asking for double guarantees a sharp frame either
+             way and still decodes about a quarter of the pixels the
+             unoptimised 820px source did. */
+          sizes="(max-width: 767px) 56vw, 30vw"
           // eager, not `priority`: these must be decoded before the first
           // cycle so no frame flashes empty, but 19 preload hints in the
           // document head is noise for artwork this far from the LCP.
@@ -313,7 +329,7 @@ export default function BehindHead() {
       {/* Furthest back, behind even the yellow star. */}
       <Place x={rp.x} y={rp.y} w={rp.w} className="z-0 pointer-events-none">
         <Parallax units={PARALLAX.red}>
-          <FrameStack set={red} index={starFrame(tick, RED_GAIT)} sizes="25vw" />
+          <FrameStack set={red} index={starFrame(tick, RED_GAIT)} />
         </Parallax>
       </Place>
 
@@ -321,7 +337,7 @@ export default function BehindHead() {
           stood in for. */}
       <Place x={yp.x} y={yp.y} w={yp.w} className="z-[1] pointer-events-none">
         <Parallax units={PARALLAX.yellow}>
-          <FrameStack set={yellow} index={pingPong(tick, yellow.frames.length)} sizes="55vw" />
+          <FrameStack set={yellow} index={pingPong(tick, yellow.frames.length)} />
         </Parallax>
       </Place>
 
@@ -329,7 +345,7 @@ export default function BehindHead() {
 
       <Place x={bp.x} y={bp.y} w={bp.w} className="z-20 pointer-events-none">
         <Parallax units={PARALLAX.blue}>
-          <FrameStack set={blue} index={starFrame(tick, BLUE_GAIT)} sizes="25vw" />
+          <FrameStack set={blue} index={starFrame(tick, BLUE_GAIT)} />
         </Parallax>
       </Place>
 

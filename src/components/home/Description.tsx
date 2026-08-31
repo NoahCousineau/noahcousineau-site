@@ -433,7 +433,18 @@ export default function Description() {
              The reveal itself is unchanged — the same phases, the same
              holds, scrubbed against a shorter runway, so it simply plays at
              a pace that suits the way the page is actually being scrolled. */
-          end: () => (phone ? "+=160%" : "+=320%"),
+          /* 320% -> 220% on a desktop, 160% -> 110% on a phone (2026-08-30).
+             Noah: "remove a lot of the blank space... the site feels void at
+             times when scrolling. Use your best judgement."
+             
+             This number IS the blank space. It is the scroll distance the
+             pinned reveal occupies, and measured as the page's largest empty
+             run at every width: 2388px on a desktop and 1428px on a phone
+             even after the first halving. The reveal itself is unchanged —
+             same phases, same holds, scrubbed against a shorter runway — so
+             what goes is the dead scrolling between beats, not any of the
+             beats. */
+          end: () => (phone ? "+=110%" : "+=220%"),
           pin: true,
           anticipatePin: 1,
           scrub: 0.6,

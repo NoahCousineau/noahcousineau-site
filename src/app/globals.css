@@ -442,6 +442,14 @@ html {
      Read by the about-page title, the project header block and the footer's
      wordmark block, all three of which the chrome had landed on. */
   --chrome-drop-compensate: 0px;
+  /* FLOOR ONLY, in real pixels, for the gap above a project page's sticky
+     section title. The unit term stays in ProjectGroup, because `--u` is a
+     container-query unit published by `.artboard` and is simply not defined
+     up here — a calc() using it at :root is invalid at computed-value time
+     and silently yields nothing, which is exactly what happened when this
+     tried to hold the whole expression. Zero on desktop so nothing moves;
+     the phone sets a real floor at the end of this file. */
+  --section-title-top-min: 0px;
 }
 
 /*
@@ -617,5 +625,22 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* PHONE OVERRIDE FOR THE SECTION-TITLE GAP (2026-08-30).
+   
+   At the END of the file deliberately. `:root` inside a media query has the
+   same specificity as a bare `:root`, so whichever is written last wins —
+   and the root declaration this overrides sits well below the other phone
+   blocks. Put up there, this rule lost silently and the phone kept the
+   desktop's 3.3px.
+   
+   Noah: "a bit more space above the section titles on the project title
+   pages on mobile... it's just getting a bit too close to the top of the
+   browser." 16 artboard units is 3.3px at 390. Desktop is untouched. */
+@media (max-width: 767px) {
+  :root {
+    --section-title-top-min: 14px;
   }
 }

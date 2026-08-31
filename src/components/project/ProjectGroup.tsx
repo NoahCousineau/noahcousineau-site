@@ -500,7 +500,18 @@ export function ProjectGroup({
       className="sticky top-0 z-20"
       style={{
         background: surface,
-        paddingTop: `calc(var(--u) * ${STICKY_TOP_SPACE_UNITS})`,
+        /* MORE AIR ABOVE THE TITLE ON A PHONE (2026-08-30). Noah: "make sure
+           there is a bit more space above the section titles on the project
+           title pages on mobile... it's just getting a bit too close to the
+           top of the browser."
+           
+           16 units is 12.6px at 1512 and 3.3px at 390 — the artboard unit
+           shrinks with the window, so the gap that reads as generous on a
+           desktop all but vanishes on a phone, and the title ends up almost
+           touching the top edge when the header sticks. A floor in real
+           pixels keeps the desktop exactly as drawn and gives the phone a
+           gap it can actually see. */
+        paddingTop: `max(calc(var(--u) * ${STICKY_TOP_SPACE_UNITS}), var(--section-title-top-min, 0px))`,
         marginTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
       }}
     >
