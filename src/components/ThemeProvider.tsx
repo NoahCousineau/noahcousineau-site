@@ -58,11 +58,19 @@ export function useTheme() {
 export const THEME_INIT_SCRIPT = `
 (function(){
   try {
+    /* LIGHT UNLESS THE VISITOR HAS ASKED FOR DARK (2026-08-30). Noah: "I
+       want to make sure that the site always starts in light mode."
+
+       This used to fall back to the operating system's setting, so anyone
+       whose Mac or phone is in dark mode met the dark version of the site
+       first — which is a large share of people, and not the way the work is
+       designed to be seen. The OS preference is no longer consulted at all.
+
+       An explicit choice still persists: someone who presses the toggle gets
+       dark, on this and every later visit, until they press it back. That is
+       their decision rather than their laptop's. */
     var s = localStorage.getItem('${THEME_STORAGE_KEY}');
-    var t = s === 'dark' || s === 'light'
-      ? s
-      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', t);
+    document.documentElement.setAttribute('data-theme', s === 'dark' ? 'dark' : 'light');
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'light');
   }

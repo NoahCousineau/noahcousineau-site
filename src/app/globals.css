@@ -126,9 +126,11 @@
   The accent colours (red, yellow, orange, blue) deliberately do NOT flip —
   they're brand, not value, and Noah asked only for the black/white swap.
 
-  Set on :root[data-theme="dark"] rather than a bare media query so an
-  explicit choice always wins over the OS setting; the pre-paint script in
-  layout.tsx seeds the attribute from localStorage, falling back to the OS.
+  Set on :root[data-theme="dark"] rather than a bare media query, which is
+  also why the OS setting has no way to reach this: the pre-paint script in
+  layout.tsx seeds the attribute from localStorage alone, and defaults to
+  light. Dark is a choice a visitor makes with the toggle, never something
+  their laptop decides for them (2026-08-30).
 */
 :root[data-theme="dark"] {
   --color-ink: #ffffff;
