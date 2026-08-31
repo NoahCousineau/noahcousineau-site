@@ -125,10 +125,28 @@ const changedFiles = dirty
   : [];
 
 const remote = shQuiet("git remote get-url origin");
+/* HOW MUCH IS WAITING TO GO UP.
+ *
+ * Counting `origin/<branch>..<branch>` needs origin/<branch> to exist, and it
+ * does not until something has actually been pushed. Connecting a repository
+ * creates no such ref. So on the run right after connecting — everything
+ * committed, nothing pushed — the count came back zero and the script
+ * cheerfully reported the site was up to date. That is the same "nothing to
+ * publish" false positive as the no-remote case, arriving one step later, and
+ * it caught Noah twice.
+ *
+ * If the branch has never been pushed, everything is waiting. */
 let unpushed = 0;
+let neverPushed = false;
 if (remote) {
-  const count = shQuiet(`git rev-list --count origin/${branch}..${branch}`);
-  unpushed = count ? Number(count) : 0;
+  const hasRemoteRef = shQuiet(`git rev-parse --verify --quiet origin/${branch}`);
+  if (hasRemoteRef) {
+    const count = shQuiet(`git rev-list --count origin/${branch}..${branch}`);
+    unpushed = count ? Number(count) : 0;
+  } else {
+    neverPushed = true;
+    unpushed = Number(shQuiet("git rev-list --count HEAD") || 0);
+  }
 }
 
 /* "NOTHING TO PUBLISH" IS ONLY MEANINGFUL ONCE THERE IS SOMEWHERE TO
@@ -148,17 +166,17 @@ if (remote && changedFiles.length === 0 && unpushed === 0) {
   say(`\n${C.green}Your live site is already up to date.${C.reset}\n`);
   process.exit(0);
 }
-if (!remote) {
+if (!remote || neverPushed) {
   say(`  ${C.dim}This project has never been published. Everything goes up this time.${C.reset}`);
 }
 
 if (changedFiles.length) {
   ok(`${changedFiles.length} changed file${changedFiles.length === 1 ? "" : "s"}:`);
   for (const line of describe(changedFiles)) note(line);
-} else if (remote) {
+} else if (remote && !neverPushed) {
   ok("No new edits, but there are saved changes waiting to go up.");
 } else {
-  ok(`${sh("git rev-list --count HEAD")} saved versions of the site, none of them published yet.`);
+  ok(`${unpushed || sh("git rev-list --count HEAD")} saved versions of the site, none of them published yet.`);
 }
 if (unpushed > 0) note(`${unpushed} earlier change${unpushed === 1 ? "" : "s"} also still waiting to publish.`);
 if (branch !== "main") warn(`You're on the "${branch}" branch, not "main". That's usually not what you want.`);
