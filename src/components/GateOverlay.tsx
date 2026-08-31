@@ -70,6 +70,18 @@ export default function GateOverlay() {
    * interruption, and a page scrolling underneath it reads as a bug. Restored
    * on the way out, including the exact position, because the reader is
    * meant to come back to where they were standing. */
+  /* THE TAB WHILE THE HAND IS UP (2026-08-30). Noah: "only have 'Woah,
+   * Partner!' when the password hand appears." The loading worm says
+   * "Loading" instead — see PageLoader. */
+  useEffect(() => {
+    if (!target) return;
+    const before = document.title;
+    document.title = "Woah, Partner!";
+    return () => {
+      if (document.title === "Woah, Partner!") document.title = before;
+    };
+  }, [target]);
+
   useEffect(() => {
     if (!target) return;
     const y = scrollY.current;
@@ -135,7 +147,21 @@ export default function GateOverlay() {
   return (
     <div
       className="fixed inset-0 z-[9998]"
-      style={{ containerType: "inline-size", background: "var(--color-paper)" }}
+      style={{
+        containerType: "inline-size",
+        /* YOU HAVE TO BE ABLE TO SEE THE PAGE (2026-08-30). Noah: "it's
+           popping up in what looks to be a new window."
+           
+           This was a solid --color-paper, which covered the page completely —
+           so although nothing navigated, it was indistinguishable from having
+           navigated, and the whole point of raising the hand where you stand
+           was lost. A veil instead of a wall: enough to hold the hand's own
+           copy legible, little enough that you can still see what you were
+           looking at underneath and understand you have been interrupted
+           rather than moved. color-mix keeps it theme-aware, so it is a pale
+           veil in light mode and a dark one in dark. */
+        background: "color-mix(in srgb, var(--color-paper) 82%, transparent)",
+      }}
     >
       <div
         className="w-full h-full flex items-center justify-center"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Hero from "@/components/home/Hero";
 import PasswordHand, { usePasswordArtboard } from "@/components/PasswordHand";
@@ -29,6 +29,15 @@ import PasswordHand, { usePasswordArtboard } from "@/components/PasswordHand";
 
 function Gate() {
   const artboard = usePasswordArtboard();
+  /* Same tab name as the overlay — this route is the same moment, reached by
+     pasting a gated URL rather than by clicking one. */
+  useEffect(() => {
+    const before = document.title;
+    document.title = "Woah, Partner!";
+    return () => {
+      if (document.title === "Woah, Partner!") document.title = before;
+    };
+  }, []);
   const router = useRouter();
   const params = useSearchParams();
 

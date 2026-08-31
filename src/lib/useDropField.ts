@@ -1310,7 +1310,34 @@ export function useDropField({
       // Cap the magnitude so a steep tilt cannot make gravity stronger than
       // it is standing up — only differently aimed.
       const m = Math.hypot(x, y);
-      gravityDir.current = m > 1 ? { x: x / m, y: y / m } : { x, y };
+      const next = m > 1 ? { x: x / m, y: y / m } : { x, y };
+      const prev = gravityDir.current;
+      gravityDir.current = next;
+
+      /* TILTING HAS TO WAKE THE PILE (2026-08-30). Noah: "the motion feature
+       * isn't working on the mobile site. Everything is stationery."
+       *
+       * This is a regression from the settling work earlier today, and it is
+       * the whole cause. Bodies now genuinely sleep once they come to rest —
+       * that is what stopped the fidgeting — and a sleeping body does not
+       * integrate gravity at all. So the phone turned, this handler dutifully
+       * moved gravity, and ten sleeping objects ignored it. Before the pile
+       * could sleep, the same code worked, because nothing was ever asleep to
+       * ignore it.
+       *
+       * Any real change of direction wakes everything. The threshold is there
+       * so a phone resting on a desk, jittering by a fraction of a degree,
+       * cannot hold the whole field awake forever — which would put the
+       * fidgeting straight back. */
+      if (Math.hypot(next.x - prev.x, next.y - prev.y) > 0.02) {
+        for (const b of bodies.current) {
+          if (!b.held) {
+            b.asleep = false;
+            b.calm = 0;
+            b.anchorT = 0;
+          }
+        }
+      }
     };
 
     let attached = false;
@@ -1328,17 +1355,21 @@ export function useDropField({
       | undefined;
 
     if (DOE && typeof DOE.requestPermission === "function") {
+      const GESTURES = ["touchend", "pointerup", "click"] as const;
       const ask = () => {
-        window.removeEventListener("touchend", ask);
+        GESTURES.forEach((g) => window.removeEventListener(g, ask));
         DOE.requestPermission?.()
           .then((r) => {
             if (r === "granted") attach();
           })
           .catch(() => {});
       };
-      window.addEventListener("touchend", ask, { once: true });
+      /* Any first gesture, not just a touchend. iOS only honours the ask
+       * from inside a user gesture, and a reader whose first interaction is a
+       * tap on a link rather than a scroll was never being asked at all. */
+      GESTURES.forEach((g) => window.addEventListener(g, ask, { once: true }));
       return () => {
-        window.removeEventListener("touchend", ask);
+        GESTURES.forEach((g) => window.removeEventListener(g, ask));
         window.removeEventListener("deviceorientation", onOrient);
       };
     }

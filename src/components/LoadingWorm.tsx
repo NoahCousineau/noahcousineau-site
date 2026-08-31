@@ -106,7 +106,8 @@ export default function LoadingWorm() {
   }, []);
 
   const n = WORM_STEPS.length;
-  const step = WORM_STEPS[((tick % n) + n) % n];
+  const idx = ((tick % n) + n) % n;
+  const step = WORM_STEPS[idx];
   const cycles = Math.floor(tick / n);
 
   const bandH = WORM_BAND.y1 - WORM_BAND.y0;
@@ -210,18 +211,36 @@ export default function LoadingWorm() {
           transform={`translate(${centre0} ${floor}) scale(${SCALE_NOW}) translate(${-centre0} ${-floor})`}
         >
         <g transform={`translate(${travel} 0)`}>
-          <image
-            href={step.src}
-            x={step.x}
-            y={step.y}
-            width={step.w}
-            height={step.h}
-          />
-          {/* The word, outlined and already warped along this pose's back.
-              --color-ink rather than the demo's flat black: the loading
-              screen sits on --color-paper, which is near-black in dark mode,
-              and the type has to invert with it. */}
-          <path d={step.letters} fill="var(--color-ink)" />
+          {/* EVERY POSE IS RENDERED, AND ONLY ONE IS SHOWN (2026-08-30).
+              Noah: "the worm animation is a bit jittery... the word 'loading'
+              doesn't properly synch with the motion of the worm at times."
+
+              Both halves of that were one cause. Each pose is two things: the
+              worm, which is a network IMAGE, and the word, which is an SVG
+              PATH already warped along that pose's back. Swapping `href` on a
+              single <image> means the browser has to fetch and decode the new
+              frame — while the path, being vector, is simply there on the
+              next paint. So on any pose whose frame was not cached yet, the
+              word moved and the worm did not. That is the desync, and the
+              frame popping in a beat later is the jitter.
+
+              Worse, it only shows where it hurts: this animation runs while
+              the page is pulling every image it has, so the worm's own frames
+              are queued behind them.
+
+              Rendering all six up front makes the browser fetch them once,
+              before the first swap, and turns every pose change into a
+              visibility flip with no network in it. Six frames, about 100KB
+              total — cheaper than the stutter it removes. */}
+          {WORM_STEPS.map((st, i) => (
+            <g key={i} style={{ display: i === idx ? undefined : "none" }}>
+              <image href={st.src} x={st.x} y={st.y} width={st.w} height={st.h} />
+              {/* --color-ink rather than the demo's flat black: the loading
+                  screen sits on --color-paper, which is near-black in dark
+                  mode, and the type has to invert with it. */}
+              <path d={st.letters} fill="var(--color-ink)" />
+            </g>
+          ))}
         </g>
         </g>
         </g>

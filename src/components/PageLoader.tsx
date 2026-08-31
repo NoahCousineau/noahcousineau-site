@@ -52,7 +52,15 @@ import { markPageLoading, markPageReady } from "@/lib/pageReady";
  * overlay, not a wrapper, so it doesn't affect layout.
  */
 
-const MAX_WAIT_MS = 8000; // safety net: never block longer than this
+/* 8000 -> 14000 (2026-08-30). Noah: "I'm okay with the loading screen taking
+ * longer if it equates to a smoother experience once the loading finishes."
+ * The cap is a safety net for a page that will never settle, not a target —
+ * almost every load finishes well before it. */
+const MAX_WAIT_MS = 14000;
+/* The layout must ALSO have stopped changing. See the note in checkProgress:
+ * this is what stops the curtain lifting on a page that is about to grow to
+ * five times its height. Three consecutive quiet polls at 100ms. */
+const STABLE_POLLS_REQUIRED = 3;
 const POLL_INTERVAL_MS = 100;
 
 export default function PageLoader() {
@@ -123,24 +131,49 @@ function PageLoaderInner() {
     getLenis()?.scrollTo(0, { immediate: true });
 
     /* THE TAB SAYS SOMETHING WHILE IT LOADS (2026-08-30). Noah's tab names
-       include "Loading Screen: Woah, Partner!" — so the title belongs to the
-       moment rather than to a route. Captured and restored so the page's own
-       name comes back the instant the curtain lifts. */
+       are per-moment rather than per-route: "Loading" belongs to the worm,
+       and "Woah, Partner!" belongs to the password hand (see GateOverlay).
+       Captured and restored so the page's own name comes back the instant
+       the curtain lifts. */
     const titleBeforeLoading = document.title;
-    document.title = "Woah, Partner!";
+    document.title = "Loading";
 
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
     // If this unmounts mid-load (a route change while the curtain is up),
-    // the tab must not be left saying "Woah, Partner!" forever.
+    // the tab must not be left saying "Loading" forever.
     const restoreTitle = () => {
-      if (document.title === "Woah, Partner!") document.title = titleBeforeLoading;
+      if (document.title === "Loading") document.title = titleBeforeLoading;
     };
     let observer: MutationObserver | null = null;
 
+    /* WHAT THE CURTAIN IS ACTUALLY WAITING FOR (2026-08-30).
+     *
+     * Everything in the page used to count, and that could never finish: 26
+     * of the home page's 55 images are loading="lazy" and sit thousands of
+     * pixels down, so the browser will not fetch them until someone scrolls
+     * there — which cannot happen while the curtain is up. Measured on
+     * desktop, they were still pending after eight seconds, unchanged, and
+     * the loading screen was simply running out its safety timeout on every
+     * single visit. That is why it always felt like a fixed wait rather than
+     * a real one.
+     *
+     * So the wait is for what the reader is about to SEE: everything eager,
+     * plus anything lazy that is close enough to the top to be fetched
+     * anyway. The rest is deferred on purpose, and honouring that is the
+     * whole point of marking it lazy. */
     function getMediaElements(): (HTMLImageElement | HTMLVideoElement)[] {
       const root = document.querySelector("main") || document.body;
-      return Array.from(root.querySelectorAll("img, video"));
+      const all = Array.from(
+        root.querySelectorAll<HTMLImageElement | HTMLVideoElement>("img, video")
+      );
+      const horizon = window.innerHeight * 1.5;
+      return all.filter((el) => {
+        if (el instanceof HTMLImageElement && el.loading === "lazy") {
+          return el.getBoundingClientRect().top < horizon;
+        }
+        return true;
+      });
     }
 
     function isMediaLoaded(el: HTMLImageElement | HTMLVideoElement): boolean {
@@ -150,23 +183,64 @@ function PageLoaderInner() {
         // single broken image can't block the whole page forever.
         return el.complete;
       }
+      /* A VIDEO THAT HAS BEEN TOLD NOT TO LOAD IS NOT SOMETHING TO WAIT FOR
+       * (2026-08-30). The grids now set preload="none", so a video fetches
+       * nothing until it scrolls into view and plays — which means readyState
+       * stays 0 forever while the loader sits there waiting for it. Measured:
+       * the curtain held for the full safety-net timeout on every project
+       * page, for videos that were never going to load until long after it
+       * lifted. Deliberately lazy is not the same as pending. */
+      if (el.preload === "none") return true;
       // HAVE_FUTURE_DATA (3) or better means enough of the video is
       // buffered to start playing — good enough to reveal the page;
       // we don't need the whole video downloaded.
       return el.readyState >= 3;
     }
 
+    /* WAIT FOR THE LAYOUT TO STOP MOVING, NOT JUST FOR THE MEDIA (2026-08-30).
+     *
+     * Noah: "the mobile homepage is acting very strange. If you scroll right
+     * when the page loads, it seems to be broken and the user can see the
+     * footer way too early."
+     *
+     * Measured on a 390px viewport: the home page is 1481px tall at first
+     * paint and 7086px a moment later — and every image is already loaded at
+     * both readings, so waiting on media said "ready" while the page was
+     * still five sixths shorter than it was about to be. The reason it grows
+     * is that the phone layout is not the first thing rendered: useIsPhone
+     * answers false for the server render and for the first client render by
+     * design, so the page briefly lays itself out as a very narrow desktop
+     * before swapping. In that window, .site-content is shorter than two
+     * screens, so any scroll runs straight past it and lands on the footer —
+     * which is fixed behind the page and meant to be reached at the very end.
+     *
+     * So the curtain now also waits for the document's own height to hold
+     * still. Noah, on being asked to trade seconds for smoothness: "I'm okay
+     * with the loading screen taking longer if it equates to a smoother
+     * experience once the loading finishes." */
+    let lastHeight = -1;
+    let stableFor = 0;
+
     function checkProgress() {
       if (cancelled) return;
       const elements = getMediaElements();
+      const elapsed = Date.now() - startTimeRef.current;
+
+      const height = document.documentElement.scrollHeight;
+      if (height === lastHeight) stableFor += 1;
+      else {
+        lastHeight = height;
+        stableFor = 0;
+      }
+      const settled = stableFor >= STABLE_POLLS_REQUIRED;
+
       if (elements.length === 0) {
-        finish();
+        if (settled || elapsed >= MAX_WAIT_MS) finish();
         return;
       }
       const loadedCount = elements.filter(isMediaLoaded).length;
 
-      const elapsed = Date.now() - startTimeRef.current;
-      if (loadedCount === elements.length || elapsed >= MAX_WAIT_MS) {
+      if ((loadedCount === elements.length && settled) || elapsed >= MAX_WAIT_MS) {
         finish();
       }
     }
@@ -176,7 +250,7 @@ function PageLoaderInner() {
       cancelled = true;
       // Hand the tab back its real name — see the note at the top of this
       // effect. Guarded so a title Next has set in the meantime wins.
-      if (document.title === "Woah, Partner!") document.title = titleBeforeLoading;
+      if (document.title === "Loading") document.title = titleBeforeLoading;
       if (pollId) clearInterval(pollId);
       if (observer) observer.disconnect();
       // The curtain is going up: anything that has been holding an entrance
@@ -184,6 +258,11 @@ function PageLoaderInner() {
       // START of the fade rather than after it, so a 400ms cross-fade reveals
       // a page that is already in motion instead of one that begins moving
       // once the fade has finished.
+      /* The page is about to be seen: make sure it is at the top of itself.
+         The jump on mount already ran, but the layout has changed shape since
+         then and a phone can carry swipe momentum through the reveal. */
+      window.scrollTo(0, 0);
+      getLenis()?.scrollTo(0, { immediate: true });
       markPageReady();
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduced) {
@@ -219,6 +298,33 @@ function PageLoaderInner() {
       restoreTitle();
     };
   }, []);
+
+  /* NOTHING SCROLLS BEHIND THE CURTAIN (2026-08-30).
+   *
+   * The second half of "you can see the footer way too early". Holding the
+   * curtain until the layout settles fixes the cause, but the curtain is only
+   * a painted sheet — the document behind it scrolls perfectly well, and a
+   * phone that has already taken a swipe will carry that momentum straight
+   * through the reveal and land somewhere down the page. The site is supposed
+   * to open at the top.
+   *
+   * Lenis has to be stopped as well as the document: it drives scrolling from
+   * its own animated position and would simply put the page back. Started
+   * again on the way out, along with everything this touched. */
+  useEffect(() => {
+    if (!visible) return;
+    const body = document.body;
+    const prev = { overflow: body.style.overflow, touchAction: body.style.touchAction };
+    body.style.overflow = "hidden";
+    body.style.touchAction = "none";
+    const lenis = getLenis();
+    lenis?.stop();
+    return () => {
+      body.style.overflow = prev.overflow;
+      body.style.touchAction = prev.touchAction;
+      lenis?.start();
+    };
+  }, [visible]);
 
   if (!visible) return null;
 
