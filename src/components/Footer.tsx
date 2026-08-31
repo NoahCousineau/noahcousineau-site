@@ -391,17 +391,25 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                   <div key={`${flatIndex}-${item.href}`}>
                     <Place x={x} xCss={xCss} y={0} yCss={rowY}>
                       <Link
+                        /* NOT PREFETCHED (2026-08-30). Noah: "terribly clunky when in mobile."
+                           Next prefetches every Link it can see, and a project
+                           page's RSC payload carries preload hints for its own
+                           priority images — so a footer linking six projects
+                           made every page quietly download five other pages'
+                           artwork. Measured on a phone: 75MB of images that
+                           were never in this page's DOM at all.
+                           It is doubly pointless while the gate is locked,
+                           where the prefetch only ever caches a redirect —
+                           which is the same stale entry that sent a
+                           just-unlocked reader back to the password screen.
+                           It also fixes a 404 on every single page load: the
+                           résumé link is a PDF rather than a route, and
+                           asking the server for one as an RSC payload can
+                           only ever fail. */
+                        prefetch={false}
                         href={item.href}
                         target={external ? "_blank" : undefined}
                         rel={external ? "noreferrer" : undefined}
-                        /* The résumé is a PDF, not a route. Next prefetches
-                           every Link in view as an RSC payload, and asking
-                           the server for a PDF that way is a guaranteed 404
-                           on every page that renders this footer — which is
-                           every page. Measured on a phone against the live
-                           site: one 404 per page load, for a file that is
-                           perfectly fine when actually clicked. */
-                        prefetch={external ? false : undefined}
                         className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
                         /* CLAMPED, NOT SCALED, across the middle band. The
                            phone value is 72 units, which is 14.6px on a 390
@@ -438,9 +446,11 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             <div key={col.x}>
               <Place x={col.x} y={ROW1_TEXT_Y}>
                 <Link
+                  /* Never prefetched: a project link drags that page's
+                     priority images along, and the résumé is a PDF rather
+                     than a route. See the note on the phone columns above. */
+                  prefetch={false}
                   href={col.items[0].href}
-                  /* Not a route — see the note on the phone columns above. */
-                  prefetch={col.items[0].href.startsWith("http") || col.items[0].href.endsWith(".pdf") ? false : undefined}
                   target={col.items[0].href.startsWith("http") ? "_blank" : undefined}
                   rel={col.items[0].href.startsWith("http") ? "noreferrer" : undefined}
                   className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
@@ -455,9 +465,11 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
 
               <Place x={col.x} y={ROW2_TEXT_Y}>
                 <Link
+                  /* Never prefetched: a project link drags that page's
+                     priority images along, and the résumé is a PDF rather
+                     than a route. See the note on the phone columns above. */
+                  prefetch={false}
                   href={col.items[1].href}
-                  /* Not a route — see the note on the phone columns above. */
-                  prefetch={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? false : undefined}
                   target={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "_blank" : undefined}
                   rel={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "noreferrer" : undefined}
                   className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"

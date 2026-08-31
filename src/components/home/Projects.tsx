@@ -194,6 +194,9 @@ function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits
 
   return (
     <Link
+      /* Not prefetched — see the note in Footer.tsx: a project's RSC payload
+         drags its priority images along, and the gate makes it useless. */
+      prefetch={false}
       ref={tileRef}
       href={href}
       // Anchors are natively draggable, and dragging one raises the browser's

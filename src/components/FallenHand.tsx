@@ -360,6 +360,7 @@ export default function FallenHand({
           style={{ transformOrigin: "50% 100%", willChange: "transform" }}
         >
           <Link
+            prefetch={false}
             href={nextHref}
             className="lowercase text-center hover:opacity-60 transition-opacity block w-full"
             style={{
