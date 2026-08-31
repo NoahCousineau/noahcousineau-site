@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useThrowable } from "@/lib/useThrowable";
+import { useIsPhone } from "@/lib/useIsPhone";
 import { AWAY_SCREEN_SHOWN } from "@/components/AwayOverlay";
 import type { FrameAnimation } from "@/lib/projectObjects";
 
@@ -65,6 +66,7 @@ export default function ProjectFrameAnimation({
   const { frames, width, height, style: motion = "rock", wipes } = animation;
   /** The rendered frame images, so a stroke can be drawn straight to the DOM. */
   const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
+  const phone = useIsPhone();
   const [index, setIndex] = useState(0);
   /* Mirrors `index` for the physics, which reads it inside a rAF loop and must
    * not be re-subscribed on every frame change. */
@@ -118,12 +120,29 @@ export default function ProjectFrameAnimation({
     }, FRAME_MS);
   }, [clearTimer, frames.length, rock]);
 
+  /* NO PHYSICS ON A PHONE (2026-08-30). Noah: "could the issue be the
+   * project icons at all? If so, make it so they don't have draggable
+   * physics anymore, just still have the stop motion animation when clicked
+   * on in mobile."
+   *
+   * He was right. useThrowable re-schedules its rAF at the TOP of the step
+   * function, unconditionally — the loop runs every frame for the life of
+   * the tile whether anything is moving or not. The home grid mounts one per
+   * project, so six physics loops were doing collision maths and writing
+   * transforms on every frame, permanently, competing with the scroll on a
+   * device that is already struggling to give the main thread frames.
+   *
+   * Dragging an icon is a pointer interaction that a phone barely affords
+   * anyway. The stop-motion still plays on a tap — see the tap handler on the
+   * host element below, which takes over the job `onClick` did through the
+   * physics hook. */
   const { reset: resetThrow, wake } = useThrowable({
     elementRef: hostRef,
     containerRef,
     imageSrcs: frames,
     frameRef,
     onClick: play,
+    enabled: !phone,
   });
 
   /* Run the stroke.
@@ -207,6 +226,9 @@ export default function ProjectFrameAnimation({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // With the physics hook disabled on a phone it is no longer listening
+        // for the press, so the tap has to start the animation from here.
+        if (phone) play();
       }}
       onDragStart={(e) => e.preventDefault()}
       role="button"

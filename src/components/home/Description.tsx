@@ -52,7 +52,11 @@ const LINES_CENTER_UNITS = (381 + 882) / 2;
 const PHONE_LINES_CENTER_UNITS = (381 + (381 + 4 * 184 + 141)) / 2;
 
 /** Top of "His work can be seen below.", artboard units. */
-const LINE4_TOP_UNITS = 1387;
+/* 1387 -> 1121 (2026-08-30). Noah: "reduce the distance between the first
+ * section of text and the second by half." Measured at 1512 the gap between
+ * the paragraph's last line and "His work can be seen below" was 419px, which
+ * is 532 artboard units; taking 266 of them out halves it. */
+const LINE4_TOP_UNITS = 1121;
 /** A phone screen's HEIGHT expressed in this artboard's units, for the
  *  server render and the first client render. 844px at u = 390/1000 is 2164;
  *  the hook below replaces it with the real one as soon as there is a window
@@ -194,7 +198,11 @@ export default function Description() {
    * It was 664 units, which is 259px of an 844px screen — measured, both
    * paragraphs were co-visible across about 800px of scrolling. */
   const phoneScreenUnits = usePhoneScreenUnits(phone);
-  const phoneCloserY = PHONE_PARA1_BOTTOM_UNITS + phoneScreenUnits;
+  /* HALF A SCREEN, NOT A WHOLE ONE (2026-08-30). Same note as
+   * LINE4_TOP_UNITS: on a phone the second block sat one full viewport below
+   * the first, which measured 860px of nothing at 390. Half of that is still
+   * a clear beat between the two thoughts without the page going empty. */
+  const phoneCloserY = PHONE_PARA1_BOTTOM_UNITS + phoneScreenUnits * 0.5;
   const closerY = phone ? phoneCloserY : LINE4_TOP_UNITS;
   const phoneHandCentreY =
     phoneCloserY + LINE_PITCH + RULE_OFFSET + PHONE_HAND_DROP_UNITS;
