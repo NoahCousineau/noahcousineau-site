@@ -571,6 +571,90 @@ html {
   }
 }
 
+/*
+ * A RULE THAT SPANS THE WINDOW, NOT THE ARTBOARD (2026-09-01).
+ *
+ * Noah, from a monitor wider than the ones this was built on: "there were
+ * large gaps on the sides of the main content... For the project header line
+ * and the homepage grid line, this should go all the way across."
+ *
+ * The artboard is capped at 1920px and centred, so above that width the page
+ * keeps its designed size and the surplus opens as gutters either side.
+ * Measured at 2560: the artboard sits 320..2240 and every rule stopped dead
+ * at its edge. Below 1920 the two edges are the same thing, which is why this
+ * never showed up — at 1440 every rule reads 0..1440.
+ *
+ * The type and the artwork should NOT grow to fill an ultrawide display, so
+ * the cap stays; only the rules break out of it. `100vw` can exceed the
+ * client width by a classic scrollbar, which body's own `overflow-x: hidden`
+ * clips — a few invisible pixels under each edge and no horizontal scroll.
+ *
+ * Used with `position: absolute` inside the artboard, and deliberately WITHOUT
+ * an inline left/width at the call site, since inline styles would win.
+ */
+/*
+ * THE SCROLL CUE'S TWO MOTIONS (2026-09-01). Noah: "It will look like it's
+ * coming from far back and then quickly reach it's max size. It will then
+ * slowly bounce up and down slightly with ease."
+ *
+ * Two elements, because both of these are transforms and one would overwrite
+ * the other: the outer bounces, the inner arrives. The arrival runs once and
+ * holds (`forwards`); the bounce waits for it to land before starting, so the
+ * arrow does not drift upward while it is still growing.
+ *
+ * "From far back" is scale, not perspective — the arrow is flat artwork, and a
+ * 3D translate on a lazily-decoded image costs a layer for no visible gain.
+ * The overshoot in the timing function is what makes it read as arriving
+ * rather than merely appearing.
+ */
+@keyframes nc-cue-pop {
+  from {
+    transform: scale(0.06);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes nc-cue-bounce {
+  0%,
+  100% {
+    transform: translateY(-6%);
+  }
+  50% {
+    transform: translateY(6%);
+  }
+}
+
+.nc-cue-pop {
+  animation: nc-cue-pop 620ms cubic-bezier(0.16, 1.02, 0.3, 1.24) both;
+}
+
+.nc-cue-bounce {
+  animation: nc-cue-bounce 2.1s 700ms ease-in-out infinite;
+}
+
+/* The arrow is the message; the movement is only emphasis. */
+@media (prefers-reduced-motion: reduce) {
+  .nc-cue-pop {
+    animation: none;
+  }
+  .nc-cue-bounce {
+    animation: none;
+  }
+}
+
+.rule-bleed {
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

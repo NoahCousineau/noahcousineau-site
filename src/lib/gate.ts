@@ -13,6 +13,26 @@ import type { NextRequest } from "next/server";
  * portfolio. See README "Password gate" for where the value lives.
  */
 
+/*
+ * THE GATE IS OFF (2026-09-01). Noah: "I no longer need a password for the
+ * project pages. Please remove any password feature from the website,
+ * everything should be easily accessible. Let's remember the password screen
+ * in case I ever need it in the future."
+ *
+ * So this is one switch rather than a deletion. Every piece still exists and
+ * still works — the hand, its animation, /password, /api/unlock, the cookie,
+ * the rate limiter, the proxy — and flipping this back to `true` restores the
+ * whole thing exactly as it was, with no code to write again.
+ *
+ * What reads it: src/proxy.ts stops redirecting, GateOverlay stops
+ * intercepting project links, and robots.ts lets crawlers into /work, which
+ * is the point of taking the gate off a portfolio.
+ *
+ * /password stays reachable on purpose. It is the screen Noah asked to keep,
+ * it still accepts the password, and it is worth being able to look at.
+ */
+export const GATE_ENABLED = false;
+
 const COOKIE = "nc_gate";
 /** Readable by script, grants nothing — see issueGate. */
 export const UI_HINT = "nc_gate_open";

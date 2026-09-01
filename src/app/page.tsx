@@ -1,6 +1,7 @@
 import Hero from "@/components/home/Hero";
 import Description from "@/components/home/Description";
 import Projects from "@/components/home/Projects";
+import ScrollCue from "@/components/home/ScrollCue";
 
 /*
   HOMEPAGE — faithful reproduction of Noah's multi-artboard Illustrator sketch.
@@ -27,6 +28,8 @@ export default function Home() {
       <Hero />
       <Description />
       <Projects />
+      {/* Fixed to the viewport, so it adds no height and shifts nothing. */}
+      <ScrollCue />
     </main>
   );
 }

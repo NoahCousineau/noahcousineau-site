@@ -291,12 +291,25 @@ export default function Projects() {
           stop at the columns (38u..1880u), leaving the page's side gutters
           open and the rows reading as floating bands rather than as a table.
           The cells themselves are unchanged — only the rules run out to the
-          artboard edge, which IS the window edge at every width up to the
-          1920 cap the whole page shares. */}
+          edge.
+
+          TO THE WINDOW'S EDGE, NOT THE ARTBOARD'S (2026-09-01). Noah, on a
+          monitor wider than 1920: "there were large gaps on the sides of the
+          main content... this should go all the way across." Those are the
+          same thing below the 1920 cap and differ by 320px each side at 2560,
+          which is exactly the gap he saw. Placed directly rather than through
+          <Place>, because Place writes an inline left/width that a class
+          cannot override — see .rule-bleed in globals.css. */}
       {rules.map((y) => (
-        <Place key={y} x={0} y={y} w={phone ? PHONE_ARTBOARD : 1920} className="z-20">
-          <div style={{ height: "calc(var(--u) * 6)", background: "var(--color-ink)" }} />
-        </Place>
+        <div
+          key={y}
+          className="absolute rule-bleed z-20"
+          style={{
+            top: `calc(var(--u) * ${y})`,
+            height: "calc(var(--u) * 6)",
+            background: "var(--color-ink)",
+          }}
+        />
       ))}
       {/* Vertical center divider spanning the full grid height — the grid's
           content (cells) fills the Stage exactly (GRID_LOCAL_HEIGHT), so

@@ -730,12 +730,40 @@ export default function Description() {
     // content is asked to rise above where Stage itself is anchored. Desktop
     // (1512x900) never showed this: that aspect ratio puts Stage's frozen
     // top ABOVE y=0 (i.e., already above the viewport) with room to spare.
+    <div ref={pinRef}>
+    {/* THIS SECTION SCALES PAST 1920, ON PURPOSE (2026-09-01).
+     *
+     * Noah: "For the home descriptive text lines, there should be just a
+     * small gap opening like we've been seeing at smaller sizes... For the
+     * home page descriptive text, you can scale this accordingly."
+     *
+     * The rules here sit 36 units in from each side — a small gap by design,
+     * and it stays small only while the artboard is the window. Above the
+     * 1920 cap the artboard centres and that 36-unit inset becomes 356px of
+     * empty page on a 2560 monitor, which is the gap he saw.
+     *
+     * Unlike the header and grid rules — which break out of the cap while
+     * their type stays at its designed size — the text here is tied to its
+     * rules: each line runs nearly the full width of the rule beneath it, so
+     * widening the rule alone would leave the sentence stranded in the middle
+     * of it. Both have to grow together, which is the scaling Noah signed off.
+     *
+     * So this block gets the window as its container rather than the capped
+     * artboard, and its own uncapped unit. Below 1920 the two are identical
+     * and nothing changes. The bleed lives on an inner element so the pinned
+     * element above keeps a normal box for ScrollTrigger's pin-spacer.
+     *
+     * `uPx()` in the effect reads Stage's own offsetWidth, so it follows this
+     * automatically and the scroll maths stays in step. */}
     <div
-      ref={pinRef}
-      // Local to this section: the Hero above and the Projects grid below
-      // each declare their own, and `main` keeps the 1920-based unit for
-      // anything that has not opted out.
-      style={phone ? { ["--u" as string]: `calc(100cqw / ${PHONE_ARTBOARD})` } : undefined}
+      style={{
+        containerType: "inline-size",
+        width: "100vw",
+        marginLeft: "calc(50% - 50vw)",
+        ["--u" as string]: phone
+          ? `calc(100cqw / ${PHONE_ARTBOARD})`
+          : "calc(100cqw / 1920)",
+      }}
     >
     <Stage heightUnits={phone ? phoneStageHeightUnits(phoneHandCentreY) : STAGE_HEIGHT_UNITS}>
       <div ref={root} className="absolute inset-0">
@@ -861,6 +889,7 @@ export default function Description() {
 
       </div>
     </Stage>
+    </div>
     </div>
   );
 }

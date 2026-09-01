@@ -62,7 +62,57 @@ const AIR_DRAG = 0.2;
  * already there rather than driving new spin from floor-slide.
  */
 const ANGULAR_DRAG = 1.5;
-const FLOOR_FRICTION_PER_SEC = 1.4;
+/* 1.4 -> 3 (2026-09-01). A thrown object was still sliding seconds after it
+ * had visibly landed — see FLOOR_SPIN_FRICTION_PER_SEC below for how this was
+ * measured. Sliding, not turning, was what took longest: across three project
+ * pages, every object flicked in turn, the last thing to stop was translation
+ * on all thirty of them. Friction against a floor at 1.4 per second is closer
+ * to ice than to paper. */
+const FLOOR_FRICTION_PER_SEC = 3;
+
+/*
+ * A LANDED OBJECT STOPS TURNING (2026-09-01).
+ *
+ * Noah, with a screen recording of the cultural olympiad header: "when I
+ * throw an objects, icons like the red wine glass or the yellow oscar statue
+ * will jitter and not fully settle for some time."
+ *
+ * Traced the wine glass through a mouse flick, sampling its rotation every
+ * frame. It spins fast, lands, and then keeps creeping: -136, -132, -129,
+ * -127, -125, -124, -123, -122, -121.2 ... it is still turning three and a
+ * half seconds after the throw, and the last fifteen degrees take over a
+ * second. It is not oscillating — it is coasting, slowly, in one direction,
+ * long after it has visibly come to rest.
+ *
+ * The reason is that a body's spin was only ever damped by ANGULAR_DRAG,
+ * which is AIR drag, at 1.5 per second. Sideways velocity gets
+ * FLOOR_FRICTION_PER_SEC on top of it the moment a body touches the floor,
+ * but its rotation got nothing — so an object lying on the ground kept
+ * turning as though it were still in flight. Anything actually resting on a
+ * surface loses spin to it almost at once, which is why a dropped coin stops
+ * rather than gliding round.
+ *
+ * Deliberately NOT roll-lock (spin tied to slide speed), which is what
+ * useThrowable does and what the long note at the floor branch below explains
+ * was removed from here: coupling spin to vx feeds a loop through the support
+ * function that irregular shapes never settle out of. This only ever REMOVES
+ * angular energy, and cannot feed anything.
+ *
+ * MEASURED, with qa/throw-settle.mjs — flick every object on three project
+ * pages with the mouse and record the last frame each one moves on, 60
+ * throws per configuration:
+ *
+ *                                    median   p90    mean
+ *   before                            3705   6536    4004
+ *   with friction + watchdog + this   3133   3869    2955
+ *   the same, without this line       3235   4688    3411
+ *
+ * The p90 is the number that matters: it is the long tail Noah is describing,
+ * and it comes down by 41%. This line is worth a fifth of that on its own,
+ * which is why it stayed after the third run — the same test that took a
+ * rocking-damping term OUT of this file the day before for failing it.
+ */
+const FLOOR_SPIN_FRICTION_PER_SEC = 6;
 /* 9/5 -> 18/9, alongside OVERLAP_SLOP below, in the same "excess energy when
  * objects collide" pass. A body creeping at 18px/s still has to hold that for
  * REST_TIME before it parks, so nothing genuinely moving is frozen; what it
@@ -376,7 +426,15 @@ const TILT_SLEW_PER_SEC = 6;
 /** ~3.4 degrees: past a hand's tremor, well under a deliberate tilt. */
 const TILT_WAKE = 0.06;
 
-const SETTLE_WATCHDOG_S = 1.5;
+/* 1.5 -> 0.9 (2026-09-01). This is what parks a body that is twitching but
+ * going nowhere, and the traces behind the change are full of exactly that:
+ * an object at rest, then a sudden 1-2px step, then rest again. Every one of
+ * those steps restarted the old 1.5s clock, so the twitching outlived it. The
+ * test is unchanged and still strict — the body must stay within about a
+ * pixel of where it was for the WHOLE window, and never stray past `escape`
+ * inside it — so nothing that is actually travelling can be caught by it;
+ * gravity here would carry a moving body across the arena in this time. */
+const SETTLE_WATCHDOG_S = 0.9;
 const SETTLE_DRIFT_FRACTION = 0.02;
 /** How far a body may WANDER inside a watchdog window and still count as
  *  having stayed put. Generous next to a buzz (a few px) and tiny next to
@@ -1193,6 +1251,8 @@ export function useDropField({
               // residue. useThrowable is untouched — one object with no
               // neighbours to feed the loop has never shown this.
               b.vx *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * h);
+              // ...and the same for rotation — see FLOOR_SPIN_FRICTION_PER_SEC.
+              b.spin *= Math.max(0, 1 - FLOOR_SPIN_FRICTION_PER_SEC * h);
             }
           }
         }

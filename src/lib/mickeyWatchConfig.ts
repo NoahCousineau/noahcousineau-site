@@ -83,8 +83,32 @@ export const mickeyWatchConfig: MickeyWatchConfig = {
    * on the true hour is simply the negative of that angle, since the
    * component adds offset on top of the clock angle.
    *
-   *   hour   fingertip sits at  93.92deg  ->  offset -93.92  (was -90, 3.9deg out)
-   *   minute fingertip sits at  85.93deg  ->  offset -85.93  (was 267 = -93, 7.1deg out)
+   *   hour   fingertip sits at  98.10deg  ->  offset -98.10
+   *   minute fingertip sits at  90.17deg  ->  offset -90.17
+   *
+   * RE-MEASURED 2026-09-01, because both were still about 4.2deg fast. Noah:
+   * "the clock is just slightly fast. It hit midnight and it looked like the
+   * hands were pointing a bit past where they should go."
+   *
+   * The earlier numbers (93.92 / 85.93) were taken by finding the fingertip
+   * in the hand PNG and measuring from the axis — correct in principle, but
+   * measured against the image STRETCHED to the layer box. The <img> is
+   * `object-fit: contain`, so what actually renders is letterboxed: the hour
+   * arm is 504x207 shown inside a 111x144 box, which fits to the width and
+   * leaves the height at 36 rather than 144. Measuring on the stretched
+   * version put the fingertip several degrees off, in the same direction for
+   * both hands — which is why the whole clock read fast rather than one hand
+   * disagreeing with the other.
+   *
+   * Re-measured on the letterboxed geometry the site really draws, at 6x
+   * supersampling, and taken as the centroid of the outermost shell of opaque
+   * pixels rather than the single farthest one. Stable to a tenth of a degree
+   * across shell thresholds of 0.999, 0.99 and 0.97, which the stretched
+   * measurement was not.
+   *
+   * 4.2deg is about eight minutes on the hour hand and forty seconds on the
+   * minute hand — small, and exactly the "bit past where they should go" at
+   * midnight, when both hands should be dead on the 12.
    *
    * The minute hand is corrected too even though Noah only flagged the
    * hour: it was the further out of the two, and leaving it would mean the
@@ -94,7 +118,7 @@ export const mickeyWatchConfig: MickeyWatchConfig = {
    * numerals sit on true 30deg marks (mean deviation -1.6deg measured off
    * watch-face.png's alpha channel), so exact clock angles really do point
    * at the drawn numbers. */
-  hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -93.92 },
-  minuteHand: { width: 182, height: 234.1, x: 76.2, y: 15.26, rotation: -85.93 },
+  hourHand: { width: 111, height: 144, x: 59, y: 12, rotation: -98.10 },
+  minuteHand: { width: 182, height: 234.1, x: 76.2, y: 15.26, rotation: -90.17 },
   rotationAxis: { x: 50, y: 47 },
 };

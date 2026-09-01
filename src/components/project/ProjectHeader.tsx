@@ -449,10 +449,12 @@ export default function ProjectHeader({
         ))}
       </div>
 
-      {/* The rule, full width of the artboard — which is the window's width at
-          every size up to the 1920 cap the whole site shares. */}
+      {/* The rule, full width of the WINDOW. It used to be `inset-x-0`, which
+          is the artboard's width — the same thing at every size up to the
+          1920 cap, and 320px short of each edge on a 2560 monitor. See
+          .rule-bleed in globals.css. */}
       <div
-        className="absolute inset-x-0 z-10"
+        className="absolute rule-bleed z-10"
         style={{
           top: HEADER_RULE_PCT,
           height: `calc(var(--u) * ${HEADER_RULE_UNITS})`,

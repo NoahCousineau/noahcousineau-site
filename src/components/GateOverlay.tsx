@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import PasswordHand, { usePasswordArtboard } from "./PasswordHand";
-import { UI_HINT } from "@/lib/gate";
+import { GATE_ENABLED, UI_HINT } from "@/lib/gate";
 
 /**
  * THE HAND COMES UP WHERE YOU ARE (2026-08-30).
@@ -44,6 +44,7 @@ export default function GateOverlay() {
   const scrollY = useRef(0);
 
   useEffect(() => {
+    if (!GATE_ENABLED) return;
     const onClick = (e: MouseEvent) => {
       // Let the browser have modified clicks — cmd-click to a new tab should
       // open a new tab, where the server gate will meet them properly.

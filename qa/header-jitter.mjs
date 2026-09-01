@@ -317,26 +317,41 @@ async function throwOne(page, client, arenaBox, rand) {
   const toX = Math.round(arenaBox.x + 20 + rand() * (arenaBox.w - 40));
   const toY = Math.round(arenaBox.y + 20 + rand() * (arenaBox.h - 40));
 
+  /* A FLICK, NOT A CAREFUL DRAG (2026-09-01).
+   *
+   * Noah: "when I throw an objects, icons like the red wine glass or the
+   * yellow oscar statue will jitter and not fully settle for some time."
+   *
+   * The first version of this moved an object over 8-16 steps at 10-24ms
+   * apart and let go — a slow, deliberate reposition, which releases almost
+   * no velocity and lands the object gently. It reported this page completely
+   * clean while Noah was recording the opposite on it. A real throw is a few
+   * fast samples and a release still travelling, which is what puts spin into
+   * a tall object and sets it rocking. */
   await client.send("Input.dispatchTouchEvent", {
     type: "touchStart",
     touchPoints: [{ x: target.x, y: target.y }],
   });
-  const steps = 8 + Math.floor(rand() * 8);
+  const steps = 4 + Math.floor(rand() * 3);
+  // Overshoot the release point so the object is still moving when let go.
+  const overX = target.x + (toX - target.x) * 1.25;
+  const overY = target.y + (toY - target.y) * 1.25;
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     await client.send("Input.dispatchTouchEvent", {
       type: "touchMove",
       touchPoints: [
         {
-          x: Math.round(target.x + (toX - target.x) * t),
-          y: Math.round(target.y + (toY - target.y) * t),
+          x: Math.round(target.x + (overX - target.x) * t),
+          y: Math.round(target.y + (overY - target.y) * t),
         },
       ],
     });
-    await page.waitForTimeout(10 + Math.floor(rand() * 14));
+    await page.waitForTimeout(6);
   }
   await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await page.waitForTimeout(120 + Math.floor(rand() * 200));
+  // Long enough for the throw to land, not long enough to have settled.
+  await page.waitForTimeout(260 + Math.floor(rand() * 160));
 }
 
 async function runPage(browser, path, seed) {
@@ -562,9 +577,10 @@ for (const path of PAGES) {
     for (const [label, m] of rows) {
       if (!m) continue;
       const key = label.trim();
-      const a = agg.get(key) || { n: 0, never: 0, restless: 0, vibrating: 0, rocking: 0, jammed: 0, worst: 0 };
+      const a = agg.get(key) || { n: 0, never: 0, restless: 0, vibrating: 0, rocking: 0, jammed: 0, worst: 0, settle: [], };
       a.n++;
       if (m.settleMs === null) a.never++;
+      else a.settle.push(m.settleMs);
       a.restless += m.restless;
       a.vibrating += m.vibrating;
       a.rocking += m.rocking;
@@ -580,6 +596,8 @@ for (const [k, a] of agg) {
     `  ${k.padEnd(13)} runs ${a.n}  never-settled ${a.never}/${a.n}` +
       `  restless ${String(a.restless).padStart(3)}  vibrating ${String(a.vibrating).padStart(3)}` +
       `  rocking ${String(a.rocking).padStart(3)}` +
+      `  settle med ${String(a.settle.length ? Math.round(a.settle.slice().sort((x, y) => x - y)[a.settle.length >> 1]) : "-").padStart(5)}ms` +
+      ` max ${String(a.settle.length ? Math.max(...a.settle) : "-").padStart(5)}ms` +
       `  jammed ${String(a.jammed).padStart(3)}  worst ${a.worst.toFixed(1)}px`
   );
 }
