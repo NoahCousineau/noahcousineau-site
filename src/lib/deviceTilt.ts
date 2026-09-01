@@ -79,18 +79,69 @@ function start() {
     return;
   }
 
-  /* Any first gesture, not only a touchend. A reader whose first interaction
-   * is a tap on a link rather than a scroll was never being asked at all. */
+  /* KEEP OFFERING UNTIL THERE IS AN ANSWER (2026-09-01).
+   *
+   * Noah: "I feel that sometimes I get on the site and I get permission asked
+   * to do this and other times I don't. I want to make sure users have the
+   * option to see the header icon tilt on mobile."
+   *
+   * This used to remove all three listeners on the FIRST gesture — before it
+   * knew whether the ask had worked. iOS only honours requestPermission()
+   * inside a live user activation, and there are several ordinary ways for
+   * the first gesture not to carry one: the tap that lands while the loading
+   * screen is still up and gets swallowed, a gesture whose activation has
+   * already been spent, a `pointerup` that Safari does not treat as one. Any
+   * of those left the promise rejecting into an empty catch with every
+   * listener already gone, so that visit simply never asked again — the
+   * reader gets a page whose icons cannot move and no way to find out why.
+   *
+   * So the listeners now stay until iOS actually answers. "granted" attaches
+   * and stops; "denied" stops too, because that is an answer and pestering
+   * someone who said no is worse than not asking. Anything else — a
+   * rejection, a throw, no promise at all — leaves them in place so the next
+   * tap tries again. Capped, so a device that can never satisfy the call is
+   * not asked on every tap forever.
+   *
+   * Capture phase, so a handler that stops propagation on its own element
+   * cannot quietly cost the reader the feature.
+   */
   const GESTURES = ["touchend", "pointerup", "click"] as const;
-  const ask = () => {
-    GESTURES.forEach((g) => window.removeEventListener(g, ask));
-    DOE.requestPermission?.()
-      .then((r) => {
-        if (r === "granted") attach();
-      })
-      .catch(() => {});
+  /* Captured after the guard above: `ask` is a hoisted function declaration,
+     and TypeScript will not carry the narrowing of `DOE` into it. */
+  const doe = DOE;
+  const MAX_ASKS = 5;
+  let asks = 0;
+  const detach = () => {
+    GESTURES.forEach((g) => window.removeEventListener(g, ask, { capture: true }));
   };
-  GESTURES.forEach((g) => window.addEventListener(g, ask, { once: true }));
+  function ask() {
+    if (asks >= MAX_ASKS) {
+      detach();
+      return;
+    }
+    asks += 1;
+    let pending: Promise<"granted" | "denied"> | undefined;
+    try {
+      pending = doe.requestPermission?.();
+    } catch {
+      return; // not a valid activation — leave the listeners for the next one
+    }
+    if (!pending) return;
+    pending
+      .then((r) => {
+        if (r === "granted") {
+          detach();
+          attach();
+        } else if (r === "denied") {
+          detach();
+        }
+      })
+      .catch(() => {
+        /* Deliberately empty AND deliberately not detaching: the ask did not
+           get through, so the next gesture should have another go. */
+      });
+  }
+  GESTURES.forEach((g) => window.addEventListener(g, ask, { capture: true }));
 }
 
 /**

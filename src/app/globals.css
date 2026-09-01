@@ -609,7 +609,7 @@ html {
  */
 @keyframes nc-cue-pop {
   from {
-    transform: scale(0.06);
+    transform: scale(0.08);
     opacity: 0;
   }
   60% {
@@ -631,12 +631,29 @@ html {
   }
 }
 
+/* PROMOTED, OR THE GROWTH STUTTERS (2026-09-01). Noah: "let's work on having
+   it come forward in size. This is a little choppy right now."
+
+   Scaling an <img> re-rasterises the bitmap on the frames the browser decides
+   to, and at a 0.08 -> 1 range that is a lot of re-rasterising in 620ms —
+   which is what the choppiness was. `will-change: transform` hands both
+   elements their own compositor layer, so the picture is rasterised once and
+   the scale and the bounce are composited rather than repainted.
+
+   Left on permanently rather than added and removed: it is two small layers on
+   one page, and toggling `will-change` around an animation is itself a
+   relayout at exactly the wrong moment. `backface-visibility` is the old
+   belt-and-braces for the same promotion on Safari. */
 .nc-cue-pop {
   animation: nc-cue-pop 620ms cubic-bezier(0.16, 1.02, 0.3, 1.24) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .nc-cue-bounce {
   animation: nc-cue-bounce 2.1s 700ms ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* The arrow is the message; the movement is only emphasis. */

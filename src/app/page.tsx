@@ -28,7 +28,7 @@ export default function Home() {
       <Hero />
       <Description />
       <Projects />
-      {/* Fixed to the viewport, so it adds no height and shifts nothing. */}
+      {/* Anchored to the first screen and scrolls away with it — see ScrollCue. */}
       <ScrollCue />
     </main>
   );
