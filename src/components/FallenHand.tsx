@@ -182,6 +182,9 @@ export default function FallenHand({
   const compact = useIsCompact();
   const handRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  /** The phone group's rise wrapper, so `rootRef` stays untransformed and can
+   *  act as the trigger for its own arrival. */
+  const riseRef = useRef<HTMLDivElement>(null);
   /** The plank — "next project" and the rule it sits on, as one rigid body. */
   const plankRef = useRef<HTMLDivElement>(null);
 
@@ -193,21 +196,31 @@ export default function FallenHand({
     gsap.registerPlugin(ScrollTrigger);
 
     const ctx = gsap.context(() => {
-      /* UP OUT OF THE PAGE, WITH THE HEAD (2026-09-01). Noah, pointing at
-       * aardvarkbookclub.com: "an object animates upwards slightly when we
-       * reach the bottom of the page. I want a similar effect with the head
-       * and hand... it should almost feel like whack-a-mole."
+      /* UP OUT OF THE PAGE, ON A PHONE ONLY (2026-09-02).
+       *
+       * Noah wanted the mobile hand to arrive the way the head does — and
+       * explicitly NOT the desktop one: "I DON'T want the hand to have the
+       * pop up animation on desktop... I want it always resting on the bottom
+       * of the footer like we had before." On desktop the hand has already
+       * fallen into place as part of its own entrance, and a second arrival
+       * on top of that is one too many.
        *
        * The whole group rises — hand, plank and the "next project" label
-       * together — because they are one object resting on the footer's floor,
-       * and lifting only the hand off its own plank would read as a mistake.
-       * Its resting place is untouched: this only says where it comes FROM.
-       * Smaller than the head's own rise, since this group is much taller and
-       * the same fraction would carry the label off the bottom of the page. */
-      const root = rootRef.current;
-      if (root) {
+       * together — because on a phone they are one object standing on the
+       * footer's floor, and lifting only the hand off its own plank would
+       * read as a mistake.
+       *
+       * Triggered on `rootRef`, which this never transforms (the rise goes on
+       * the inner wrapper), so the element deciding when to run is not the
+       * element being moved. On a phone the footer scrolls normally and the
+       * group sits at its very bottom, so "this group's top reaches the
+       * bottom of the window" is exactly the moment it comes into view — a
+       * full screen later than the footer's own top, which is what made the
+       * first attempt finish before anyone could see it. */
+      const riseEl = riseRef.current;
+      if (compact && riseEl) {
         gsap.fromTo(
-          root,
+          riseEl,
           { yPercent: RISE_PERCENT },
           {
             yPercent: 0,
@@ -217,7 +230,7 @@ export default function FallenHand({
             ease: "power3.out",
             /* Reverses on the way back up, like the head — see PeekingHead. */
             scrollTrigger: {
-              trigger,
+              trigger: rootRef.current ?? trigger,
               start: "top bottom",
               toggleActions: "play none none reverse",
             },
@@ -388,6 +401,7 @@ export default function FallenHand({
           gap: compact ? "0px" : `calc(var(--u) * ${PHONE_LABEL_GAP_UNITS})`,
         }}
       >
+        <div ref={riseRef}>
         {/* THE PLANK — the words and the rule as one rigid body, so they tip
             together. Its transform-origin is its own bottom centre, which is
             the pixel the fingertip sits under (see PHONE_TIP_DX above), so
@@ -453,6 +467,7 @@ export default function FallenHand({
               className="w-full h-auto"
             />
           </div>
+        </div>
         </div>
       </div>
     );

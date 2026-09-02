@@ -461,6 +461,11 @@ export default function AwayOverlay({
               fontSize={ARC_FONT}
               flip={true}
               color="var(--color-paper)"
+              /* The light crosses this phrase first, then the one below —
+                 clockwise along the top, which on screen is left to right. */
+              shimmer
+              shimmerPhaseMs={0}
+              shimmerActive={away}
             />
           </div>
           {/* Bottom arc: "CONTACT NOAH" — letters grow inward, so this
@@ -477,6 +482,12 @@ export default function AwayOverlay({
               spanDeg={180}
               fontSize={ARC_FONT}
               color="var(--color-paper)"
+              /* One second later, so it starts as the phrase above finishes.
+                 Counter-clockwise along the bottom — which, like the top, is
+                 left to right on screen, so the two read in order. */
+              shimmer
+              shimmerPhaseMs={1000}
+              shimmerActive={away}
             />
           </div>
         </div>

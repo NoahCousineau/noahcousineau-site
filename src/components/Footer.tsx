@@ -206,12 +206,12 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
   // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
   // — which does scroll — is what tells the fallen hand it has arrived.
   const spacerRef = useRef<HTMLDivElement>(null);
-  /* What "arriving at the footer" is depends on the tier: on desktop the
-     footer is fixed and the SPACER is the thing that scrolls past, while on a
-     phone there is no spacer and the footer itself scrolls into view. Both
-     rises key off whichever one exists — see PeekingHead. */
+  /* The footer element, still handy for the fallen hand's own trigger. On
+     desktop the footer is FIXED and never travels past the viewport, which is
+     why the rise there keys off the spacer instead; on a phone each piece
+     watches for its own arrival, a full screen later than the footer's top —
+     see the note in PeekingHead. */
   const footerRef = useRef<HTMLElement>(null);
-  const riseTriggerRef = phone ? footerRef : spacerRef;
   return (
     <>
       {/* Reserves the scroll distance through which the content uncovers
@@ -344,11 +344,12 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           <PeekingHead
             centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
             widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
-            riseTriggerRef={riseTriggerRef}
+            riseTriggerRef={spacerRef}
+            riseSelfTrigger={phone}
           />
         )}
         {nextProjectHref && (
-          <FallenHand triggerRef={riseTriggerRef} nextHref={nextProjectHref} />
+          <FallenHand triggerRef={phone ? footerRef : spacerRef} nextHref={nextProjectHref} />
         )}
         {/* CLEAR THE DROPPED CHROME (2026-08-31, the third place this bit).
             Between 768 and 1439 the C mark and the theme toggle are pushed

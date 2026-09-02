@@ -1,5 +1,8 @@
 "use client";
 
+import { useRef } from "react";
+import ArcShimmer from "./ArcShimmer";
+
 /*
  * Arced type on a circle, via a plain SVG <textPath> — the cheapest correct
  * way to do this on the web, no extra libraries.
@@ -54,6 +57,9 @@ export function ArcText({
   baselineY,
   spanDeg = 180,
   centerY: centerYProp,
+  shimmer = false,
+  shimmerPhaseMs = 0,
+  shimmerActive = false,
 }: {
   text: string;
   radius: number;
@@ -66,7 +72,14 @@ export function ArcText({
   baselineY?: number;
   spanDeg?: number;
   centerY?: number;
+  /** Sweep a highlight through the letters — see ArcShimmer. */
+  shimmer?: boolean;
+  /** Where this phrase sits in the shared 8s loop. */
+  shimmerPhaseMs?: number;
+  /** Only animates while the screen it lives on is up. */
+  shimmerActive?: boolean;
 }) {
+  const measureRef = useRef<SVGTextElement | null>(null);
   const cx = width / 2;
   // Downward-opening arc (smile shape, used for résumé headline): path
   // goes from left to right along the TOP of a circle whose center sits
@@ -100,17 +113,31 @@ export function ArcText({
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
       <path id={id} d={d} fill="none" />
+      {/* With the shimmer on, this stays in the DOM — it is what lays the
+          letters out and what a screen reader reads — but the visible glyphs
+          come from the per-letter layer below. See ArcShimmer. */}
       <text
+        ref={measureRef}
         fill={color}
         fontFamily="var(--font-sans)"
         fontSize={fontSize}
         letterSpacing="0.02em"
-        style={{ textTransform: "uppercase" }}
+        style={{ textTransform: "uppercase", ...(shimmer ? { opacity: 0 } : null) }}
       >
         <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
           {text}
         </textPath>
       </text>
+      {shimmer && (
+        <ArcShimmer
+          measureRef={measureRef}
+          text={text}
+          fontSize={fontSize}
+          color={color}
+          phaseMs={shimmerPhaseMs}
+          active={shimmerActive}
+        />
+      )}
     </svg>
   );
 }
@@ -137,6 +164,9 @@ export function BottomArcText({
   baselineY,
   spanDeg = 180,
   centerY: centerYProp,
+  shimmer = false,
+  shimmerPhaseMs = 0,
+  shimmerActive = false,
 }: {
   text: string;
   radius: number;
@@ -148,7 +178,11 @@ export function BottomArcText({
   baselineY?: number;
   spanDeg?: number;
   centerY?: number;
+  shimmer?: boolean;
+  shimmerPhaseMs?: number;
+  shimmerActive?: boolean;
 }) {
+  const measureRef = useRef<SVGTextElement | null>(null);
   const cx = width / 2;
   const cy = baselineY ?? (height - radius);
   // Same span-decoupling fix as ArcText above: circle center sits
@@ -173,16 +207,27 @@ export function BottomArcText({
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
       <path id={id} d={d} fill="none" />
       <text
+        ref={measureRef}
         fill={color}
         fontFamily="var(--font-sans)"
         fontSize={fontSize}
         letterSpacing="0.06em"
-        style={{ textTransform: "uppercase" }}
+        style={{ textTransform: "uppercase", ...(shimmer ? { opacity: 0 } : null) }}
       >
         <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
           {text}
         </textPath>
       </text>
+      {shimmer && (
+        <ArcShimmer
+          measureRef={measureRef}
+          text={text}
+          fontSize={fontSize}
+          color={color}
+          phaseMs={shimmerPhaseMs}
+          active={shimmerActive}
+        />
+      )}
     </svg>
   );
 }

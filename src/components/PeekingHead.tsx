@@ -126,13 +126,18 @@ export default function PeekingHead({
   centerXUnits = 960,
   widthUnits = HEAD_WIDTH_UNITS,
   riseTriggerRef,
+  riseSelfTrigger = false,
 }: {
   centerXUnits?: number;
   /** Overridden on phones — see PHONE_HEAD_WIDTH_UNITS. */
   widthUnits?: number;
-  /** What arriving at the footer looks like: the reveal spacer on desktop,
-   *  the footer itself on a phone, where there is no spacer. */
+  /** What arriving at the footer looks like on DESKTOP: the reveal spacer,
+   *  because the footer itself is fixed and never moves past the viewport.
+   *  Ignored on a phone — see `riseSelfTrigger`. */
   riseTriggerRef?: React.RefObject<HTMLElement | null>;
+  /** On a phone the footer scrolls normally, so the head can watch for its
+   *  own arrival rather than the footer's — which is a full screen earlier. */
+  riseSelfTrigger?: boolean;
 }) {
   /* Sized from the CURRENT theme's own aspect rather than one fixed number.
    * With a single hardcoded height the shorter dark head was letterboxed
@@ -166,9 +171,22 @@ export default function PeekingHead({
    * translateX for the eye alignment, and one transform would overwrite the
    * other. */
   const riseRef = useRef<HTMLDivElement>(null);
+  /* The outer box, which the rise never transforms — so it can serve as its
+   * own trigger without the animation moving the thing that decides when the
+   * animation runs. */
+  const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = riseRef.current;
-    const trigger = riseTriggerRef?.current;
+    /* WHOSE ARRIVAL ARE WE WATCHING (2026-09-02). Noah: "the mobile version
+     * is still." It was not still — it had already finished. On a phone the
+     * footer is in normal flow and a full screen tall, so "the footer's top
+     * reaches the bottom of the window" happens while the head, which sits at
+     * the footer's BOTTOM, is still an entire screen below the fold. The
+     * whole rise played out off-screen and the reader met the finished pose.
+     * On a phone it therefore watches for ITSELF arriving. Desktop keeps the
+     * spacer, because there the footer is fixed and never travels past the
+     * viewport at all. */
+    const trigger = riseSelfTrigger ? boxRef.current : riseTriggerRef?.current;
     if (!el || !trigger) return;
     gsap.registerPlugin(ScrollTrigger);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -199,10 +217,11 @@ export default function PeekingHead({
       );
     });
     return () => ctx.revert();
-  }, [riseTriggerRef]);
+  }, [riseTriggerRef, riseSelfTrigger]);
 
   return (
     <div
+      ref={boxRef}
       className="absolute pointer-events-none select-none"
       style={{
         width: `calc(var(--u) * ${widthUnits})`,

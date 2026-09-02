@@ -365,16 +365,38 @@ export default function Description() {
         // throw has finished; without this they would run on top of one
         // another and fight over `y`.
         handShot?.kill();
-        // Measure where it is about to land, then start from just past the
-        // top of the window — whatever that distance happens to be at this
-        // viewport and this point in the timeline.
+        /* IT LANDS ON THE BOTTOM OF THE WINDOW (2026-09-02).
+         *
+         * Noah: "the downward arrow hand on desktop should be moved up. The
+         * bottom of the hand image should always be just touching the very
+         * bottom of the browser window. Right now the hand is too low."
+         *
+         * Its resting place was the Place coordinate — a fixed 1600 artboard
+         * units — and where that lands relative to the window depends on the
+         * window. Measured: at 1512x900 the hand's foot came to 5px above the
+         * bottom edge, and at 1920x1080 it hung 50px BELOW it, which is the
+         * overhang in Noah's screenshot. One number cannot be right at both.
+         *
+         * So the landing is measured instead of declared. The tip is 0.85% of
+         * the box from its edge (see HAND_TIP) and the artwork is turned a
+         * half-turn, so the image's own bottom IS the fingertip to within a
+         * few pixels — put that on the window's bottom edge and the finger
+         * touches it at every size.
+         *
+         * Measuring the IMG rather than the wrapper on purpose: the wrapper
+         * is the untransformed box, while the scale and the half-turn live on
+         * elements between it and the picture, and a rect in viewport space
+         * carries those. */
         gsap.set(el, { y: 0, autoAlpha: 1 });
-        const from = -(el.getBoundingClientRect().bottom + 40);
+        const art = el.querySelector("img") ?? el;
+        const restBottom = art.getBoundingClientRect().bottom;
+        const landing = window.innerHeight - restBottom;
+        const from = -(restBottom + 40);
         const shot = gsap.timeline();
         handShot = shot;
         // Accelerating into the landing: an arrow is fastest at the moment
         // it hits, which is what sells the stop.
-        shot.fromTo(el, { y: from }, { y: 0, duration: 0.4, ease: "power3.in" });
+        shot.fromTo(el, { y: from }, { y: landing, duration: 0.4, ease: "power3.in" });
         if (handTwangRef.current) {
           shot.to(handTwangRef.current, {
             keyframes: [
@@ -651,17 +673,27 @@ export default function Description() {
       {t}
     </span>
   );
+  /* 2026-09-02, Noah: "...humor to create design solutions." replacing
+   * "...humor to solve your visual problems.", with "design solutions."
+   * italic and the desktop breaks he wrote out:
+   *
+   *   Noah Cousineau is a graphic designer
+   *   who uses wit, play, and humor to create
+   *   design solutions.
+   *
+   * The phone keeps its own five-line break — only the last two lines change,
+   * since the first three say the same thing either way. */
   const DESKTOP_LINES = [
     <>Noah Cousineau is a {em("graphic designer")}</>,
-    <>who uses wit, play, and humor to solve</>,
-    <>your {em("visual problems")}{em(".")}</>,
+    <>who uses wit, play, and humor to create</>,
+    <>{em("design solutions")}{em(".")}</>,
   ];
   const PHONE_LINES = [
     <>Noah Cousineau is a</>,
     <>{em("graphic designer")} who</>,
     <>uses wit, play, and</>,
-    <>humor to solve</>,
-    <>your {em("visual problems")}{em(".")}</>,
+    <>humor to create</>,
+    <>{em("design solutions")}{em(".")}</>,
   ];
   const DESKTOP_CLOSER = [<>His {em("work")} can be seen below.</>];
   const PHONE_CLOSER = [<>His {em("work")} can</>, <>be seen below</>];
