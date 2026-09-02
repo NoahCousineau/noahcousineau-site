@@ -109,8 +109,14 @@ export { PHONE_HEAD_WIDTH_UNITS };
  * it the first time the footer is reached. As a share of the head's own
  * height, so it travels the same fraction of itself at every size.
  */
-const RISE_PERCENT = 30;
-const RISE_SECONDS = 0.75;
+/* 30 -> 100 (2026-09-01). Noah: "I would like for it to be a more dramatic
+ * reveal. The head and hand should start much lower and then appear at the
+ * same final height." At a full head-height down it is entirely below the
+ * footer's bottom edge — genuinely out of sight rather than merely low — so
+ * what comes up reads as something surfacing rather than something shifting.
+ * The resting place is untouched: this only says where it comes FROM. */
+const RISE_PERCENT = 100;
+const RISE_SECONDS = 0.8;
 
 export default function PeekingHead({
   /** Horizontal centre, in artboard units. Defaults to the page centre; the
@@ -180,7 +186,14 @@ export default function PeekingHead({
                sliver appearing, which for the desktop curtain is the
                spacer's top reaching the bottom of the window. */
             start: "top bottom",
-            once: true,
+            /* AND BACK DOWN AGAIN (2026-09-01). Noah: "I would also like for
+               the interaction to play the opposite way when the user scrolls
+               back up... the head/hand should feel like it's going away."
+               So this is no longer `once` — leaving the trigger backwards
+               reverses the same tween, and reversing an ease-OUT gives an
+               ease-IN on the way down, which is exactly the difference
+               between arriving and retreating. */
+            toggleActions: "play none none reverse",
           },
         }
       );

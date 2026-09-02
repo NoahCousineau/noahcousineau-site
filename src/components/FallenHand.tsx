@@ -62,9 +62,11 @@ import { useIsCompact } from "@/lib/useIsPhone";
 /** Where the hand comes to rest, in degrees. Slightly nose-up so the finger
  * reads as pointing at the label rather than lying flat. */
 /** How far below its resting place the group starts, as a share of its own
- *  height. See the rise note in the effect below. */
-const RISE_PERCENT = 12;
-const RISE_SECONDS = 0.75;
+ *  height. A full height, matching the head: at 45% the hand was still half
+ *  in view before the reveal, which reads as a shift rather than an arrival.
+ *  Noah: "The head and hand should start much lower." */
+const RISE_PERCENT = 100;
+const RISE_SECONDS = 0.8;
 
 const REST_ROTATION = -6;
 
@@ -213,7 +215,12 @@ export default function FallenHand({
             // above, so the group simply renders where it comes to rest.
             duration: RISE_SECONDS,
             ease: "power3.out",
-            scrollTrigger: { trigger, start: "top bottom", once: true },
+            /* Reverses on the way back up, like the head — see PeekingHead. */
+            scrollTrigger: {
+              trigger,
+              start: "top bottom",
+              toggleActions: "play none none reverse",
+            },
           }
         );
       }
