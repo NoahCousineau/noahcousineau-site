@@ -4,6 +4,7 @@ import { Stage, Place } from "./Stage";
 import HeroLockup from "./HeroLockup";
 import RotatingHead from "../RotatingHead";
 import BehindHead from "./BehindHead";
+import ScrollCue from "./ScrollCue";
 import Parallax from "../Parallax";
 import { useTheme } from "../ThemeProvider";
 import { useIsPhone } from "@/lib/useIsPhone";
@@ -70,7 +71,7 @@ export default function Hero() {
      * between the top animation and the text area for more gravitas").
      */
     <div
-      className="w-full flex items-center justify-center"
+      className="w-full flex items-center justify-center relative"
       style={{
         minHeight: "100dvh",
         // The height term keeps a wide, short window from pushing the
@@ -83,6 +84,10 @@ export default function Hero() {
           : "min(100cqw / 1920, 100dvh / 1080)",
       }}
     >
+    {/* The scroll hint. Inside this wrapper on purpose: it anchors to the
+        hero's centre so it cannot drift against the lockup when a phone's
+        URL bar collapses — see ScrollCue. Outside the Stage, which clips. */}
+    <ScrollCue />
     <Stage heightUnits={L.stageH} className="overflow-hidden">
       {/* Red star (z-0), yellow star (z-1), blue star (z-20) and the pencil
           marks (z-30) — Noah's photographed paper cut-outs, replacing the

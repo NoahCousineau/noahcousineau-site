@@ -61,6 +61,11 @@ import { useIsCompact } from "@/lib/useIsPhone";
 
 /** Where the hand comes to rest, in degrees. Slightly nose-up so the finger
  * reads as pointing at the label rather than lying flat. */
+/** How far below its resting place the group starts, as a share of its own
+ *  height. See the rise note in the effect below. */
+const RISE_PERCENT = 12;
+const RISE_SECONDS = 0.75;
+
 const REST_ROTATION = -6;
 
 /** Hand width, artboard units — unchanged from the previous build. */
@@ -163,7 +168,7 @@ export default function FallenHand({
   nextHref,
 }: {
   /** The footer's scroll spacer; see above for why this and not the footer. */
-  triggerRef: React.RefObject<HTMLDivElement | null>;
+  triggerRef: React.RefObject<HTMLElement | null>;
   /** Destination for the label — the next project in the running order. */
   nextHref: string;
 }) {
@@ -186,6 +191,33 @@ export default function FallenHand({
     gsap.registerPlugin(ScrollTrigger);
 
     const ctx = gsap.context(() => {
+      /* UP OUT OF THE PAGE, WITH THE HEAD (2026-09-01). Noah, pointing at
+       * aardvarkbookclub.com: "an object animates upwards slightly when we
+       * reach the bottom of the page. I want a similar effect with the head
+       * and hand... it should almost feel like whack-a-mole."
+       *
+       * The whole group rises — hand, plank and the "next project" label
+       * together — because they are one object resting on the footer's floor,
+       * and lifting only the hand off its own plank would read as a mistake.
+       * Its resting place is untouched: this only says where it comes FROM.
+       * Smaller than the head's own rise, since this group is much taller and
+       * the same fraction would carry the label off the bottom of the page. */
+      const root = rootRef.current;
+      if (root) {
+        gsap.fromTo(
+          root,
+          { yPercent: RISE_PERCENT },
+          {
+            yPercent: 0,
+            // A reduced-motion reader never reaches here: the effect returns
+            // above, so the group simply renders where it comes to rest.
+            duration: RISE_SECONDS,
+            ease: "power3.out",
+            scrollTrigger: { trigger, start: "top bottom", once: true },
+          }
+        );
+      }
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger,

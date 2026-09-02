@@ -47,7 +47,7 @@ export default function ThemeToggle() {
       style={{
         // /20 -> /40, 2026-08-24: "move both the home page and the
         // sunglasses icon closer to the border of the browser window."
-        right: "calc(min(100vw, 1920px) / 40)",
+        right: "calc(100vw / 40)",
         /* `top-5` spelled out so --chrome-drop can be added to it (2026-08-25:
            "move the 'c' and toggle down by a small amount"). The variable is
            0 on a desktop, so this is the same 1.25rem it has always been;

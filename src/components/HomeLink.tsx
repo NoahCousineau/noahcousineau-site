@@ -54,10 +54,10 @@ export default function HomeLink() {
       aria-label="Back to home"
       title="Home"
       style={{
-        left: "calc(min(100vw, 1920px) / 40)",
+        left: "calc(100vw / 40)",
         // See the note below: the artboard unit spelled out, because `--u`
         // lives on <main> and this is fixed outside it.
-        top: "max(var(--home-mark-top-floor), calc(min(100vw, 1920px) / 1920 * 28.25 - 14.75px))",
+        top: "max(var(--home-mark-top-floor), calc(100vw / 1920 * 28.25 - 14.75px))",
       }}
       /* 2026-08-24, Noah: "move both the home page and the sunglasses icon
          closer to the border of the browser window to make them not

@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeadWithEyes from "./HeadWithEyes";
 import { useTheme } from "./ThemeProvider";
 import { headAsset, HEAD_LIGHT, type HeadAsset } from "@/lib/headAssets";
@@ -92,6 +95,23 @@ const EYE_ABOVE_BOTTOM_UNITS = LIGHT_HEIGHT_UNITS * (REVEAL_FRACTION - LIGHT_EYE
 
 export { PHONE_HEAD_WIDTH_UNITS };
 
+/*
+ * IT COMES UP OUT OF THE PAGE (2026-09-01).
+ *
+ * Noah, pointing at aardvarkbookclub.com: "an object animates upwards
+ * slightly when we reach the bottom of the page. I want a similar effect with
+ * the head and hand... Before that, I want the head to be lower than it
+ * currently is. When scrolling, it should almost feel like whack-a-mole or
+ * something coming up from below the page."
+ *
+ * So the head's resting place is untouched — it still ends exactly where it
+ * has always sat — and it simply starts this much further down and rises into
+ * it the first time the footer is reached. As a share of the head's own
+ * height, so it travels the same fraction of itself at every size.
+ */
+const RISE_PERCENT = 30;
+const RISE_SECONDS = 0.75;
+
 export default function PeekingHead({
   /** Horizontal centre, in artboard units. Defaults to the page centre; the
    * footer places it under its right-hand link columns instead (2026-08-20,
@@ -99,10 +119,14 @@ export default function PeekingHead({
    * link"). */
   centerXUnits = 960,
   widthUnits = HEAD_WIDTH_UNITS,
+  riseTriggerRef,
 }: {
   centerXUnits?: number;
   /** Overridden on phones — see PHONE_HEAD_WIDTH_UNITS. */
   widthUnits?: number;
+  /** What arriving at the footer looks like: the reveal spacer on desktop,
+   *  the footer itself on a phone, where there is no spacer. */
+  riseTriggerRef?: React.RefObject<HTMLElement | null>;
 }) {
   /* Sized from the CURRENT theme's own aspect rather than one fixed number.
    * With a single hardcoded height the shorter dark head was letterboxed
@@ -132,6 +156,38 @@ export default function PeekingHead({
    * side-to-side too (the dark crop's are ~1% of the head further left). */
   const eyeShiftUnits = widthUnits * (LIGHT_EYE.x - eye.x);
 
+  /* The rise lives on its own wrapper because the box above already carries a
+   * translateX for the eye alignment, and one transform would overwrite the
+   * other. */
+  const riseRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = riseRef.current;
+    const trigger = riseTriggerRef?.current;
+    if (!el || !trigger) return;
+    gsap.registerPlugin(ScrollTrigger);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        el,
+        { yPercent: RISE_PERCENT },
+        {
+          yPercent: 0,
+          duration: reduced ? 0 : RISE_SECONDS,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger,
+            /* The same instant the fallen hand uses: the footer's first
+               sliver appearing, which for the desktop curtain is the
+               spacer's top reaching the bottom of the window. */
+            start: "top bottom",
+            once: true,
+          },
+        }
+      );
+    });
+    return () => ctx.revert();
+  }, [riseTriggerRef]);
+
   return (
     <div
       className="absolute pointer-events-none select-none"
@@ -142,6 +198,7 @@ export default function PeekingHead({
         transform: `translateX(calc(-50% + var(--u) * ${eyeShiftUnits}))`,
       }}
     >
+      <div ref={riseRef}>
       <Link
         href="/about"
         aria-label="About me"
@@ -149,6 +206,7 @@ export default function PeekingHead({
       >
         <HeadWithEyes />
       </Link>
+      </div>
     </div>
   );
 }

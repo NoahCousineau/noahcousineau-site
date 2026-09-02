@@ -55,6 +55,32 @@ export default function RotatingHead({
    * and React is only told when a drag starts and stops — which is the only
    * thing it renders anything for. */
   const frameRef = useRef(0);
+  /* THE SAME DRAG SHOULD TURN THE HEAD THE SAME AMOUNT (2026-09-01).
+   *
+   * Noah: "the spinning head on mobile feels a bit laggy. It feels like a
+   * smoother animation on desktop, but on mobile it feels a little stiff."
+   *
+   * It is not paint — the canvas draw measures 0.1ms at its worst on a phone,
+   * and the head redraws about eight times a second either way. It is that
+   * `dragSensitivity` is a fixed number of PIXELS per frame, while the head
+   * itself is drawn at a fraction of the window. At 1512 the head renders 803px
+   * across and a 31-frame turn costs 620px of travel — most of one drag. On a
+   * 390 phone the head is 398px across and that same turn still costs 620px,
+   * which is wider than the screen: you cannot get even one rotation out of a
+   * full swipe, and every swipe you do make turns it half as far as it looks
+   * like it should. That reads exactly as stiff.
+   *
+   * Measuring the sensitivity against the head's own rendered width instead
+   * makes a drag across the head worth the same rotation at every size. The
+   * constant is the desktop feel Noah already likes, expressed as a fraction:
+   * 20px / 803px.
+   */
+  const sensitivityPx = useCallback(() => {
+    const w = canvasRef.current?.clientWidth ?? 0;
+    if (!w) return dragSensitivity;
+    return Math.max(4, dragSensitivity * (w / 803));
+  }, [dragSensitivity]);
+
   /** Frames per SECOND, so drag and friction are both measured against time. */
   const velRef = useRef(0);
   const draggingRef = useRef(false);
@@ -355,7 +381,7 @@ export default function RotatingHead({
 
   const moveDrag = (x: number) => {
     frameRef.current =
-      startRef.current.frame + (x - startRef.current.x) / dragSensitivity;
+      startRef.current.frame + (x - startRef.current.x) / sensitivityPx();
     const now = performance.now();
     const s = samplesRef.current;
     s.push({ x, t: now });
@@ -377,7 +403,7 @@ export default function RotatingHead({
          rather than the velocity it used to have. This is what stops a head
          you positioned deliberately from drifting off as you let go. */
       if (ms > 8 && performance.now() - last.t < 120) {
-        v = (last.x - first.x) / (ms / 1000) / dragSensitivity;
+        v = (last.x - first.x) / (ms / 1000) / sensitivityPx();
       }
     }
     velRef.current = Math.max(-MAX_VEL, Math.min(MAX_VEL, v));
@@ -434,14 +460,21 @@ export default function RotatingHead({
       if (claim === 0) {
         const dx = p.clientX - originX;
         const dy = p.clientY - originY;
-        // Under 6px is a fingertip resting, not a direction.
-        if (Math.hypot(dx, dy) < 6) return;
+        /* 6px -> 4px, and the travel that made the decision is no longer
+           thrown away. `beginDrag(originX)` starts the drag from where the
+           finger first landed rather than from where the direction became
+           readable, so those first few pixels turn the head instead of
+           vanishing into a dead zone. That gap is the other half of what
+           felt stiff next to the mouse, which has no threshold at all. */
+        if (Math.hypot(dx, dy) < 4) return;
         claim = Math.abs(dx) > Math.abs(dy) ? 1 : -1;
         if (claim === -1) {
           detach();
           return;
         }
-        beginDrag(p.clientX);
+        beginDrag(originX);
+        if (ev.cancelable) ev.preventDefault();
+        moveDrag(p.clientX);
         return;
       }
       // This gesture belongs to the head, and `{ passive: false }` below is

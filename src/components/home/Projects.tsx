@@ -244,7 +244,7 @@ function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits
             {cell.line2}
           </div>
           {/* Subtitle: 20u italic serif, single line, x1.5 on a phone */}
-          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left whitespace-nowrap" style={{ fontFamily: "var(--font-serif)", fontSize: `clamp(10px, calc(var(--u) * ${SUB_UNITS}), ${SUB_UNITS}px)`, width: `calc(var(--u) * ${TEXT_W})` }}>
+          <div className="italic lowercase mt-[calc(var(--u)*12)] text-left whitespace-nowrap" style={{ fontFamily: "var(--font-serif)", fontSize: `max(10px, calc(var(--u) * ${SUB_UNITS}))`, width: `calc(var(--u) * ${TEXT_W})` }}>
             {cell.disciplines}
           </div>
         </div>

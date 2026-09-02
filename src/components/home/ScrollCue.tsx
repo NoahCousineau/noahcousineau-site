@@ -58,7 +58,33 @@ const DELAY_MS = 15000;
  */
 const DESKTOP_SIZE_UNITS = 96;
 const PHONE_SIZE_VW = 10;
-const PHONE_BOTTOM_VH = 3.5;
+
+/*
+ * IT HAS TO MOVE WITH THE LOCKUP, NOT WITH THE WINDOW (2026-09-01).
+ *
+ * Noah: "On mobile, I noticed that the arrow 'jumps' up a bit when we scroll
+ * down." Scrolling on iOS collapses the URL bar and the viewport grows — and
+ * the two things move at DIFFERENT RATES. Measured at 390 wide, growing the
+ * viewport from 760 to 844: the lockup moved down 42px, the arrow moved down
+ * 81px, and the gap between them swung from 76px to 115px. The hero is
+ * `min-height: 100dvh` with its Stage centred inside, so the lockup travels
+ * at HALF the rate the viewport changes, while an arrow pinned to the bottom
+ * travels at the full rate.
+ *
+ * So the arrow is pinned to the hero's CENTRE instead, plus a fixed offset in
+ * artboard units. The centre is what the lockup is centred on, so the two now
+ * move together and the gap is constant at every URL-bar state — which is the
+ * jump, gone at its cause rather than damped.
+ *
+ * The offset is chosen from the SHORT state rather than the tall one: at 390
+ * wide it leaves the arrow 20px clear of the foot with the URL bar showing,
+ * and 70px clear with it hidden. `min()` against the hero's own bottom is the
+ * safety net for genuinely small phones, where there is not enough room below
+ * a centred lockup for any constant gap to fit.
+ */
+const PHONE_TRACK_UNITS = 805;
+/** Never closer than this to the foot of the hero, whatever the tracking says. */
+const PHONE_FLOOR_UNITS = 52;
 /** The exported artwork's aspect, so the box matches the picture exactly. */
 const ART_W = 387;
 const ART_H = 380;
@@ -76,40 +102,34 @@ export default function ScrollCue() {
 
   const width = phone
     ? `${PHONE_SIZE_VW}vw`
-    : `calc(min(100vw, 1920px) / 1920 * ${DESKTOP_SIZE_UNITS})`;
+    : `calc(100vw / 1920 * ${DESKTOP_SIZE_UNITS})`;
+
+  /* The picture's height, needed by the floor clamp below. */
+  const height = `calc(${width} * ${ART_H} / ${ART_W})`;
 
   const place: React.CSSProperties = phone
     ? {
         left: "50%",
-        bottom: `${PHONE_BOTTOM_VH}vh`,
         // Centring by margin, so the inner transforms stay free for the
         // bounce and the arrival.
         marginLeft: `calc(${width} / -2)`,
+        top: `min(calc(50% + var(--u) * ${PHONE_TRACK_UNITS}), calc(100% - ${height} - var(--u) * ${PHONE_FLOOR_UNITS}))`,
       }
     : {
-        right: "calc(min(100vw, 1920px) / 40)",
-        bottom: "calc(min(100vw, 1920px) / 40)",
+        right: "calc(100vw / 40)",
+        bottom: "calc(100vw / 40)",
       };
 
   return (
-    /* One screen tall, pinned to the top of the page and as wide as the
-       window, so its bottom-right corner IS the bottom-right of the first
-       screen. `svh` rather than `dvh` so a phone showing its browser chrome
-       still has the arrow on screen. The box only positions: it never paints
-       and never catches anything. */
-    <div
-      aria-hidden
-      className="absolute top-0 z-30 pointer-events-none"
-      style={{
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "100vw",
-        height: "100svh",
-      }}
-    >
+    /* Rendered INSIDE the hero (see Hero.tsx), so `50%` and `100%` here are
+       the hero's own box — the same box the lockup is centred in, and the
+       whole point of the anchoring note above. It also inherits the hero's
+       `--u`, which is the phone artboard unit on a phone. */
+    <>
       <div
         data-scroll-cue
-        className="absolute"
+        aria-hidden
+        className="absolute z-30 pointer-events-none"
         style={{
           ...place,
           width,
@@ -137,6 +157,6 @@ export default function ScrollCue() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

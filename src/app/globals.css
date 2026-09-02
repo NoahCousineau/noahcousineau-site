@@ -531,7 +531,7 @@ html {
        change the title size and the chrome moves with it. 32 is the parts
        that do not scale (16 padding + 10 gap + 6 rule weight). */
     --section-rule-bottom: calc(
-      min(100vw, 1920px) / 1920 * (32 + 26.67 * var(--descriptor-scale))
+      100vw / 1920 * (32 + 26.67 * var(--descriptor-scale))
     );
     --chrome-drop: calc(var(--section-rule-bottom) + 6px - 13.25px);
     --home-mark-top-floor: calc(13.25px + var(--chrome-drop));
@@ -607,17 +607,25 @@ html {
  * The overshoot in the timing function is what makes it read as arriving
  * rather than merely appearing.
  */
+/* THE PASSWORD HAND'S ARRIVAL, SMALLER (2026-09-01). Noah: "It should feel
+   like how the hand password came forward. I don't want it nearly as big, but
+   the same motion of far back to suddenly stopping is what I want."
+
+   So it is that motion exactly, not an approximation of it: PasswordHand
+   tweens scale 0 -> 1 over 0.85s on gsap's `power3.out`, and the cubic-bezier
+   below IS power3.out (easeOutCubic). Straight out of nothing, decelerating
+   hard into a stop.
+
+   The overshoot that used to be here is gone. A bezier that ends past 1 and
+   settles back reads as a bounce, and the hand does not bounce — it stops.
+   The fade went with it: at scale 0 there is nothing to see anyway, and
+   fading as well softened the very arrival Noah is describing. */
 @keyframes nc-cue-pop {
   from {
-    transform: scale(0.08);
-    opacity: 0;
-  }
-  60% {
-    opacity: 1;
+    transform: scale(0);
   }
   to {
     transform: scale(1);
-    opacity: 1;
   }
 }
 
@@ -645,13 +653,14 @@ html {
    relayout at exactly the wrong moment. `backface-visibility` is the old
    belt-and-braces for the same promotion on Safari. */
 .nc-cue-pop {
-  animation: nc-cue-pop 620ms cubic-bezier(0.16, 1.02, 0.3, 1.24) both;
+  animation: nc-cue-pop 850ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
   will-change: transform, opacity;
   backface-visibility: hidden;
 }
 
 .nc-cue-bounce {
-  animation: nc-cue-bounce 2.1s 700ms ease-in-out infinite;
+  /* Waits for the arrival to land before it starts breathing. */
+  animation: nc-cue-bounce 2.1s 900ms ease-in-out infinite;
   will-change: transform;
   backface-visibility: hidden;
 }

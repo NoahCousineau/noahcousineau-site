@@ -1,7 +1,6 @@
 import Hero from "@/components/home/Hero";
 import Description from "@/components/home/Description";
 import Projects from "@/components/home/Projects";
-import ScrollCue from "@/components/home/ScrollCue";
 
 /*
   HOMEPAGE — faithful reproduction of Noah's multi-artboard Illustrator sketch.
@@ -22,14 +21,12 @@ import ScrollCue from "@/components/home/ScrollCue";
 export default function Home() {
   return (
     <main
-      className="artboard mx-auto w-full max-w-[1920px]"
+      className="artboard mx-auto w-full"
       style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
     >
       <Hero />
       <Description />
       <Projects />
-      {/* Anchored to the first screen and scrolls away with it — see ScrollCue. */}
-      <ScrollCue />
     </main>
   );
 }

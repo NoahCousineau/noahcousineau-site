@@ -111,5 +111,13 @@ export function uFont(units: number): string {
  * desktop width moves.
  */
 export function uFontMin(units: number, minPx: number): string {
-  return `clamp(${minPx}px, calc(var(--u) * ${units}), ${units}px)`;
+  /* A FLOOR, NOT A WINDOW (2026-09-01). This used to clamp on BOTH sides,
+     and the upper bound was `${units}px` — which is exactly the size the
+     artboard unit produces at 1920. So it did nothing at all up to 1920 and
+     then froze the type at every width above it. Noah, on a large monitor:
+     "let's have the whole page scale up when the display gets very large. It
+     should look like our normal desktop size even when the monitor is huge."
+     The floor is the half that was ever doing anything — it keeps small type
+     legible on a narrow window — so the floor stays and the ceiling goes. */
+  return `max(${minPx}px, calc(var(--u) * ${units}))`;
 }

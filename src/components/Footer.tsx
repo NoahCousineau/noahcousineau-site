@@ -206,6 +206,12 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
   // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
   // — which does scroll — is what tells the fallen hand it has arrived.
   const spacerRef = useRef<HTMLDivElement>(null);
+  /* What "arriving at the footer" is depends on the tier: on desktop the
+     footer is fixed and the SPACER is the thing that scrolls past, while on a
+     phone there is no spacer and the footer itself scrolls into view. Both
+     rises key off whichever one exists — see PeekingHead. */
+  const footerRef = useRef<HTMLElement>(null);
+  const riseTriggerRef = phone ? footerRef : spacerRef;
   return (
     <>
       {/* Reserves the scroll distance through which the content uncovers
@@ -290,6 +296,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           instead of computing a height from any vh-flavoured unit at all,
           so there's no unit to fall short regardless of toolbar state. */}
       <footer
+        ref={footerRef}
         className={`bg-[color:var(--color-ink)] text-[color:var(--color-paper)] flex flex-col justify-start overflow-hidden ${
           phone ? "relative w-full" : "fixed inset-0 z-0"
         }`}
@@ -306,7 +313,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
         style={phone ? { height: "100dvh" } : undefined}
       >
       <div
-        className="artboard relative mx-auto max-w-[1920px] w-full h-full"
+        className="artboard relative mx-auto w-full h-full"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
         {/* Scenery at the bottom edge; pointer-events off so it can never
@@ -337,10 +344,11 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           <PeekingHead
             centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
             widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
+            riseTriggerRef={riseTriggerRef}
           />
         )}
         {nextProjectHref && (
-          <FallenHand triggerRef={spacerRef} nextHref={nextProjectHref} />
+          <FallenHand triggerRef={riseTriggerRef} nextHref={nextProjectHref} />
         )}
         {/* CLEAR THE DROPPED CHROME (2026-08-31, the third place this bit).
             Between 768 and 1439 the C mark and the theme toggle are pushed

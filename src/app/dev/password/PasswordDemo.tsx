@@ -46,7 +46,7 @@ export default function PasswordDemo() {
   return (
     <>
       <main
-        className="js-password-backdrop mx-auto w-full max-w-[1920px]"
+        className="js-password-backdrop mx-auto w-full"
         aria-hidden
         style={{
           containerType: "inline-size",
