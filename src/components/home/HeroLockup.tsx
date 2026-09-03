@@ -11,6 +11,9 @@ export default function HeroLockup({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 713.29 288.01"
+      /* Tagged so the scroll cue can measure where this ends and keep itself
+         clear of it — see ScrollCue. */
+      data-hero-lockup
       className={className}
       style={{ width: "100%", height: "auto", display: "block", fill: "var(--color-ink)" }}
       role="img"

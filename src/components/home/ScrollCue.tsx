@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useIsPhone } from "@/lib/useIsPhone";
 
 /**
@@ -82,9 +82,40 @@ const PHONE_SIZE_VW = 10;
  * safety net for genuinely small phones, where there is not enough room below
  * a centred lockup for any constant gap to fit.
  */
-const PHONE_TRACK_UNITS = 805;
-/** Never closer than this to the foot of the hero, whatever the tracking says. */
+/*
+ * MEASURED AGAINST THE LOCKUP, NOT GUESSED (2026-09-03). Noah: "the red
+ * downward arrow on the mobile homepage will still conflict with the
+ * 'graphic design' text at times. Let's just ensure that this doesn't
+ * happen."
+ *
+ * The previous version tracked the hero's centre with a hand-tuned offset,
+ * which held the gap constant as the URL bar moved but had no idea where the
+ * lockup actually ended — and its floor clamp measured against the HERO's
+ * height, which on a short window is taller than the window itself. Mapped
+ * across 42 phone viewports: the gap was a healthy 61-82px on tall ones and
+ * went NEGATIVE at 375/390/414/430 x 568, with the arrow pushed 31-55px off
+ * the bottom at the two widest. An iPhone SE showing Safari's chrome is about
+ * 375x553, which is exactly that corner.
+ *
+ * So the lockup is measured and the arrow is placed below it. Two numbers come
+ * out of that: an offset from the hero's CENTRE (so the gap survives the URL
+ * bar moving, which was the earlier fix and still matters), and a width that
+ * shrinks if the room below the lockup cannot take the full-size arrow. On a
+ * screen too short even for the smallest, it steps aside rather than sit on
+ * the headline — the hint is worth least exactly there, where the fold is
+ * already inches away.
+ */
+/** Clear space between the foot of the lockup and the top of the arrow, and
+ *  the least it may be squeezed to on a cramped screen before the arrow
+ *  itself starts giving up size. Both are wanted: at the ideal gap alone an
+ *  iPhone SE has no room at all and the arrow would never appear there, and
+ *  at the minimum alone every roomy phone would look pinched. */
+const PHONE_GAP_UNITS = 190;
+const PHONE_MIN_GAP_UNITS = 70;
+/** And between the foot of the arrow and the bottom of the window. */
 const PHONE_FLOOR_UNITS = 52;
+/** Below this the arrow is too small to read as a pointer; hide it instead. */
+const PHONE_MIN_VW = 6;
 /** The exported artwork's aspect, so the box matches the picture exactly. */
 const ART_W = 387;
 const ART_H = 380;
@@ -94,6 +125,68 @@ export default function ScrollCue() {
      corner, which is what the sketch draws for it. */
   const phone = useIsPhone();
   const [entered, setEntered] = useState(false);
+  /** {offsetFromHeroCentre, widthPx} once the lockup has been measured. */
+  const [fit, setFit] = useState<{ top: number; width: number } | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const measure = useCallback(() => {
+    if (!phone) {
+      setFit(null);
+      return;
+    }
+    const box = boxRef.current;
+    const hero = box?.offsetParent as HTMLElement | null;
+    const lockup = hero?.querySelector<SVGElement>("[data-hero-lockup]");
+    if (!box || !hero || !lockup) return;
+    const heroRect = hero.getBoundingClientRect();
+    const u = heroRect.width / 1000; // the phone hero's own artboard unit
+    if (!u) return;
+    // Hero-relative, so the answer does not depend on where the page is
+    // scrolled to at the moment of measuring.
+    const lockupBottom = lockup.getBoundingClientRect().bottom - heroRect.top;
+    const floor = PHONE_FLOOR_UNITS * u;
+    /* The hero's top IS the top of the page, so the window's bottom edge sits
+       one viewport height down it. */
+    const avail = window.innerHeight - lockupBottom - floor;
+    const full = (PHONE_SIZE_VW / 100) * heroRect.width;
+    /* Spend the room in the order that keeps it looking right: the arrow gets
+       its full size first, the gap gives way down to its minimum, and only
+       then does the arrow shrink. */
+    let gap = PHONE_GAP_UNITS * u;
+    let height = full * (ART_H / ART_W);
+    if (gap + height > avail) {
+      gap = Math.max(PHONE_MIN_GAP_UNITS * u, avail - height);
+      if (gap + height > avail) height = avail - gap;
+    }
+    const width = height * (ART_W / ART_H);
+    if (width < (PHONE_MIN_VW / 100) * heroRect.width) {
+      setFit(null);
+      return;
+    }
+    setFit({ top: lockupBottom + gap - heroRect.height / 2, width });
+  }, [phone]);
+
+  const measuredWidth = useRef(-1);
+  useLayoutEffect(() => {
+    measure();
+    /* WIDTH ONLY. A phone's URL bar collapsing fires `resize` with a new
+       HEIGHT, and re-fitting on that would change the gap mid-scroll — the
+       drift this component was rebuilt to remove. The position is anchored to
+       the hero's centre, which moves with the lockup, so a height change needs
+       no new measurement. A width change genuinely does: it changes the unit,
+       the lockup's size and the arrow's own. */
+    const onResize = () => {
+      if (window.innerWidth === measuredWidth.current) return;
+      measuredWidth.current = window.innerWidth;
+      measure();
+    };
+    measuredWidth.current = window.innerWidth;
+    window.addEventListener("resize", onResize);
+    /* Fonts can change the lockup's box; it is an SVG here, but re-measuring
+       once they land costs nothing and covers the case where it is not. */
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => window.removeEventListener("resize", onResize);
+  }, [measure]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setEntered(true), DELAY_MS);
@@ -101,7 +194,7 @@ export default function ScrollCue() {
   }, []);
 
   const width = phone
-    ? `${PHONE_SIZE_VW}vw`
+    ? `${fit ? fit.width : (PHONE_SIZE_VW / 100) * 390}px`
     : `calc(100vw / 1920 * ${DESKTOP_SIZE_UNITS})`;
 
   /* The picture's height, needed by the floor clamp below. */
@@ -113,7 +206,10 @@ export default function ScrollCue() {
         // Centring by margin, so the inner transforms stay free for the
         // bounce and the arrival.
         marginLeft: `calc(${width} / -2)`,
-        top: `min(calc(50% + var(--u) * ${PHONE_TRACK_UNITS}), calc(100% - ${height} - var(--u) * ${PHONE_FLOOR_UNITS}))`,
+        /* Off the hero's CENTRE, which is the point the lockup is centred on
+           too — so the gap between them survives the URL bar collapsing
+           without anything having to be measured again. */
+        top: `calc(50% + ${fit ? fit.top : 0}px)`,
       }
     : {
         right: "calc(100vw / 40)",
@@ -127,6 +223,7 @@ export default function ScrollCue() {
        `--u`, which is the phone artboard unit on a phone. */
     <>
       <div
+        ref={boxRef}
         data-scroll-cue
         aria-hidden
         className="absolute z-30 pointer-events-none"
@@ -134,8 +231,8 @@ export default function ScrollCue() {
           ...place,
           width,
           aspectRatio: `${ART_W} / ${ART_H}`,
-          opacity: entered ? 1 : 0,
-          visibility: entered ? "visible" : "hidden",
+          opacity: entered && (!phone || fit) ? 1 : 0,
+          visibility: entered && (!phone || fit) ? "visible" : "hidden",
         }}
       >
         {/* Outer: the slow bounce. Inner: the arrival. Two elements because
