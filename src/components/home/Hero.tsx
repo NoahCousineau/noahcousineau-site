@@ -113,7 +113,12 @@ export default function Hero() {
           <RotatingHead
             isDarkMode={theme === "dark"}
             variant="staggered"
-            autoRotateSpeed={130}
+            /* 2026-09-03, Noah: "can we try spinning the head on the mobile
+               homepage just a little faster? I just want to test what this
+               looks like." The number is MILLISECONDS PER FRAME, so smaller
+               is faster: 130 is about 7.7 frames a second and 100 is 10, a
+               third quicker. Phone only — desktop is unchanged. */
+            autoRotateSpeed={phone ? 100 : 130}
             containerClassName="w-auto h-auto"
           />
         </Parallax>

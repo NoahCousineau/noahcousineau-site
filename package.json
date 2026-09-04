@@ -15,7 +15,8 @@
     "qa:settle": "node qa/header-settle.mjs",
     "qa:footer": "node qa/footer-overlap.mjs",
     "qa:jitter": "node qa/header-jitter.mjs",
-    "qa:throws": "node qa/throw-settle.mjs"
+    "qa:throws": "node qa/throw-settle.mjs",
+    "qa:slow": "node qa/slow-network.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

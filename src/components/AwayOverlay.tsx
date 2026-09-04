@@ -172,7 +172,33 @@ export default function AwayOverlay({
   // Always starts hidden, including in server-rendered HTML, so a page
   // opened in a background tab hydrates clean.
   const [awayState, setAway] = useState(false);
+  /*
+   * THE CLOCK DOES NOT DOWNLOAD UNTIL IT IS WANTED (2026-09-03).
+   *
+   * Noah, from somewhere with bad wifi: "the website isn't functioning as
+   * well. Let's make sure that the loading page gets the main page ready to
+   * scroll down."
+   *
+   * Measured what the home page actually fetches before the curtain lifts:
+   * 7.53MB, and 1.83MB of it is this clock — body.png at 1072KB, the minute
+   * hand at 562KB, the hour hand at 194KB. A quarter of the download, for a
+   * screen that appears after forty-five seconds of idling or when the reader
+   * leaves the tab, and which many will never see at all. The loader does not
+   * WAIT for it (it only watches `main`), but the bytes still compete for the
+   * connection with the ones it does wait for, so on a slow link this made
+   * every page slower to open for nothing.
+   *
+   * Latched rather than tied to `away` directly: once the screen has been
+   * shown it stays mounted, so it appears instantly every time after the
+   * first. The first appearance is the only one that has to fetch, and it is
+   * a full-screen takeover with nothing behind it to be late for.
+   */
+  const [clockWanted, setClockWanted] = useState(false);
   const away = forceOpen || awayState;
+  /* Latch: the first time the screen is wanted, the clock mounts and stays. */
+  useEffect(() => {
+    if (away) setClockWanted(true);
+  }, [away]);
 
   /* Announce the away screen so the rest of the site can stand itself back up
    * behind it (2026-08-22, per Noah: "It would also be good if the animations
@@ -445,7 +471,7 @@ export default function AwayOverlay({
               className="absolute"
               style={{ width: "153%", height: "153%", left: "-26.5%", top: "-26.5%" }}
             >
-              <MickeyWatch />
+              {clockWanted && <MickeyWatch />}
             </div>
           </div>
           {/* Top arc: "IT'S TIME TO" — letters grow outward from the baseline. */}

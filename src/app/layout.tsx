@@ -8,6 +8,7 @@ import ThemeProvider, { THEME_INIT_SCRIPT } from "@/components/ThemeProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 import HomeLink from "@/components/HomeLink";
 import GateOverlay from "@/components/GateOverlay";
+import TiltPrimer from "@/components/TiltPrimer";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -67,6 +68,8 @@ export default function RootLayout({
             src/proxy.ts is unchanged and still protects a URL typed
             directly — see the note in GateOverlay. */}
         <GateOverlay />
+        {/* Asks for motion access on every page — see TiltPrimer. */}
+        <TiltPrimer />
         </ThemeProvider>
       </body>
     </html>

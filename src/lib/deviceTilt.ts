@@ -145,6 +145,32 @@ function start() {
 }
 
 /**
+ * ASK FOR ORIENTATION WITHOUT WANTING THE READINGS (2026-09-03).
+ *
+ * Noah: "can we also always make sure the mobile user is prompted with motion
+ * controls when they first open the site? Sometimes the site asks for mobile
+ * controls, other times it doesn't. Let's just make sure it asks the mobile
+ * user once each time they load any part of the overall website."
+ *
+ * The ask used to be a side effect of something SUBSCRIBING — the header's
+ * icon pile, the home grid's objects, the footer head's eyes — so which pages
+ * asked depended on which of those happened to be mounted. This makes it a
+ * property of the site instead: mounted once in the root layout, every page
+ * asks, and nothing has to want the readings for the reader to be offered
+ * them. See TiltPrimer.
+ *
+ * WHAT THIS CANNOT DO, and it is worth being straight about: iOS remembers
+ * the answer per site. Once granted it never shows the sheet again — the
+ * readings simply start arriving — and once denied it will not re-ask at all,
+ * from anywhere. So this guarantees the site always ASKS; whether a dialog
+ * appears is the browser's to decide.
+ */
+export function primeTilt(): void {
+  if (typeof window === "undefined") return;
+  start();
+}
+
+/**
  * Hear about the device's tilt. Returns an unsubscribe function.
  *
  * Safe to call on the server and on a desktop: it simply never fires.

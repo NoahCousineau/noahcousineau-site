@@ -61,6 +61,38 @@ const MAX_WAIT_MS = 14000;
  * this is what stops the curtain lifting on a page that is about to grow to
  * five times its height. Three consecutive quiet polls at 100ms. */
 const STABLE_POLLS_REQUIRED = 3;
+
+/*
+ * HOW MUCH OF THE PAGE IS "READY TO SCROLL" (2026-09-03).
+ *
+ * Noah, on bad wifi: "the website isn't functioning as well. Let's make sure
+ * that the loading page gets the main page ready to scroll down."
+ *
+ * The wait used to cover one and a half screens, and below that nothing was
+ * even FETCHED — a lazy image only starts loading when it nears the viewport,
+ * and nothing nears the viewport while the curtain is up and the page cannot
+ * scroll. So on a fast connection the reader scrolled into images that
+ * arrived instantly and never noticed; on a slow one they scrolled into
+ * blanks. Waiting longer alone would not have helped, because there was
+ * nothing in flight to wait for.
+ *
+ * So the first few screens are PRIMED — told to fetch now, while the curtain
+ * is still up. Priming and WAITING are deliberately different distances,
+ * because making them the same was the first attempt and it was worse than
+ * the problem: waiting three screens deep put the loader at 16.9s on fast 3G
+ * and 44.8s on slow 3G. Nobody watches a worm for forty-five seconds to be
+ * told a page is ready.
+ *
+ * Priming three screens and waiting one and a half means the curtain lifts on
+ * the same terms it always did — everything the reader can actually SEE is
+ * there — while the next two screens are already in flight behind it. By the
+ * time a thumb gets to them they have had the whole loader plus the scroll to
+ * arrive, instead of starting from nothing at the moment they are reached.
+ * That is the difference Noah is feeling on bad wifi, and it costs the fast
+ * case nothing.
+ */
+const PRIME_SCREENS = 3;
+const WAIT_SCREENS = 1.5;
 const POLL_INTERVAL_MS = 100;
 
 export default function PageLoader() {
@@ -167,10 +199,18 @@ function PageLoaderInner() {
       const all = Array.from(
         root.querySelectorAll<HTMLImageElement | HTMLVideoElement>("img, video")
       );
-      const horizon = window.innerHeight * 1.5;
+      const primeTo = window.innerHeight * PRIME_SCREENS;
+      const waitTo = window.innerHeight * WAIT_SCREENS;
       return all.filter((el) => {
         if (el instanceof HTMLImageElement && el.loading === "lazy") {
-          return el.getBoundingClientRect().top < horizon;
+          const top = el.getBoundingClientRect().top;
+          /* Flipping this off `lazy` is what actually starts the fetch. Left
+             lazy, an image three screens down waits for a scroll that cannot
+             happen yet — so it was not merely late, it had not been asked
+             for. */
+          if (top < primeTo) el.loading = "eager";
+          // ...but only the near ones are worth HOLDING the curtain for.
+          return top < waitTo;
         }
         return true;
       });
