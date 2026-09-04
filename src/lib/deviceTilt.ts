@@ -105,7 +105,16 @@ function start() {
    * Capture phase, so a handler that stops propagation on its own element
    * cannot quietly cost the reader the feature.
    */
-  const GESTURES = ["touchend", "pointerup", "click"] as const;
+  /* `touchstart` first, deliberately. Noah: "I would like for the mobile user
+   * to be prompted with the motion control request screen right when they
+   * first load the site." iOS will not let anything ask outside a user
+   * gesture, so the earliest possible moment is the reader's first touch —
+   * and waiting for `touchend` means a reader who lands and immediately
+   * scrolls may not be asked for a while, or at all, since a scroll's touchend
+   * does not always carry an activation. If touchstart turns out not to carry
+   * one either, nothing is lost: the ask fails, the listeners stay, and the
+   * touchend or click a moment later tries again. */
+  const GESTURES = ["touchstart", "touchend", "pointerdown", "pointerup", "click"] as const;
   /* Captured after the guard above: `ask` is a hoisted function declaration,
      and TypeScript will not carry the narrowing of `DOE` into it. */
   const doe = DOE;

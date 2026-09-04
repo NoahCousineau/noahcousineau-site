@@ -5,6 +5,7 @@ import HeadWithEyes from "@/components/HeadWithEyes";
 import { useTheme } from "@/components/ThemeProvider";
 import { headAsset } from "@/lib/headAssets";
 import { useIsPhone } from "@/lib/useIsPhone";
+import { subscribeTilt } from "@/lib/deviceTilt";
 
 /*
  * RAGDOLL HEAD — grab it, drag it, throw it. On release it keeps the
@@ -213,6 +214,21 @@ export default function RagdollHead({
   containerRef: React.RefObject<HTMLElement | null>;
 }) {
   const phone = useIsPhone();
+
+  /* Subscribe on a phone only — see the gravityDir note above. */
+  useEffect(() => {
+    if (!phone) return;
+    return subscribeTilt((t) => {
+      const m = Math.hypot(t.x, t.y);
+      const next = m > 0.05 ? { x: t.x / m, y: t.y / m } : { x: 0, y: 1 };
+      const moved = Math.hypot(
+        next.x - gravityDir.current.x,
+        next.y - gravityDir.current.y
+      );
+      gravityDir.current = next;
+      if (moved > 0.02) asleep.current = false;
+    });
+  }, [phone]);
   const headWidthUnits = phone ? PHONE_HEAD_WIDTH_UNITS : HEAD_WIDTH_UNITS;
   const wrapRef = useRef<HTMLDivElement>(null);
   const rotationRef = useRef<number>(BASE_ROTATION_DEG);
@@ -223,6 +239,26 @@ export default function RagdollHead({
   const spin = useRef(0);
   const dragging = useRef(false);
   const asleep = useRef(true);
+  /*
+   * WHICH WAY IS DOWN, ON A PHONE (2026-09-04).
+   *
+   * Noah: "make sure that all project and the relevant motion-control sites
+   * work in mobile. Sometimes the pages load on mobile but there's no motion
+   * control."
+   *
+   * Measured page by page: every project header tilted, the home grid tilted,
+   * and /about did not — because this head has its own physics and was the one
+   * throwable object on the site that never subscribed. The permission was
+   * being granted there and nothing was listening, which is exactly the
+   * "loads but no motion" case.
+   *
+   * Same treatment as the grid objects in useThrowable: a unit vector for
+   * gravity, straight down until a phone says otherwise, and a wake on any
+   * real change — a sleeping body does not integrate gravity at all, so
+   * turning the phone would otherwise change the direction of a force nothing
+   * was reading.
+   */
+  const gravityDir = useRef({ x: 0, y: 1 });
   const rafRef = useRef<number | null>(null);
   const lastTs = useRef<number | null>(null);
   const samples = useRef<{ x: number; y: number; t: number }[]>([]);
@@ -484,7 +520,11 @@ export default function RagdollHead({
       if (asleep.current && !dragging.current) return;
 
       if (!dragging.current) {
-        vel.current.y += GRAVITY * dt;
+        /* Along the gravity vector rather than straight down. With the default
+           {0, 1} this is arithmetically identical to the single line it
+           replaces, so desktop is untouched. */
+        vel.current.x += GRAVITY * gravityDir.current.x * dt;
+        vel.current.y += GRAVITY * gravityDir.current.y * dt;
         const drag = Math.max(0, 1 - AIR_DRAG * dt);
         vel.current.x *= drag;
         vel.current.y *= drag;
