@@ -237,6 +237,42 @@ const DESCRIPTOR_GAP_UNITS = 10;
  * well and exactly the content 100 wastes the most on. */
 const IMAGE_QUALITY = 85;
 
+/*
+ * THE `fit` CELLS WERE SHIPPING THE ORIGINALS (2026-09-03).
+ *
+ * Noah, on bad wifi: "I saw that some content isn't loading."
+ *
+ * Measured on /work/socal-earth: 11.4MB of images, and 8.5MB of it served
+ * straight from /assets — full-resolution PNGs, six of them over a megabyte,
+ * going to a phone at their print size. Thirty-one of the page's forty-nine
+ * images had still not arrived after scrolling the whole way down on a
+ * throttled connection, with zero failed requests. Nothing was broken; there
+ * was simply far more to fetch than the connection could carry.
+ *
+ * The cause is two branches below that use a plain <img> instead of
+ * next/image, and for a good reason: they let the browser size the element
+ * from the file's own dimensions, which is what makes a cell's rules hug its
+ * picture instead of cropping it. That reason is about LAYOUT, and it does not
+ * require the original bytes — so the same markup now points at Next's
+ * optimiser, which returns the same aspect ratio at a sane size. The height
+ * still follows the picture; there is just far less of it to send.
+ *
+ * They were also eager, having no `loading` attribute at all, so the loading
+ * screen sat waiting for every one of them on every project page.
+ */
+const OPT_WIDTHS = [640, 750, 828, 1080, 1200, 1920];
+function optimised(path: string) {
+  const at = (w: number) =>
+    `/_next/image?url=${encodeURIComponent(path)}&w=${w}&q=${IMAGE_QUALITY}`;
+  return {
+    src: at(1920),
+    srcSet: OPT_WIDTHS.map((w) => `${at(w)} ${w}w`).join(", "),
+    /* The same sizes the scaled cells already declare, so both paths ask the
+       optimiser for the same widths at the same breakpoints. */
+    sizes: "(max-width: 640px) 100vw, (max-width: 1440px) 100vw, 1500px",
+  };
+}
+
 /**
  * ScaledMedia — renders the cell's media at a percentage of its natural
  * cell-filling size, matching the grid editor's 20–200% range exactly.
@@ -370,8 +406,10 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           // bottom — never stretching the image or cropping from the top).
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/assets/${slug}/${cell.file}`}
+            {...optimised(`/assets/${slug}/${cell.file}`)}
             alt={cell.alt || ""}
+            loading="lazy"
+            decoding="async"
             className={`w-full h-full object-cover object-top${cell.invertOnDark ? " invert-on-dark" : ""}`}
             style={{ display: "block", lineHeight: 0 }}
           />
@@ -384,8 +422,10 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           // image being force-cropped into a fixed-height box.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/assets/${slug}/${cell.file}`}
+            {...optimised(`/assets/${slug}/${cell.file}`)}
             alt={cell.alt || ""}
+            loading="lazy"
+            decoding="async"
             className={`w-full h-auto${cell.invertOnDark ? " invert-on-dark" : ""}`}
             style={{ display: "block", lineHeight: 0, boxShadow: cell.shadow ? "0 6px 18px rgba(0,0,0,0.25)" : undefined }}
           />

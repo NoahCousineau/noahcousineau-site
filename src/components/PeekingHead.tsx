@@ -186,7 +186,27 @@ export default function PeekingHead({
      * On a phone it therefore watches for ITSELF arriving. Desktop keeps the
      * spacer, because there the footer is fixed and never travels past the
      * viewport at all. */
-    const trigger = riseSelfTrigger ? boxRef.current : riseTriggerRef?.current;
+    /* ON DESKTOP THE FOOTER IS BEHIND A CURTAIN (2026-09-03). Noah: "I'm not
+     * seeing the head in the footer pop up on the desktop footer."
+     *
+     * It was popping up — just not where anyone could watch. The desktop
+     * footer is fixed at full height BEHIND .site-content, which slides up to
+     * uncover it, and the rise was keyed to the spacer's "top bottom": the
+     * very start of that slide. Measured at 1512x900: at 70% of the page the
+     * rise had already finished while the curtain still covered everything
+     * down to y=869, and the head's top sits at y=689. The whole animation
+     * ran under an opaque layer and the reader met the settled pose, which is
+     * exactly what happened on the phone for a different reason.
+     *
+     * So the trigger is the curtain itself, and the moment is the curtain's
+     * BOTTOM edge passing the head's top — the instant the head is in the
+     * clear. Read live rather than declared, because where that is depends on
+     * the window and on the artboard scale. The phone keeps watching for its
+     * own box, since there is no curtain there at all. */
+    const curtain = riseSelfTrigger
+      ? null
+      : document.querySelector<HTMLElement>(".site-content");
+    const trigger = riseSelfTrigger ? boxRef.current : curtain ?? riseTriggerRef?.current;
     if (!el || !trigger) return;
     gsap.registerPlugin(ScrollTrigger);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -200,10 +220,12 @@ export default function PeekingHead({
           ease: "power3.out",
           scrollTrigger: {
             trigger,
-            /* The same instant the fallen hand uses: the footer's first
-               sliver appearing, which for the desktop curtain is the
-               spacer's top reaching the bottom of the window. */
-            start: "top bottom",
+            start: riseSelfTrigger
+              ? // A phone's footer scrolls normally: this box arriving IS the
+                // moment, and it is a full screen later than the footer's top.
+                "top bottom"
+              : // Desktop: the curtain's bottom edge reaching the head's top.
+                () => `bottom ${boxRef.current?.getBoundingClientRect().top ?? 0}px`,
             /* AND BACK DOWN AGAIN (2026-09-01). Noah: "I would also like for
                the interaction to play the opposite way when the user scrolls
                back up... the head/hand should feel like it's going away."
