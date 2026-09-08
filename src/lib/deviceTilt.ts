@@ -118,26 +118,73 @@ function start() {
   /* Captured after the guard above: `ask` is a hoisted function declaration,
      and TypeScript will not carry the narrowing of `DOE` into it. */
   const doe = DOE;
-  const MAX_ASKS = 5;
-  let asks = 0;
+  /*
+   * ONE TAP IS ONE ASK (2026-09-04).
+   *
+   * Noah, for the third time: "there's still a few issues when it comes to
+   * permissions for motion."
+   *
+   * Widening the gesture list is what broke it. A single tap fires all five —
+   * touchstart, pointerdown, pointerup, touchend, click — and each one called
+   * requestPermission, so one tap spent the entire budget of five. Measured
+   * against a Safari-like stub where the ask rejects without a live
+   * activation: tap 1 made five asks, taps 2, 3 and 4 made none at all. On
+   * iOS the early events in that cascade carry no activation, so the reader's
+   * FIRST tap exhausted the budget on calls that could never succeed, the
+   * listeners detached, and nothing asked again for the rest of the visit.
+   *
+   * Two things fix it. The budget now counts ATTEMPTS that got an answer and
+   * failed, rather than events. And a gesture is collapsed to a single ask by
+   * a short time window.
+   *
+   * The window is doing the real work, and an in-flight flag alone is not
+   * enough — that was tried and measured first. The five events are five
+   * separate TASKS, so the rejected promise's catch runs in the gap between
+   * them and clears the flag before the next one arrives: still five asks per
+   * tap. A window survives that because it does not depend on when the answer
+   * comes back. 700ms is far longer than the cascade, which is a few
+   * milliseconds wide, and shorter than any second tap a reader means as a
+   * second tap. The flag stays as well, for the case the window cannot see:
+   * an ask that is genuinely still open when the window expires.
+   */
+  let inFlight = false;
+  const GESTURE_WINDOW_MS = 700;
+  let lastAsk = 0;
+  /** Failed ATTEMPTS, not events. A device that can never satisfy the call
+   *  stops being asked; a reader whose first taps land badly does not. */
+  const MAX_FAILED = 10;
+  let failed = 0;
   const detach = () => {
     GESTURES.forEach((g) => window.removeEventListener(g, ask, { capture: true }));
   };
   function ask() {
-    if (asks >= MAX_ASKS) {
+    const now = Date.now();
+    // One gesture, one ask — however many events that gesture fires.
+    if (inFlight || now - lastAsk < GESTURE_WINDOW_MS) return;
+    lastAsk = now;
+    if (failed >= MAX_FAILED) {
       detach();
       return;
     }
-    asks += 1;
     let pending: Promise<"granted" | "denied"> | undefined;
     try {
+      inFlight = true;
       pending = doe.requestPermission?.();
     } catch {
-      return; // not a valid activation — leave the listeners for the next one
+      // Not a valid activation. Costs one attempt, and the listeners stay for
+      // the next gesture.
+      inFlight = false;
+      failed += 1;
+      return;
     }
-    if (!pending) return;
+    if (!pending) {
+      inFlight = false;
+      failed += 1;
+      return;
+    }
     pending
       .then((r) => {
+        inFlight = false;
         if (r === "granted") {
           detach();
           attach();
@@ -146,8 +193,10 @@ function start() {
         }
       })
       .catch(() => {
-        /* Deliberately empty AND deliberately not detaching: the ask did not
-           get through, so the next gesture should have another go. */
+        /* The ask did not get through, so the next gesture should have another
+           go — deliberately not detaching. */
+        inFlight = false;
+        failed += 1;
       });
   }
   GESTURES.forEach((g) => window.addEventListener(g, ask, { capture: true }));
