@@ -665,12 +665,31 @@ html {
   backface-visibility: hidden;
 }
 
+/* The little phone on the motion offer, rocking the way the sentence next to
+   it is asking the reader to rock theirs. See MotionPrompt.tsx. */
+@keyframes nc-motion-rock {
+  0%,
+  100% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(13deg);
+  }
+}
+
+.nc-motion-rock {
+  animation: nc-motion-rock 1.6s ease-in-out infinite;
+}
+
 /* The arrow is the message; the movement is only emphasis. */
 @media (prefers-reduced-motion: reduce) {
   .nc-cue-pop {
     animation: none;
   }
   .nc-cue-bounce {
+    animation: none;
+  }
+  .nc-motion-rock {
     animation: none;
   }
 }

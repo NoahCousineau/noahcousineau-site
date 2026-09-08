@@ -20,7 +20,7 @@
  */
 import { chromium } from "playwright-core";
 
-const BASE = process.env.QA_BASE || "http://localhost:3100";
+const BASE = process.env.QA_BASE || "http://localhost:3000";
 const CHROME =
   process.env.QA_CHROME ||
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -28,6 +28,28 @@ const PAGES = (
   process.env.QA_PAGES ||
   "/,/about,/work,/work/socal-earth,/work/sprouts-farmers-market,/work/corita-art-center,/work/cultural-olympiad-poster,/work/valley-strong-credit-union,/work/more-work"
 ).split(",");
+
+const PRECHECK = PAGES;
+/* Fail loudly if BASE is not this site — a stale server on the wrong port
+   answers 200 for `/` and 404 for everything else, and every count below
+   then reads as a clean sheet. See assertServesSite in harness.mjs. */
+for (const path of PRECHECK) {
+  let res;
+  try {
+    res = await fetch(BASE + path);
+  } catch (e) {
+    console.error(`\nNothing answering at ${BASE}${path} — ${e.message}\n`);
+    process.exit(2);
+  }
+  if (!res.ok) {
+    console.error(
+      `\n${BASE}${path} returned ${res.status}. Either QA_BASE points at ` +
+        `the wrong server, or this route no longer exists.\n`
+    );
+    process.exit(2);
+  }
+}
+
 
 /** Everything on the page that motion is supposed to move. */
 const MOVERS = `(() => {

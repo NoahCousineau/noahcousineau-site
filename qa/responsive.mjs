@@ -4,10 +4,15 @@
  *
  *   node qa/responsive.mjs
  */
-import { BASE, withBrowser } from "./harness.mjs";
+import { BASE, assertServesSite, withBrowser } from "./harness.mjs";
 
 const SIZES = { mobile: [390, 844], tablet: [834, 1112], desktop: [1512, 900] };
-const ROUTES = ["/", "/about", "/work", "/work/socal-earth", "/work/nobody-cares"];
+/* Real slugs only — the preflight below now enforces that. This list carried
+   "/work/nobody-cares" long after that project was removed, so a fifth of
+   every run was measuring the 404 page and reporting it clean. */
+const ROUTES = ["/", "/about", "/work", "/work/socal-earth", "/work/more-work"];
+
+await assertServesSite(ROUTES);
 
 await withBrowser(async (browser) => {
   let failures = 0;

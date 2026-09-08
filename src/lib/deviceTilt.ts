@@ -41,11 +41,70 @@ type Listener = (t: Tilt) => void;
 
 const listeners = new Set<Listener>();
 let started = false;
+
+/**
+ * WHAT THE ASK CURRENTLY AMOUNTS TO, for anything that wants to offer the
+ * reader a way in (see MotionPrompt).
+ *
+ *   unsupported — no orientation events here at all, or no gate to pass.
+ *   gated       — iOS, and nothing has come through yet. Either not asked
+ *                 yet, or asked and refused; iOS gives no way to tell those
+ *                 apart without asking, and asking is the thing being gated.
+ *   live        — readings are arriving. Nothing more to do.
+ *   denied      — iOS said no out loud. It will not ask again from here.
+ */
+export type TiltStatus = "unsupported" | "gated" | "live" | "denied";
+let status: TiltStatus = "unsupported";
+
+/**
+ * WHAT THIS PHONE SAID LAST TIME.
+ *
+ * iOS gives no way to read the current permission without asking, and asking
+ * needs a gesture — so on every fresh load a phone that granted access months
+ * ago looks exactly like one that has never been asked. Both sit at "gated"
+ * until the reader touches something. That is fine for the ask itself, which
+ * resolves silently in the granted case, but it is not fine for anything
+ * deciding whether to put a prompt on screen: it would offer a returning
+ * reader a button they already pressed, and offer a reader who said no a
+ * button that cannot work.
+ *
+ * So the answer is remembered when iOS gives one. Only ever a hint — the
+ * reader can change their mind in Settings and this would not know — which is
+ * why nothing behind the gate depends on it. The ask still runs on every
+ * load regardless; this only informs what is worth SHOWING.
+ */
+const ANSWER_KEY = "nc-tilt-answer";
+export function lastTiltAnswer(): "granted" | "denied" | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = localStorage.getItem(ANSWER_KEY);
+    return v === "granted" || v === "denied" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function rememberAnswer(v: "granted" | "denied") {
+  try {
+    localStorage.setItem(ANSWER_KEY, v);
+  } catch {
+    // Storage refused. The site works the same, it just re-offers.
+  }
+}
+const watchers = new Set<(s: TiltStatus) => void>();
+function setStatus(next: TiltStatus) {
+  if (status === next) return;
+  status = next;
+  for (const w of watchers) w(next);
+}
 /** The most recent reading, handed to anyone who subscribes later. */
 let latest: Tilt | null = null;
 
 function onOrient(e: DeviceOrientationEvent) {
   if (e.beta == null || e.gamma == null) return;
+  // A reading is the only proof that the whole chain works. Permission can be
+  // granted on a device whose sensors still report nothing, which from the
+  // reader's side is identical to being blocked.
+  setStatus("live");
   const rad = Math.PI / 180;
   // (sin gamma, sin beta) is the direction "down" points in the plane of the
   // screen — which is what both callers want, one as gravity and one as the
@@ -74,10 +133,14 @@ function start() {
   if (!DOE) return;
 
   if (typeof DOE.requestPermission !== "function") {
-    // Android and desktop: no gate, just listen.
+    // Android and desktop: no gate, just listen. Status stays "unsupported"
+    // until a reading actually lands, which is the honest reading of it —
+    // plenty of desktops have no sensor behind the event.
     attach();
     return;
   }
+
+  setStatus("gated");
 
   /* KEEP OFFERING UNTIL THERE IS AN ANSWER (2026-09-01).
    *
@@ -188,8 +251,11 @@ function start() {
         if (r === "granted") {
           detach();
           attach();
+          rememberAnswer("granted");
         } else if (r === "denied") {
           detach();
+          setStatus("denied");
+          rememberAnswer("denied");
         }
       })
       .catch(() => {
@@ -233,6 +299,24 @@ export function primeTilt(): void {
  *
  * Safe to call on the server and on a desktop: it simply never fires.
  */
+/** The state of the ask right now. */
+export function tiltStatus(): TiltStatus {
+  return status;
+}
+
+/**
+ * Hear when that state changes. Fires immediately with the current value, so
+ * a caller mounting late does not miss the transition it was waiting for.
+ */
+export function watchTiltStatus(cb: (s: TiltStatus) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  watchers.add(cb);
+  cb(status);
+  return () => {
+    watchers.delete(cb);
+  };
+}
+
 export function subscribeTilt(listener: Listener): () => void {
   if (typeof window === "undefined") return () => {};
   listeners.add(listener);

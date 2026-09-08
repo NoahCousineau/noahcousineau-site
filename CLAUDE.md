@@ -76,7 +76,16 @@ npm run build            # production build — run this after any layout change
 npm run lint
 npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/start running)
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
+npm run qa:motion        # motion permission + does anything actually move, page by page
 ```
+
+All QA scripts hit `http://localhost:3000` unless `QA_BASE` says otherwise, and
+each one now preflights its routes: a base that answers but is not this site
+(a stale server on the port), or a route that no longer exists, stops the run
+with exit 2 instead of quietly measuring 404s. That had been happening —
+`qa:responsive` was testing a removed project page and calling it clean, and
+`qa:assets` reported "All 0 images decoded" as a pass. If you add a route to a
+check, use one that exists.
 
 `http://localhost:3000/dev/mobile` — every route in live phone-sized frames,
 side by side, with a device and zoom control. Dev only (404s in production).

@@ -5,8 +5,10 @@
  *
  *   node qa/assets.mjs
  */
-import { BASE, withBrowser } from "./harness.mjs";
+import { BASE, assertServesSite, withBrowser } from "./harness.mjs";
 import projects from "../src/content/projects.json" with { type: "json" };
+
+await assertServesSite([`/work/${projects[0].slug}`]);
 
 await withBrowser(async (browser) => {
   const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 } });
@@ -37,6 +39,9 @@ await withBrowser(async (browser) => {
     });
 
     checked += total;
+    /* A project page with no images at all is not a page that passed. This
+       is how the wrong-server run looked from in here. */
+    if (!total) bad.push({ slug, broken: ["(no <img> on the page at all)"] });
     if (broken.length) bad.push({ slug, broken });
     console.log(`${slug.padEnd(28)} ${total - broken.length}/${total} loaded`);
   }
