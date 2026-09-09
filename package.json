@@ -17,7 +17,8 @@
     "qa:jitter": "node qa/header-jitter.mjs",
     "qa:throws": "node qa/throw-settle.mjs",
     "qa:slow": "node qa/slow-network.mjs",
-    "qa:motion": "node qa/motion.mjs && node qa/motion-prompt.mjs"
+    "qa:motion": "node qa/motion.mjs && node qa/motion-prompt.mjs",
+    "qa:theme": "node qa/head-theme.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

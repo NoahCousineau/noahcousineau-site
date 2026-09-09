@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useIsPhone } from "@/lib/useIsPhone";
 import {
   lastTiltAnswer,
@@ -74,13 +74,19 @@ const MIN_WINDOW_MS = 3500;
 /** Marks the offer as made for this visit. */
 const SESSION_KEY = "nc-motion-offered";
 
+const noopSubscribe = () => () => {};
+
 export default function MotionPrompt() {
   const phone = useIsPhone();
   const [mountedAt] = useState(() => Date.now());
-  /* Read once, on the client, after mount — reading storage during render
-     would differ between the server pass and the first client one. */
-  const [answered, setAnswered] = useState(true);
-  useEffect(() => setAnswered(lastTiltAnswer() !== null), []);
+  /* Client-only, and read through useSyncExternalStore rather than an effect
+     so the server pass and the first client render can legitimately disagree:
+     the server has no storage, so it reports "answered" and renders nothing. */
+  const answered = useSyncExternalStore(
+    noopSubscribe,
+    () => lastTiltAnswer() !== null,
+    () => true
+  );
   const [status, setStatus] = useState<TiltStatus>("unsupported");
   const [ready, setReady] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -105,6 +111,17 @@ export default function MotionPrompt() {
       timer = window.setTimeout(() => {
         if (cancelled) return;
         if (Date.now() - mountedAt > DEADLINE_MS - MIN_WINDOW_MS) return;
+        /* Claim this visit's single offer here rather than in a second
+           effect, so the decision and the side effect that records it cannot
+           come apart. Once per visit, per Noah's "first opens the site" —
+           not once per page. */
+        try {
+          if (sessionStorage.getItem(SESSION_KEY)) return;
+          sessionStorage.setItem(SESSION_KEY, "1");
+        } catch {
+          // Private mode, or storage refused. Offering it is the better
+          // failure.
+        }
         setReady(true);
       }, AFTER_LOADER_MS);
     };
@@ -115,23 +132,8 @@ export default function MotionPrompt() {
     };
   }, [phone, status, answered, mountedAt]);
 
-  /* Once per visit. Written when it actually appears, not when it is
-     considered, so a reader whose first page had motion already working is
-     still offered it on a page where it does not. */
-  const [firstThisVisit, setFirstThisVisit] = useState(false);
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      if (sessionStorage.getItem(SESSION_KEY)) return;
-      sessionStorage.setItem(SESSION_KEY, "1");
-    } catch {
-      // Private mode, or storage refused. Offering it is the better failure.
-    }
-    setFirstThisVisit(true);
-  }, [ready]);
-
   const shown =
-    phone && status === "gated" && !answered && ready && firstThisVisit && !dismissed;
+    phone && status === "gated" && !answered && ready && !dismissed;
 
   useEffect(() => {
     if (!shown) return;

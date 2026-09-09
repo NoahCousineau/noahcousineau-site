@@ -20,15 +20,18 @@ import { createContext, useCallback, useContext, useMemo, useSyncExternalStore }
  * act on it. Components that need more than a colour swap — the two heads,
  * which switch to the sunglasses photography — read `useTheme()`.
  *
- * First visit follows the OS setting; after that an explicit choice wins and
- * is remembered. The `hydrated` flag lets components that must not guess
+ * Every load starts light, and the toggle holds only for that visit — see
+ * THEME_INIT_SCRIPT. The `hydrated` flag lets components that must not guess
  * (the heads, which would otherwise load the wrong image and re-measure)
- * wait one tick for the real value.
+ * wait one tick for the real value; RotatingHead takes it as `themeResolved`,
+ * because guessing there meant fetching the wrong 3MB sprite sheet.
  */
 
 export type Theme = "light" | "dark";
 
-export const THEME_STORAGE_KEY = "nc-theme";
+/* No storage key any more: the theme is not remembered between loads. The
+   old "nc-theme" value may still sit in some readers' browsers; nothing reads
+   it, so it is inert. */
 
 type ThemeContextValue = {
   theme: Theme;
@@ -57,23 +60,22 @@ export function useTheme() {
  */
 export const THEME_INIT_SCRIPT = `
 (function(){
-  try {
-    /* LIGHT UNLESS THE VISITOR HAS ASKED FOR DARK (2026-08-30). Noah: "I
-       want to make sure that the site always starts in light mode."
+  /* EVERY LOAD STARTS LIGHT (2026-09-08). Noah: "Always first load the site
+     on light mode settings as well."
 
-       This used to fall back to the operating system's setting, so anyone
-       whose Mac or phone is in dark mode met the dark version of the site
-       first — which is a large share of people, and not the way the work is
-       designed to be seen. The OS preference is no longer consulted at all.
+     This has now shed two sources of a dark first paint. It began by falling
+     back to the operating system's setting, so anyone whose Mac or phone was
+     in dark mode met the dark site first — a large share of people, and not
+     the way the work is designed to be seen. That went on 2026-08-30, leaving
+     a remembered choice: press the toggle once and every later visit opened
+     dark. Which is how Noah's own browser came to open dark months later.
 
-       An explicit choice still persists: someone who presses the toggle gets
-       dark, on this and every later visit, until they press it back. That is
-       their decision rather than their laptop's. */
-    var s = localStorage.getItem('${THEME_STORAGE_KEY}');
-    document.documentElement.setAttribute('data-theme', s === 'dark' ? 'dark' : 'light');
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
+     So nothing is consulted at all now, and the answer is a constant. Dark is
+     still one press away and stays for as long as the reader is browsing —
+     client-side navigation does not reload the document, so the attribute
+     survives moving between pages. It is simply not carried into the next
+     visit. See setTheme, which no longer writes the choice down. */
+  document.documentElement.setAttribute('data-theme', 'light');
 })();
 `;
 
@@ -121,12 +123,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     // Writing the attribute IS the state update; the observer above turns it
     // back into a render.
     root.setAttribute("data-theme", t);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, t);
-    } catch {
-      /* private mode / storage disabled — the theme still applies for this
-         session, it just won't be remembered. */
-    }
+    /* Deliberately not persisted — see THEME_INIT_SCRIPT. The choice holds
+       for this visit, including across client-side navigation, and the next
+       load starts light again. Any value an older visit left in storage is
+       now ignored rather than cleared: reading it is what has been removed. */
   }, []);
 
   const toggle = useCallback(() => {

@@ -206,7 +206,40 @@ export default function RotatingHead({
     ctx.restore();
   }, [TOTAL_FRAMES, GRID_COLS, FRAME_WIDTH, FRAME_HEIGHT, frameAdjustments]);
 
-  // Load sprite sheet
+  /*
+   * THE SHEET THAT ARRIVES LAST WINS, NOT THE ONE THAT IS WANTED (2026-09-08).
+   *
+   * Noah: "The site loaded on the darkmode version, but showed my rotating
+   * head for light mode."
+   *
+   * Two loads are in flight on a dark page, because the first client render
+   * has not read the theme yet and asks for the light sheet; a moment later
+   * the real theme arrives and this effect re-runs for the dark one. The old
+   * cleanup set `spriteSheetRef.current = null` and stopped there — which
+   * drops the reference but does nothing about the request still in the air.
+   * The abandoned light Image kept its onload, and whenever it finished
+   * SECOND it assigned itself over the dark sheet and stayed there: the site
+   * in dark mode, the head in light mode, for the rest of the visit.
+   *
+   * Reproduced by holding the light sheet back four seconds so it lands after
+   * the dark one — the head measured 18.9% near-black pixels against the dark
+   * head's 27.8%, i.e. the sunglasses were simply not there. Which sheet won
+   * otherwise came down to which of two ~3MB files the network happened to
+   * finish first, so it looked intermittent.
+   *
+   * So the load is cancelled properly: a `cancelled` flag the callback checks,
+   * and the handlers cleared. That is the whole fix, and it holds whatever
+   * order the two arrive in.
+   *
+   * A second guard was tried and removed: waiting for ThemeProvider's
+   * `hydrated` before fetching anything, so the provisional first render could
+   * not request the wrong sheet at all. It measured as doing nothing, because
+   * every load now starts light (see THEME_INIT_SCRIPT) and the provisional
+   * value is therefore already right — it only delayed the head's sprite until
+   * hydration on every visit. If the theme is ever remembered between loads
+   * again, that guard becomes worth its keep as a bandwidth saving; the
+   * correctness it was also covering is already handled here.
+   */
   useEffect(() => {
     const spriteSheet = new Image();
     // Use WebP for web (much smaller)
@@ -218,10 +251,11 @@ export default function RotatingHead({
         ? '/images/rotating-head/sprite-sheet-dark-staggered.webp'
         : '/images/rotating-head/sprite-sheet-light-staggered.webp';
     }
-    
-    spriteSheet.src = spriteUrl;
 
+    let cancelled = false;
     spriteSheet.onload = () => {
+      // The theme changed while this was downloading; it is the wrong head.
+      if (cancelled) return;
       spriteSheetRef.current = spriteSheet;
       // Force the loop to repaint: a new sprite sheet at the same frame
       // number is still a different picture.
@@ -229,7 +263,11 @@ export default function RotatingHead({
       drawFrame(frameRef.current);
     };
 
+    spriteSheet.src = spriteUrl;
+
     return () => {
+      cancelled = true;
+      spriteSheet.onload = null;
       spriteSheetRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

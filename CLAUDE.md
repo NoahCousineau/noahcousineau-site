@@ -77,6 +77,7 @@ npm run lint
 npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/start running)
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
 npm run qa:motion        # motion permission + does anything actually move, page by page
+npm run qa:theme         # the rotating head's sprite sheet matches the active theme
 ```
 
 All QA scripts hit `http://localhost:3000` unless `QA_BASE` says otherwise, and
