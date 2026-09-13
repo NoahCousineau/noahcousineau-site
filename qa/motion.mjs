@@ -74,16 +74,31 @@ for (const path of PAGES) {
     isMobile: true,
     hasTouch: true,
   });
+  /* A phone that has NEVER been asked, with the HTML spec's activation rules:
+     pointerdown and touchstart carry no activation for touch, so an ask made
+     during them is rejected; pointerup, touchend and click can prompt. This
+     used to grant every call unconditionally, which is why it passed a flow
+     that could never grant on a fresh iPhone (2026-09-12). Chrome's own
+     navigator.userActivation cannot stand in for this: for a synthetic tap it
+     reports every event as activated. */
   await ctx.addInitScript(`{
     window.__asks = 0; window.__attached = false;
+    const ACTIVATES = new Set(["pointerup", "touchend", "click"]);
+    let current = null, state = "prompt";
     const add = window.addEventListener.bind(window);
     window.addEventListener = function (t, f, o) {
       if (t === "deviceorientation") window.__attached = true;
       return add(t, f, o);
     };
+    for (const t of ["touchstart", "pointerdown", "pointerup", "touchend", "click"])
+      add(t, () => { current = t; setTimeout(() => { if (current === t) current = null; }, 0); }, { capture: true });
     window.DeviceOrientationEvent = window.DeviceOrientationEvent || function () {};
     window.DeviceOrientationEvent.requestPermission = () => {
-      window.__asks++; return Promise.resolve("granted");
+      if (state !== "prompt") return Promise.resolve(state);
+      if (!ACTIVATES.has(current))
+        return Promise.reject(new DOMException("requires a user gesture to prompt", "NotAllowedError"));
+      window.__asks++; state = "granted";
+      return Promise.resolve("granted");
     };
   }`);
   const page = await ctx.newPage();
@@ -135,7 +150,7 @@ for (const path of PAGES) {
   const ok = asked.n > 0 && asked.at && (before.length === 0 || moved > 0) && !errs.length;
   if (!ok) bad++;
   console.log(
-    `  ${path.padEnd(34)} asked ${asked.n}  attached ${asked.at ? "yes" : "NO "}  ` +
+    `  ${path.padEnd(34)} sheets ${asked.n}  attached ${asked.at ? "yes" : "NO "}  ` +
       `movers ${String(before.length).padStart(2)}  moved ${String(moved).padStart(2)}  ` +
       `errs ${errs.length}  ${ok ? "ok" : "<-- NO MOTION"}`
   );

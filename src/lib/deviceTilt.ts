@@ -23,9 +23,9 @@
  * the first subscriber triggers the permission flow, every subscriber gets
  * every reading, and the answer is shared rather than raced for.
  *
- * The ask itself has to happen inside a user gesture — that is an iOS rule,
- * not a choice — so it rides on the first touch, pointer-up or click
- * anywhere on the page. Until then, and on any device that refuses or does
+ * On iOS the ask is made on load, which a phone that has already answered
+ * accepts without a gesture, and again on the reader's first tap, which is
+ * the only way iOS will show its sheet to a phone that has not. Until then, and on any device that refuses or does
  * not support orientation, subscribers simply never hear anything and keep
  * whatever default they already have. There is no broken state to land in.
  */
@@ -42,69 +42,11 @@ type Listener = (t: Tilt) => void;
 const listeners = new Set<Listener>();
 let started = false;
 
-/**
- * WHAT THE ASK CURRENTLY AMOUNTS TO, for anything that wants to offer the
- * reader a way in (see MotionPrompt).
- *
- *   unsupported — no orientation events here at all, or no gate to pass.
- *   gated       — iOS, and nothing has come through yet. Either not asked
- *                 yet, or asked and refused; iOS gives no way to tell those
- *                 apart without asking, and asking is the thing being gated.
- *   live        — readings are arriving. Nothing more to do.
- *   denied      — iOS said no out loud. It will not ask again from here.
- */
-export type TiltStatus = "unsupported" | "gated" | "live" | "denied";
-let status: TiltStatus = "unsupported";
-
-/**
- * WHAT THIS PHONE SAID LAST TIME.
- *
- * iOS gives no way to read the current permission without asking, and asking
- * needs a gesture — so on every fresh load a phone that granted access months
- * ago looks exactly like one that has never been asked. Both sit at "gated"
- * until the reader touches something. That is fine for the ask itself, which
- * resolves silently in the granted case, but it is not fine for anything
- * deciding whether to put a prompt on screen: it would offer a returning
- * reader a button they already pressed, and offer a reader who said no a
- * button that cannot work.
- *
- * So the answer is remembered when iOS gives one. Only ever a hint — the
- * reader can change their mind in Settings and this would not know — which is
- * why nothing behind the gate depends on it. The ask still runs on every
- * load regardless; this only informs what is worth SHOWING.
- */
-const ANSWER_KEY = "nc-tilt-answer";
-export function lastTiltAnswer(): "granted" | "denied" | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const v = localStorage.getItem(ANSWER_KEY);
-    return v === "granted" || v === "denied" ? v : null;
-  } catch {
-    return null;
-  }
-}
-function rememberAnswer(v: "granted" | "denied") {
-  try {
-    localStorage.setItem(ANSWER_KEY, v);
-  } catch {
-    // Storage refused. The site works the same, it just re-offers.
-  }
-}
-const watchers = new Set<(s: TiltStatus) => void>();
-function setStatus(next: TiltStatus) {
-  if (status === next) return;
-  status = next;
-  for (const w of watchers) w(next);
-}
 /** The most recent reading, handed to anyone who subscribes later. */
 let latest: Tilt | null = null;
 
 function onOrient(e: DeviceOrientationEvent) {
   if (e.beta == null || e.gamma == null) return;
-  // A reading is the only proof that the whole chain works. Permission can be
-  // granted on a device whose sensors still report nothing, which from the
-  // reader's side is identical to being blocked.
-  setStatus("live");
   const rad = Math.PI / 180;
   // (sin gamma, sin beta) is the direction "down" points in the plane of the
   // screen — which is what both callers want, one as gravity and one as the
@@ -132,138 +74,102 @@ function start() {
 
   if (!DOE) return;
 
+  /*
+   * ON FROM THE START (2026-09-12). Noah: "What I would prefer is for the tilt
+   * to be assumed on from the start. Can tilt being on on all mobile sites be
+   * the default?"
+   *
+   * It is, as far as each phone allows:
+   *
+   *   Android, and anything else without a gate — listening begins on load.
+   *   iPhone that has already said yes — asked on load, with no gesture.
+   *     WebKit answers straight away when the site already has an answer and
+   *     only needs a gesture in order to PROMPT, so this returns "granted"
+   *     silently and the readings start before the reader touches anything.
+   *   iPhone that has never been asked — iOS will not show its sheet outside a
+   *     tap, and no site can change that. The first tap anywhere brings up the
+   *     sheet; nothing else is put on screen to invite it.
+   *
+   * The on-screen "tap to tilt" offer is gone at Noah's request, and with it
+   * the status and remembered-answer plumbing that only it used.
+   */
   if (typeof DOE.requestPermission !== "function") {
-    // Android and desktop: no gate, just listen. Status stays "unsupported"
-    // until a reading actually lands, which is the honest reading of it —
-    // plenty of desktops have no sensor behind the event.
     attach();
     return;
   }
 
-  setStatus("gated");
-
-  /* KEEP OFFERING UNTIL THERE IS AN ANSWER (2026-09-01).
-   *
-   * Noah: "I feel that sometimes I get on the site and I get permission asked
-   * to do this and other times I don't. I want to make sure users have the
-   * option to see the header icon tilt on mobile."
-   *
-   * This used to remove all three listeners on the FIRST gesture — before it
-   * knew whether the ask had worked. iOS only honours requestPermission()
-   * inside a live user activation, and there are several ordinary ways for
-   * the first gesture not to carry one: the tap that lands while the loading
-   * screen is still up and gets swallowed, a gesture whose activation has
-   * already been spent, a `pointerup` that Safari does not treat as one. Any
-   * of those left the promise rejecting into an empty catch with every
-   * listener already gone, so that visit simply never asked again — the
-   * reader gets a page whose icons cannot move and no way to find out why.
-   *
-   * So the listeners now stay until iOS actually answers. "granted" attaches
-   * and stops; "denied" stops too, because that is an answer and pestering
-   * someone who said no is worse than not asking. Anything else — a
-   * rejection, a throw, no promise at all — leaves them in place so the next
-   * tap tries again. Capped, so a device that can never satisfy the call is
-   * not asked on every tap forever.
-   *
-   * Capture phase, so a handler that stops propagation on its own element
-   * cannot quietly cost the reader the feature.
-   */
-  /* `touchstart` first, deliberately. Noah: "I would like for the mobile user
-   * to be prompted with the motion control request screen right when they
-   * first load the site." iOS will not let anything ask outside a user
-   * gesture, so the earliest possible moment is the reader's first touch —
-   * and waiting for `touchend` means a reader who lands and immediately
-   * scrolls may not be asked for a while, or at all, since a scroll's touchend
-   * does not always carry an activation. If touchstart turns out not to carry
-   * one either, nothing is lost: the ask fails, the listeners stay, and the
-   * touchend or click a moment later tries again. */
-  const GESTURES = ["touchstart", "touchend", "pointerdown", "pointerup", "click"] as const;
   /* Captured after the guard above: `ask` is a hoisted function declaration,
      and TypeScript will not carry the narrowing of `DOE` into it. */
   const doe = DOE;
-  /*
-   * ONE TAP IS ONE ASK (2026-09-04).
-   *
-   * Noah, for the third time: "there's still a few issues when it comes to
-   * permissions for motion."
-   *
-   * Widening the gesture list is what broke it. A single tap fires all five —
-   * touchstart, pointerdown, pointerup, touchend, click — and each one called
-   * requestPermission, so one tap spent the entire budget of five. Measured
-   * against a Safari-like stub where the ask rejects without a live
-   * activation: tap 1 made five asks, taps 2, 3 and 4 made none at all. On
-   * iOS the early events in that cascade carry no activation, so the reader's
-   * FIRST tap exhausted the budget on calls that could never succeed, the
-   * listeners detached, and nothing asked again for the rest of the visit.
-   *
-   * Two things fix it. The budget now counts ATTEMPTS that got an answer and
-   * failed, rather than events. And a gesture is collapsed to a single ask by
-   * a short time window.
-   *
-   * The window is doing the real work, and an in-flight flag alone is not
-   * enough — that was tried and measured first. The five events are five
-   * separate TASKS, so the rejected promise's catch runs in the gap between
-   * them and clears the flag before the next one arrives: still five asks per
-   * tap. A window survives that because it does not depend on when the answer
-   * comes back. 700ms is far longer than the cascade, which is a few
-   * milliseconds wide, and shorter than any second tap a reader means as a
-   * second tap. The flag stays as well, for the case the window cannot see:
-   * an ask that is genuinely still open when the window expires.
-   */
-  let inFlight = false;
-  const GESTURE_WINDOW_MS = 700;
-  let lastAsk = 0;
-  /** Failed ATTEMPTS, not events. A device that can never satisfy the call
-   *  stops being asked; a reader whose first taps land badly does not. */
-  const MAX_FAILED = 10;
-  let failed = 0;
+  let settled = false;
+  const GESTURES = ["touchstart", "touchend", "pointerdown", "pointerup", "click"] as const;
   const detach = () => {
     GESTURES.forEach((g) => window.removeEventListener(g, ask, { capture: true }));
   };
-  function ask() {
+  const settle = (r: "granted" | "denied") => {
+    if (settled) return;
+    settled = true;
+    detach();
+    if (r === "granted") attach();
+  };
+
+  // A phone that has already answered is told so here, without a gesture.
+  // A phone that has not rejects this without it counting against anything.
+  try {
+    doe.requestPermission?.()?.then(settle).catch(() => {});
+  } catch {
+    // Older WebKit threw synchronously instead of rejecting. Same meaning.
+  }
+
+  /*
+   * A TAP IS SEVERAL CHANCES, NOT ONE (2026-09-12).
+   *
+   * The previous version collapsed each tap to a single ask with a 700ms
+   * window, and that meant a fresh iPhone could never grant. The first event
+   * in a tap is pointerdown or touchstart, and the HTML spec's activation
+   * rules give neither one a user activation. So the first ask was rejected,
+   * and the window then threw away the pointerup, touchend and click behind
+   * it, which DO carry activation. Measured with a stub that follows the
+   * spec's rules: four taps, four rejected pointerdown asks, and not one
+   * sheet shown. Returning phones never noticed, because their answer needs
+   * no gesture.
+   *
+   * So a rejection hands the next event straight back its turn, and only an
+   * ask that is genuinely open blocks the ones behind it, since that one IS
+   * the sheet. A device that can never be satisfied is still bounded, but by
+   * taps: every event in one tap counts as a single failed tap.
+   */
+  let inFlight = false;
+  const MAX_FAILED_TAPS = 10;
+  let failedTaps = 0;
+  let lastFailAt = -Infinity;
+  const fail = () => {
+    inFlight = false;
     const now = Date.now();
-    // One gesture, one ask — however many events that gesture fires.
-    if (inFlight || now - lastAsk < GESTURE_WINDOW_MS) return;
-    lastAsk = now;
-    if (failed >= MAX_FAILED) {
-      detach();
-      return;
-    }
+    if (now - lastFailAt > 700) failedTaps += 1;
+    lastFailAt = now;
+    if (failedTaps >= MAX_FAILED_TAPS) detach();
+  };
+  function ask() {
+    if (settled || inFlight) return;
     let pending: Promise<"granted" | "denied"> | undefined;
     try {
       inFlight = true;
       pending = doe.requestPermission?.();
     } catch {
-      // Not a valid activation. Costs one attempt, and the listeners stay for
-      // the next gesture.
-      inFlight = false;
-      failed += 1;
+      fail();
       return;
     }
     if (!pending) {
-      inFlight = false;
-      failed += 1;
+      fail();
       return;
     }
     pending
       .then((r) => {
         inFlight = false;
-        if (r === "granted") {
-          detach();
-          attach();
-          rememberAnswer("granted");
-        } else if (r === "denied") {
-          detach();
-          setStatus("denied");
-          rememberAnswer("denied");
-        }
+        settle(r);
       })
-      .catch(() => {
-        /* The ask did not get through, so the next gesture should have another
-           go — deliberately not detaching. */
-        inFlight = false;
-        failed += 1;
-      });
+      .catch(fail);
   }
   GESTURES.forEach((g) => window.addEventListener(g, ask, { capture: true }));
 }
@@ -299,24 +205,6 @@ export function primeTilt(): void {
  *
  * Safe to call on the server and on a desktop: it simply never fires.
  */
-/** The state of the ask right now. */
-export function tiltStatus(): TiltStatus {
-  return status;
-}
-
-/**
- * Hear when that state changes. Fires immediately with the current value, so
- * a caller mounting late does not miss the transition it was waiting for.
- */
-export function watchTiltStatus(cb: (s: TiltStatus) => void): () => void {
-  if (typeof window === "undefined") return () => {};
-  watchers.add(cb);
-  cb(status);
-  return () => {
-    watchers.delete(cb);
-  };
-}
-
 export function subscribeTilt(listener: Listener): () => void {
   if (typeof window === "undefined") return () => {};
   listeners.add(listener);

@@ -9,7 +9,6 @@ import ThemeToggle from "@/components/ThemeToggle";
 import HomeLink from "@/components/HomeLink";
 import GateOverlay from "@/components/GateOverlay";
 import TiltPrimer from "@/components/TiltPrimer";
-import MotionPrompt from "@/components/MotionPrompt";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -71,10 +70,6 @@ export default function RootLayout({
         <GateOverlay />
         {/* Asks for motion access on every page — see TiltPrimer. */}
         <TiltPrimer />
-        {/* And, on a phone that has not answered yet, gives the reader
-            something to tap so the question is findable rather than only
-            armed — see MotionPrompt. */}
-        <MotionPrompt />
         </ThemeProvider>
       </body>
     </html>

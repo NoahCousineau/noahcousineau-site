@@ -76,7 +76,7 @@ npm run build            # production build — run this after any layout change
 npm run lint
 npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/start running)
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
-npm run qa:motion        # motion permission + does anything actually move, page by page
+npm run qa:motion        # tilt on from load where a phone allows it, and objects move, page by page
 npm run qa:theme         # the rotating head's sprite sheet matches the active theme
 ```
 
