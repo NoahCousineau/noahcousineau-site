@@ -1,30 +1,26 @@
 /**
- * THE MOTION QUESTION COMES FIRST (2026-09-13).
+ * APPLE'S MOTION SHEET, AT THE FIRST TOUCH (2026-09-13).
  *
- * Noah: "Please have the motion request come up first thing on mobile, even
- * before the homepage loads."
+ * Noah asked for the motion request "first thing on mobile, even before the
+ * homepage loads". A "tap to enter" screen did that, and he turned it down:
+ * "Let's just have the motion control request from apple show up first when
+ * the site loads... Remove the tap to enter screen."
  *
- * iOS will not show its motion sheet without a tap, so "first thing" is a
- * screen that asks for one: a phone that has never been asked is met with
- * "tap to enter" before the homepage, and that tap brings up the sheet. See
- * TiltAsk.tsx for the screen.
+ * Apple's sheet cannot appear with no touch at all. WebKit answers at once
+ * when this site already has an answer, but to PROMPT it needs a user gesture
+ * and rejects any ask made without one — on every website. So with nothing on
+ * screen to invite it, the earliest the sheet can appear is the reader's first
+ * touch. This makes that touch count from the moment the page starts loading,
+ * loading screen included, before any of the site's own JavaScript arrives.
  *
- * It has to be decided by an inline script rather than React. The page's own
- * code can take seconds to arrive on a slow connection, and the question is
- * meant to come before the homepage, not after the JavaScript. So the script
- * below runs in <head>, asks straight away, and marks <html data-tilt>:
- *
- *   (absent)  no gate here at all — Android, desktop Chrome. Tilt just works.
- *   checking  the silent first ask is still out. Holds the loader.
- *   granted   this phone said yes before. No screen; tilt is on from load.
- *   denied    this phone said no before. No screen; iOS will not re-ask.
- *   ask       a phone never asked. The screen is up and holds the loader.
- *   prompt    never asked, but not a phone (iPad, Mac Safari). No screen.
- *   skipped   the tap could not raise a sheet. Let in rather than trapped.
- *
- * It also owns every requestPermission call on the page from then on, through
- * window.__ncTilt. lib/deviceTilt routes through it, so the screen's tap and a
- * tap anywhere else share one open sheet instead of racing to raise two.
+ * This inline <head> script:
+ *   - asks once straight away, silently. A phone that answered before gets its
+ *     answer here and tilt is on from load; one never asked is left alone.
+ *   - listens for touches on the whole page and asks inside the first one that
+ *     can carry the gesture, until the phone answers.
+ *   - marks <html data-tilt>: checking, then prompt, granted or denied.
+ *   - owns every requestPermission call through window.__ncTilt, which
+ *     lib/deviceTilt listens to, so there is only ever one open sheet.
  */
 
 export type TiltAnswer = "granted" | "denied";
@@ -49,20 +45,23 @@ export const TILT_INIT_SCRIPT = `
   var nc = { state: "open", ask: null, on: null };
   var waiters = [];
   window.__ncTilt = nc;
+  var GESTURES = ["touchstart", "touchend", "pointerdown", "pointerup", "click"];
   function answered() { return nc.state === "granted" || nc.state === "denied"; }
   function mark(v) { root.setAttribute("data-tilt", v); }
+  function unlisten() {
+    for (var i = 0; i < GESTURES.length; i++) window.removeEventListener(GESTURES[i], onGesture, true);
+  }
   nc.on = function (f) { if (answered()) f(nc.state); else waiters.push(f); };
   function settle(r) {
     if (answered() || (r !== "granted" && r !== "denied")) return;
     nc.state = r;
     mark(r);
+    unlisten();
     var w = waiters.splice(0, waiters.length);
     for (var i = 0; i < w.length; i++) { try { w[i](r); } catch (e) {} }
   }
   if (!D || typeof D.requestPermission !== "function") return;
 
-  var phone = false;
-  try { phone = window.matchMedia("(max-width: 767px)").matches; } catch (e) {}
   nc.state = "unknown";
   mark("checking");
 
@@ -83,57 +82,32 @@ export const TILT_INIT_SCRIPT = `
   function undecided() {
     if (answered() || nc.state !== "unknown") return;
     nc.state = "prompt";
-    mark(phone ? "ask" : "prompt");
+    mark("prompt");
   }
-  /* WebKit answers at once, with no gesture, when this site already has an
-     answer; it only needs a gesture to PROMPT. A rejection here means "never
-     asked" and changes nothing on the phone. */
+  /* A rejection here means "never asked" and changes nothing on the phone. */
   try {
     var probe = D.requestPermission();
     if (probe && typeof probe.then === "function") probe.then(settle, undecided);
     else undecided();
   } catch (e) { undecided(); }
-  /* A probe that never settles must not hold the page forever. */
   setTimeout(undecided, 1500);
 
-  /* Registered here, before any of the page's code exists, so the screen
-     works however late the JavaScript arrives. A click carries the user
-     activation iOS requires. */
-  document.addEventListener("click", function (e) {
-    var t = e.target;
-    if (!t || !t.closest || !t.closest("[data-tilt-ask]")) return;
-    nc.ask().then(null, function () {}).then(function () {
-      if (root.getAttribute("data-tilt") === "ask") mark("skipped");
+  /* A tap is several events, and the first two (pointerdown, touchstart) carry
+     no user activation, so an ask made in them is rejected. A rejection hands
+     the next event its turn; only an ask still open, which IS the sheet,
+     blocks the ones behind it. A browser that can never raise the sheet stops
+     being asked after ten taps, counting a tap's events as one. */
+  var failedTaps = 0;
+  var lastFail = -1e9;
+  function onGesture() {
+    if (answered() || pending) return;
+    nc.ask().then(null, function () {
+      var now = Date.now();
+      if (now - lastFail > 700) failedTaps++;
+      lastFail = now;
+      if (failedTaps >= 10) unlisten();
     });
-  }, true);
+  }
+  for (var i = 0; i < GESTURES.length; i++) window.addEventListener(GESTURES[i], onGesture, true);
 })();
 `;
-
-function tiltAttr(): string | null {
-  if (typeof document === "undefined") return null;
-  return document.documentElement.getAttribute("data-tilt");
-}
-
-/** True while the motion question stands between the reader and the page. */
-export function tiltHoldsEntrance(): boolean {
-  const v = tiltAttr();
-  return v === "checking" || v === "ask";
-}
-
-/** Run `cb` once nothing is holding the entrance; returns a cancel. */
-export function whenTiltAskClears(cb: () => void): () => void {
-  if (!tiltHoldsEntrance()) {
-    cb();
-    return () => {};
-  }
-  const obs = new MutationObserver(() => {
-    if (tiltHoldsEntrance()) return;
-    obs.disconnect();
-    cb();
-  });
-  obs.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-tilt"],
-  });
-  return () => obs.disconnect();
-}

@@ -76,7 +76,7 @@ npm run build            # production build — run this after any layout change
 npm run lint
 npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/start running)
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
-npm run qa:motion        # motion question first on a never-asked iPhone, tilt on from load, objects move
+npm run qa:motion        # Apple's motion sheet on first touch (even mid-load), tilt on from load, objects move
 npm run qa:theme         # the rotating head's sprite sheet matches the active theme
 ```
 
@@ -97,18 +97,20 @@ Note that the artboard unit makes the whole design scale linearly with
 viewport WIDTH, so at 390px `--u` is 0.203 and the site is the desktop layout
 at a fifth the size — it fits, nothing overflows, but the smallest type lands
 around 4px. Making mobile READ means real layout decisions (reflow, a
-type floor, a different hero), not a bug fix.
-
-## Motion permission
+type floor, a different hero), not a bug ## Motion permission
 
 `src/lib/tiltInit.ts` is an inline `<head>` script that owns every iOS
-`requestPermission` call and marks `<html data-tilt>`. On a phone that has
-never been asked it sets `data-tilt="ask"`, which shows the "tap to enter"
-screen (`TiltAsk.tsx`, styled in globals.css) and holds the page loader until
-there is an answer. `lib/deviceTilt.ts` routes its asks through
-`window.__ncTilt`, so there is only ever one open sheet. Test it with
-`qa/tilt-permission.mjs`, whose stub applies the spec's activation rules;
-Chrome's `navigator.userActivation` cannot stand in for them.
+`requestPermission` call and marks `<html data-tilt>`. It asks silently on load
+(a phone that answered before gets tilt immediately) and then asks inside the
+reader's first touch anywhere, loading screen included, before the site's
+JavaScript arrives. Apple's sheet cannot appear with no touch at all. Noah has
+turned down both a "tap to tilt" notice and a "tap to enter" screen, so do not
+put anything on screen to invite the ask. `lib/deviceTilt.ts` only listens to
+`window.__ncTilt` for the answer. Test with `qa/tilt-permission.mjs`, whose
+stub applies the spec's activation rules; Chrome's `navigator.userActivation`
+cannot stand in for them.
+
+hem.
 
 ## Verification habit
 

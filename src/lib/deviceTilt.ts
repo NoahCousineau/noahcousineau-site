@@ -86,10 +86,11 @@ function start() {
    *     WebKit answers straight away when the site already has an answer and
    *     only needs a gesture in order to PROMPT, so this returns "granted"
    *     silently and the readings start before the reader touches anything.
-   *   iPhone that has never been asked — iOS will not show its sheet outside a
-   *     tap, and no site can change that. Such a phone is met with a "tap to
-   *     enter" screen before the homepage (2026-09-13, see TiltAsk and
-   *     lib/tiltInit), and any later tap still asks too.
+   *   iPhone that has never been asked — iOS will not show its sheet without
+   *     a touch, and no site can change that. The first touch anywhere brings
+   *     it up, counted from the moment the page starts loading, loading screen
+   *     included (see lib/tiltInit). Nothing on screen invites it: Noah turned
+   *     down both a "tap to tilt" notice and a "tap to enter" screen.
    *
    * The on-screen "tap to tilt" offer is gone at Noah's request, and with it
    * the status and remembered-answer plumbing that only it used.
@@ -115,23 +116,23 @@ function start() {
   };
 
   /* The inline script from lib/tiltInit owns the question when it is on the
-     page: it has already made the silent first ask, and the "tap to enter"
-     screen goes through it. Every ask here goes through the same object, so
-     the screen's tap and a tap anywhere else share one open sheet. */
+     page. It made the silent first ask, and it has been listening for the
+     reader's first touch since before this code arrived, so all that is left
+     to do here is hear the answer. Asking from here as well would only race
+     it for the same sheet. */
   const shared = window.__ncTilt;
-  const request = (): Promise<"granted" | "denied"> | undefined =>
-    shared?.ask ? shared.ask() : doe.requestPermission?.();
-
   if (shared?.ask) {
     shared.on(settle);
-  } else {
-    // A phone that has already answered is told so here, without a gesture.
-    // A phone that has not rejects this without it counting against anything.
-    try {
-      doe.requestPermission?.()?.then(settle).catch(() => {});
-    } catch {
-      // Older WebKit threw synchronously instead of rejecting. Same meaning.
-    }
+    return;
+  }
+
+  // Without the script, do the same work here. A phone that has already
+  // answered is told so without a gesture; one that has not rejects this
+  // without it counting against anything.
+  try {
+    doe.requestPermission?.()?.then(settle).catch(() => {});
+  } catch {
+    // Older WebKit threw synchronously instead of rejecting. Same meaning.
   }
 
   /*
@@ -168,7 +169,7 @@ function start() {
     let pending: Promise<"granted" | "denied"> | undefined;
     try {
       inFlight = true;
-      pending = request();
+      pending = doe.requestPermission?.();
     } catch {
       fail();
       return;

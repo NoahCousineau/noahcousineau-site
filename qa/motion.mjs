@@ -107,9 +107,8 @@ for (const path of PAGES) {
   await page.goto(BASE + path, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.waitForTimeout(17000);
 
-  /* The reader's first tap. On a phone that has never been asked it lands on
-     the "tap to enter" screen (see TiltAsk), which holds the page back until
-     there is an answer, so wait for the page to be uncovered and its
+  /* The reader's first tap, which is what brings up Apple's sheet on a phone
+     that has never been asked. Wait for the page to be uncovered and its
      entrances to get going before measuring anything that moves. */
   await page.touchscreen.tap(10, 700);
   await page.waitForTimeout(800);

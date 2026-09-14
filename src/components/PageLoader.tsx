@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { tiltHoldsEntrance } from "@/lib/tiltInit";
 import LoadingWorm from "./LoadingWorm";
 import { usePathname } from "next/navigation";
 import { getLenis } from "./SmoothScroll";
@@ -274,14 +273,6 @@ function PageLoaderInner() {
         stableFor = 0;
       }
       const settled = stableFor >= STABLE_POLLS_REQUIRED;
-
-      /* THE MOTION QUESTION HOLDS THE CURTAIN (2026-09-13). On a phone that is
-         being asked for motion first (see TiltAsk), the page must not be
-         uncovered behind that screen, or its entrances play to nobody. It keeps
-         loading underneath and is revealed on the first poll after an answer.
-         Deliberately ahead of the MAX_WAIT_MS cap: the cap exists for media
-         that never arrives, not for a reader who has not tapped yet. */
-      if (tiltHoldsEntrance()) return;
 
       if (elements.length === 0) {
         if (settled || elapsed >= MAX_WAIT_MS) finish();
