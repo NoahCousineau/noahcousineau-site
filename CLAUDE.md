@@ -76,7 +76,7 @@ npm run build            # production build — run this after any layout change
 npm run lint
 npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/start running)
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
-npm run qa:motion        # tilt on from load where a phone allows it, and objects move, page by page
+npm run qa:motion        # motion question first on a never-asked iPhone, tilt on from load, objects move
 npm run qa:theme         # the rotating head's sprite sheet matches the active theme
 ```
 
@@ -98,6 +98,17 @@ viewport WIDTH, so at 390px `--u` is 0.203 and the site is the desktop layout
 at a fifth the size — it fits, nothing overflows, but the smallest type lands
 around 4px. Making mobile READ means real layout decisions (reflow, a
 type floor, a different hero), not a bug fix.
+
+## Motion permission
+
+`src/lib/tiltInit.ts` is an inline `<head>` script that owns every iOS
+`requestPermission` call and marks `<html data-tilt>`. On a phone that has
+never been asked it sets `data-tilt="ask"`, which shows the "tap to enter"
+screen (`TiltAsk.tsx`, styled in globals.css) and holds the page loader until
+there is an answer. `lib/deviceTilt.ts` routes its asks through
+`window.__ncTilt`, so there is only ever one open sheet. Test it with
+`qa/tilt-permission.mjs`, whose stub applies the spec's activation rules;
+Chrome's `navigator.userActivation` cannot stand in for them.
 
 ## Verification habit
 

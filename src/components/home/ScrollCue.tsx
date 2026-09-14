@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useIsPhone } from "@/lib/useIsPhone";
+import { whenTiltAskClears } from "@/lib/tiltInit";
 
 /**
  * THE ARROW THAT SAYS THERE IS MORE (2026-09-01).
@@ -189,8 +190,18 @@ export default function ScrollCue() {
   }, [measure]);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setEntered(true), DELAY_MS);
-    return () => window.clearTimeout(t);
+    /* Time spent on the motion question (see TiltAsk) is not counted: the
+       fifteen seconds are for a reader looking at the homepage, and one who
+       took twenty over "tap to enter" would otherwise meet the arrow the
+       moment they got in. */
+    let t = 0;
+    const stop = whenTiltAskClears(() => {
+      t = window.setTimeout(() => setEntered(true), DELAY_MS);
+    });
+    return () => {
+      stop();
+      window.clearTimeout(t);
+    };
   }, []);
 
   const width = phone

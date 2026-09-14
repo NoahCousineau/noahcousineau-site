@@ -107,10 +107,17 @@ for (const path of PAGES) {
   await page.goto(BASE + path, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.waitForTimeout(17000);
 
-  // The reader's first tap, which is what iOS requires before it will ask.
+  /* The reader's first tap. On a phone that has never been asked it lands on
+     the "tap to enter" screen (see TiltAsk), which holds the page back until
+     there is an answer, so wait for the page to be uncovered and its
+     entrances to get going before measuring anything that moves. */
   await page.touchscreen.tap(10, 700);
   await page.waitForTimeout(800);
   const asked = await page.evaluate(() => ({ n: window.__asks, at: window.__attached }));
+  await page
+    .waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 30000 })
+    .catch(() => {});
+  await page.waitForTimeout(2500);
 
   /* Scroll the movers into view first. Several of them deliberately do not
      simulate while off screen — that is a performance guard, not a fault —

@@ -9,6 +9,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import HomeLink from "@/components/HomeLink";
 import GateOverlay from "@/components/GateOverlay";
 import TiltPrimer from "@/components/TiltPrimer";
+import TiltAsk from "@/components/TiltAsk";
+import { TILT_INIT_SCRIPT } from "@/lib/tiltInit";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.noahcousineau.com"),
@@ -44,8 +46,14 @@ export default function RootLayout({
             effect this would run after paint, which is exactly the flash of
             the wrong theme it exists to prevent. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* Asks for motion before anything else and decides whether the
+            "tap to enter" screen is needed — see lib/tiltInit. Inline, so it
+            does not wait for the site's JavaScript to arrive. */}
+        <script dangerouslySetInnerHTML={{ __html: TILT_INIT_SCRIPT }} />
       </head>
       <body>
+        {/* Shown only on a phone that has never been asked for motion. */}
+        <TiltAsk />
         <ThemeProvider>
         <PageLoader />
         <ThemeToggle />

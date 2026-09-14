@@ -87,8 +87,9 @@ function start() {
    *     only needs a gesture in order to PROMPT, so this returns "granted"
    *     silently and the readings start before the reader touches anything.
    *   iPhone that has never been asked — iOS will not show its sheet outside a
-   *     tap, and no site can change that. The first tap anywhere brings up the
-   *     sheet; nothing else is put on screen to invite it.
+   *     tap, and no site can change that. Such a phone is met with a "tap to
+   *     enter" screen before the homepage (2026-09-13, see TiltAsk and
+   *     lib/tiltInit), and any later tap still asks too.
    *
    * The on-screen "tap to tilt" offer is gone at Noah's request, and with it
    * the status and remembered-answer plumbing that only it used.
@@ -113,12 +114,24 @@ function start() {
     if (r === "granted") attach();
   };
 
-  // A phone that has already answered is told so here, without a gesture.
-  // A phone that has not rejects this without it counting against anything.
-  try {
-    doe.requestPermission?.()?.then(settle).catch(() => {});
-  } catch {
-    // Older WebKit threw synchronously instead of rejecting. Same meaning.
+  /* The inline script from lib/tiltInit owns the question when it is on the
+     page: it has already made the silent first ask, and the "tap to enter"
+     screen goes through it. Every ask here goes through the same object, so
+     the screen's tap and a tap anywhere else share one open sheet. */
+  const shared = window.__ncTilt;
+  const request = (): Promise<"granted" | "denied"> | undefined =>
+    shared?.ask ? shared.ask() : doe.requestPermission?.();
+
+  if (shared?.ask) {
+    shared.on(settle);
+  } else {
+    // A phone that has already answered is told so here, without a gesture.
+    // A phone that has not rejects this without it counting against anything.
+    try {
+      doe.requestPermission?.()?.then(settle).catch(() => {});
+    } catch {
+      // Older WebKit threw synchronously instead of rejecting. Same meaning.
+    }
   }
 
   /*
@@ -155,7 +168,7 @@ function start() {
     let pending: Promise<"granted" | "denied"> | undefined;
     try {
       inFlight = true;
-      pending = doe.requestPermission?.();
+      pending = request();
     } catch {
       fail();
       return;
@@ -171,7 +184,8 @@ function start() {
       })
       .catch(fail);
   }
-  GESTURES.forEach((g) => window.addEventListener(g, ask, { capture: true }));
+  // Already answered by the inline script's first ask: nothing to listen for.
+  if (!settled) GESTURES.forEach((g) => window.addEventListener(g, ask, { capture: true }));
 }
 
 /**
