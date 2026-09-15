@@ -112,6 +112,16 @@ cannot stand in for them.
 
 hem.
 
+## Favicon
+
+The mark is Noah's circled C, `src/app/icon.svg`. Phones and many crawlers do
+not use the SVG, so `src/app/favicon.ico` (16/32/48) and
+`src/app/apple-icon.png` (180, white square, since iOS fills transparent
+corners with black) are rendered from it by `node tools/icons/build-icons.mjs`.
+Rerun that script if the SVG changes. This `favicon.ico` is NOT the stock
+Next.js triangle: that one was deliberately deleted on 2026-08-30 and later
+swept back in by accident. Check the image before deleting or replacing it.
+
 ## Verification habit
 
 After any visual/layout change: run `npm run build` (must exit 0), then
