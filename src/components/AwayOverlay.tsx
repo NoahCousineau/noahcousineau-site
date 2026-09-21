@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ClockFace from "./ClockFace";
 import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 import { isAwayScreenSuppressed } from "@/lib/awayScreen";
+import { ARTBOARD_U, clockWidth, lockupLinkStyle } from "@/lib/clockLockup";
 
 /*
  * AWAY SCREEN — full-viewport ink panel carrying the clock lockup and
@@ -309,24 +310,11 @@ export default function AwayOverlay({
     };
   }, [isMediaBusy, forceOpen]);
 
+  /* Shared with the 404's "return to safety" — see lib/clockLockup. The panel
+     is inert so it can never trap a click; the links opt back in, so a click
+     made on the way back to the window still lands. */
   const linkStyle: React.CSSProperties = {
-    color: "var(--color-paper)",
-    textDecoration: "none",
-    display: "block",
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-sans)",
-    /* 2026-08-25, phones: "Have the clock in the center of the screen with
-       the contact type larger and now center aligned above and below."
-       Roughly double, and no longer clamped small — there is room for it once
-       the two groups stop flanking the clock and stack instead. */
-    fontSize: phone
-      ? "clamp(0.95rem, calc(var(--u) * 46), 1.5rem)"
-      : "clamp(0.62rem, calc(var(--u) * 21), 1.1rem)",
-    letterSpacing: "0.02em",
-    borderBottom: "2px solid var(--color-paper)",
-    paddingBottom: "0.32em",
-    // The panel is inert so it can never trap a click; the links opt back
-    // in, so a click made on the way back to the window still lands.
+    ...lockupLinkStyle(phone),
     pointerEvents: "auto",
   };
 
@@ -369,7 +357,7 @@ export default function AwayOverlay({
       <div
         className={`artboard grid w-full ${phone ? "justify-items-center" : "items-center"}`}
         style={{
-          ["--u" as string]: "calc(100cqw / 1920)",
+          ["--u" as string]: ARTBOARD_U,
           gridTemplateColumns: phone ? "minmax(0, 1fr)" : "1fr auto 1fr",
           /* Generous, and it has to be: the arc type is drawn INSIDE the
              clock's own square box, right at its top and bottom edges, so
@@ -432,11 +420,7 @@ export default function AwayOverlay({
                which at 900px wide is only 244px — small in a window with
                nothing else in it. 720 units lifts it to about 338px there
                and the vh cap still governs a short window. */
-            width: phone
-              ? "min(calc(var(--u) * 1320), 34vh)"
-              : compact
-                ? "min(calc(var(--u) * 720), 58vh)"
-                : "min(calc(var(--u) * 520), 52vh)",
+            width: clockWidth(phone, compact),
             aspectRatio: "1/1",
           }}
         >
@@ -444,8 +428,11 @@ export default function AwayOverlay({
               once — see clockWanted above. */}
           <ClockFace
             idPrefix="away-clock"
-            top="It's Time To"
-            bottom="Contact Noah"
+            /* Capitals in the string rather than left to text-transform,
+               which Chrome applies to SVG text and Safari does not — see
+               NotFoundLockup. */
+            top="IT'S TIME TO"
+            bottom="CONTACT NOAH"
             live={clockWanted}
             active={away}
           />

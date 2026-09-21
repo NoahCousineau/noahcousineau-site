@@ -175,6 +175,82 @@ for (const [w, h] of [[1280, 860], [1512, 982], [390, 844]]) {
   await ctx.close();
 }
 
+/* THE TWO LOCKUPS HAVE TO MATCH (2026-09-20). Noah: "make sure it's the same
+   size as the clock and text in the 'It's time to contact noah' overlay."
+   Measured before they shared their sizes: on a 390px phone the 404's disc was
+   203px against the away screen's 268px, and at 1280 its link was 22.4px
+   against 14px. Checked at four widths, since the two expressions used to
+   agree at one of them by coincidence.
+
+   And the words must be capitals in the text itself, not just in CSS: Chrome
+   applies text-transform to SVG text, Safari does not, so uppercased-by-CSS
+   arcs read as typed on Safari. */
+const LOCKUP = `(() => {
+  const root = document.querySelector(SCOPE);
+  const disc = root.querySelector(".rounded-full").getBoundingClientRect();
+  const glyphs = [...root.querySelectorAll("g[aria-hidden] text")];
+  const link = root.querySelector("a");
+  const cs = link && getComputedStyle(link);
+  return {
+    disc: +disc.width.toFixed(1),
+    /* The arc's type size in rendered pixels, read from the hidden measure
+       <text> that the textPath lays out — NOT from the visible letters. The
+       shimmer scales those by up to 15% as the light passes, so measuring
+       their boxes measures the animation instead of the type: the same page
+       gave 45.1px and 49.4px seconds apart, which failed this check for a
+       size that was already exact. */
+    arcPx: (() => {
+      const t = root.querySelector("svg text");
+      const box = t.ownerSVGElement.getBoundingClientRect();
+      return +(parseFloat(getComputedStyle(t).fontSize) * (box.width / 100)).toFixed(2);
+    })(),
+    linkPx: cs ? +parseFloat(cs.fontSize).toFixed(1) : null,
+    lower: glyphs.map((g) => g.textContent).join("").match(/[a-z]/g) || [],
+  };
+})()`;
+const readLockup = (page, scope) => page.evaluate(`((SCOPE) => ${LOCKUP})(${JSON.stringify(scope)})`);
+
+for (const [w, h] of [[390, 844], [1024, 800], [1280, 860], [1512, 982]]) {
+  const ctx = await browser.newContext({
+    viewport: { width: w, height: h },
+    deviceScaleFactor: 2,
+    isMobile: w < 768,
+    hasTouch: w < 768,
+  });
+  const page = await ctx.newPage();
+  const ready = async () => {
+    await page
+      .waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 40000 })
+      .catch(() => {});
+    await page.evaluate(() => document.fonts?.ready).catch(() => {});
+    await page.waitForTimeout(900);
+  };
+  await page.goto(B + MISSING, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await ready();
+  const four = await readLockup(page, "[data-not-found]");
+
+  await page.goto(B + "/", { waitUntil: "domcontentloaded", timeout: 120000 });
+  await ready();
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await page.waitForTimeout(4200);
+  const awayL = await readLockup(page, "[data-away-screen]");
+
+  const near = (a, b, tol) => Math.abs(a - b) <= tol;
+  report(
+    near(four.disc, awayL.disc, 2) &&
+      near(four.arcPx, awayL.arcPx, 0.5) &&
+      near(four.linkPx, awayL.linkPx, 0.6),
+    `${w}x${h}: 404 lockup matches the away screen`,
+    `disc ${four.disc}/${awayL.disc}  arc type ${four.arcPx}/${awayL.arcPx}px  link ${four.linkPx}/${awayL.linkPx}`
+  );
+  report(
+    four.lower.length === 0 && awayL.lower.length === 0,
+    `${w}x${h}: arc text is capitals in the text itself`,
+    `lowercase letters: 404 ${four.lower.length}, away ${awayL.lower.length}`
+  );
+  await ctx.close();
+}
+
 // The away screen: down here, alive elsewhere.
 for (const [path, want] of [[MISSING, false], ["/", true]]) {
   const label = path === "/" ? "home (control)" : "404";

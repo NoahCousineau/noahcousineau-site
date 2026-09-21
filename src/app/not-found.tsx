@@ -1,6 +1,4 @@
-import Link from "next/link";
-
-import ClockFace from "@/components/ClockFace";
+import NotFoundLockup from "@/components/NotFoundLockup";
 import SuppressAwayScreen from "@/components/SuppressAwayScreen";
 
 /*
@@ -39,29 +37,14 @@ import SuppressAwayScreen from "@/components/SuppressAwayScreen";
  * dark. The watch artwork inside the disc is photographic and is left alone,
  * which is what the away screen does too.
  *
- * SIZED IN VIEWPORT UNITS, not the artboard `--u`. Everything else on the
- * site scales with viewport WIDTH, which on a phone would put this page's
- * type around 4px (see CLAUDE.md). A dead end is the one screen that has to
- * stay readable at every size.
+ * SIZED EXACTLY LIKE THE AWAY SCREEN (2026-09-20). Noah: "Just make sure it's
+ * the same size as the clock and text in the 'It's time to contact noah'
+ * overlay." It had been written in plain viewport units, which agreed with the
+ * away screen only around 1280 wide and left the disc a quarter smaller on a
+ * phone. Both now read their sizes from lib/clockLockup. See NotFoundLockup.
  */
 
 export const metadata = { title: "404 — Noah Cousineau" };
-
-/* Both phrases sit at the lockup's own size, the way the contact screen's
- * pair do — Noah asked for this text "formatted and arced like how the 'It's
- * time to' and 'contact Noah' text is". "OOPS! THIS IS THE" is the longest
- * phrase either lockup carries and it was set smaller at first out of
- * caution; measured, it fills 60% of its half circle at the full size against
- * 47% for "CONTACT NOAH", so it is denser than its neighbours and nowhere
- * near the ends. Smaller only made it look like a different piece of type. */
-
-/** The lockup's size, named so the room its arcs need follows from it. */
-const CLOCK_SIZE = "min(52vw, 40vh)";
-/* The arcs are drawn in a box 140% of the disc, so they reach a fifth of the
- * disc past it above and below. That has to be RESERVED, not left to the
- * gap below: measured at 1280x860, the gap alone put "RETURN TO SAFETY" five
- * pixels on top of the lowest letter of "404 PAGE!". */
-const ARC_OVERHANG = `calc(${CLOCK_SIZE} * 0.2)`;
 
 export default function NotFound() {
   return (
@@ -75,50 +58,18 @@ export default function NotFound() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: "clamp(2rem, 6vh, 4.5rem)",
-        padding: "clamp(3rem, 10vh, 8rem) 1.5rem",
+        /* VERTICAL ONLY. `--u` is 100cqw of the artboard inside, and the
+           away screen's artboard spans the whole viewport — so any padding
+           here makes this lockup smaller than that one at the same width.
+           Measured with 1.5rem of it at 1280: a 333.7px disc against the away
+           screen's 346.7px. The lockup is centred and sized as a fraction of
+           --u, exactly as the away screen's is, so it needs no side padding
+           to stay clear of the edges. */
+        padding: "clamp(3rem, 10vh, 8rem) 0",
       }}
     >
       <SuppressAwayScreen />
-
-      {/* The square is the disc; the arcs overflow it by ARC_OVERHANG, which
-          the margin reserves so nothing can be laid out on top of them. */}
-      <div
-        style={{
-          position: "relative",
-          width: CLOCK_SIZE,
-          aspectRatio: "1 / 1",
-          marginBlock: ARC_OVERHANG,
-          flexShrink: 0,
-        }}
-      >
-        <ClockFace
-          idPrefix="not-found-clock"
-          top="Oops! This is the"
-          bottom="404 page!"
-          /* The page IS the lockup here, so the light never stops sweeping. */
-          active
-        />
-      </div>
-
-      {/* Below the clock, not on it — and the way out. */}
-      <Link
-        href="/"
-        data-return-home
-        style={{
-          fontFamily: "var(--font-sans)",
-          color: "var(--color-paper)",
-          textDecoration: "none",
-          textTransform: "uppercase",
-          fontSize: "clamp(0.95rem, 2.4vw, 1.4rem)",
-          letterSpacing: "0.02em",
-          borderBottom: "2px solid var(--color-paper)",
-          paddingBottom: "0.32em",
-          whiteSpace: "nowrap",
-        }}
-      >
-        Return to safety
-      </Link>
+      <NotFoundLockup />
     </main>
   );
 }

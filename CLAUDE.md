@@ -130,6 +130,13 @@ below it. Its geometry took several rounds to get right, so both callers share
 it: `AwayOverlay` ("It's Time To" / "Contact Noah") and the 404 page ("Oops!
 This is the" / "404 page!"). Don't copy the arc maths to a third place.
 
+Their sizes are shared too, in `lib/clockLockup.ts` — the clock's width per
+tier, the arc overhang, and the type beside it. Both are written against `--u`,
+so whatever element carries them needs the `artboard` class and must span the
+same width, or the two lockups come out different sizes at the same viewport.
+The arc words are written in real capitals rather than uppercased in CSS:
+Chrome applies `text-transform` to SVG text and Safari does not.
+
 The 404 holds the away screen down for as long as it is mounted, through
 `SuppressAwayScreen` and `lib/awayScreen` — a 404 keeps whatever URL was typed,
 so there is no path to match on. The arcs overflow the disc by a fifth of its
