@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import MickeyWatch from "./MickeyWatch";
-import { ArcText, BottomArcText } from "./ArcText";
+import ClockFace from "./ClockFace";
 import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
+import { isAwayScreenSuppressed } from "@/lib/awayScreen";
 
 /*
  * AWAY SCREEN — full-viewport ink panel carrying the clock lockup and
@@ -104,45 +104,7 @@ const CONTACT_RIGHT = [
   { label: "Instagram", href: "https://www.instagram.com/noahcousineau/" },
 ];
 
-/* ARC GEOMETRY.
- *
- * The arcs are drawn in a 100x100 viewBox laid over a box sized 140% of the
- * white circle and offset -20%, so within that viewBox the circle is
- * centred at (50, 50) with radius 100/140 * 50 = 35.71. Text follows the
- * circle's curve only if its path is drawn on a CONCENTRIC circle.
- *
- * THE TWO ARCS NEED DIFFERENT RADII, which is what the previous version got
- * wrong (Noah: "'contact noah' appears to have the right curve, but it's
- * overlapping the circle"). SVG glyphs sit with their baseline ON the path
- * and their bodies extending toward the path's left-hand side:
- *
- *   - Top arc, travelling left-to-right over the top, puts that side
- *     OUTWARD, so the letters grow away from the circle. A baseline at
- *     circle + gap is already clear.
- *   - Bottom arc, travelling left-to-right under the bottom, puts that side
- *     INWARD, so the letters grow back toward the circle. A baseline at
- *     circle + gap therefore drops the letter TOPS inside the circle — the
- *     overlap. Its baseline has to sit a cap-height further out.
- *
- * Expressing both from one TEXT_INNER_R means the two labels occupy the
- * same band (inner edge at circle + gap, outer edge a cap-height beyond),
- * so the gap reads identically top and bottom, and both stay concentric
- * with the circle. This is how a real seal is set.
- */
-const CIRCLE_CENTRE = 50;
-const CIRCLE_R = 35.71;
-/** Clear space between the circle's edge and the nearest ink. */
-const ARC_GAP = 3;
-const ARC_FONT = 8.4;
-/** Cap height as a share of font size, for Akzidenz. */
-const CAP_RATIO = 0.75;
-/** Inner edge of the text band — the same for both labels. */
-const TEXT_INNER_R = CIRCLE_R + ARC_GAP;
-/** Top label: baseline is the inner edge; letters grow outward from it. */
-const TOP_ARC_R = TEXT_INNER_R;
-/** Bottom label: letters grow inward, so the baseline sits a cap-height
- * beyond the inner edge to leave the same clear space. */
-const BOTTOM_ARC_R = TEXT_INNER_R + ARC_FONT * CAP_RATIO;
+/* The lockup's geometry now lives with it, in ClockFace. */
 
 /** Fired on `window` each time the away screen appears. */
 export const AWAY_SCREEN_SHOWN = "nc:away-screen-shown";
@@ -269,6 +231,18 @@ export default function AwayOverlay({
 
     // --- Idle ------------------------------------------------------------
     const idlePoll = window.setInterval(() => {
+      /* THE 404 OWNS THE CLOCK (2026-09-20). Noah: "On the 404 page, I would
+         NOT like for the 'it's time to contact Noah' page to come up over the
+         404 page if the user isn't interacting with the site." That page IS
+         the clock lockup now, so this would cover one clock with another —
+         and someone reading a dead end is exactly who sits still. Treated as
+         activity too, so the countdown starts fresh on the way out rather
+         than firing the moment they leave the page. See lib/awayScreen. */
+      if (isAwayScreenSuppressed()) {
+        lastActivity = Date.now();
+        if (awayRef.current) dismiss();
+        return;
+      }
       if (awayRef.current) return;
       if (document.hidden) return; // the leave triggers own that case
       if (Date.now() - lastActivity < IDLE_MS) return;
@@ -284,9 +258,9 @@ export default function AwayOverlay({
     // --- Leaving ---------------------------------------------------------
     const leave = () => {
       clearLeaveTimer();
-      if (isMediaBusy()) return;
+      if (isMediaBusy() || isAwayScreenSuppressed()) return;
       leaveTimerRef.current = window.setTimeout(() => {
-        if (isMediaBusy()) return;
+        if (isMediaBusy() || isAwayScreenSuppressed()) return;
         setAway(true);
       }, LEAVE_DELAY_MS);
     };
@@ -358,6 +332,7 @@ export default function AwayOverlay({
 
   return (
     <div
+      data-away-screen
       aria-hidden={!away}
       className="fixed inset-0 pointer-events-none flex items-center justify-center"
       style={{
@@ -465,57 +440,15 @@ export default function AwayOverlay({
             aspectRatio: "1/1",
           }}
         >
-          {/* White circle backdrop, clipping the oversized watch to a clean edge */}
-          <div className="absolute inset-0 rounded-full bg-[color:var(--color-paper)] overflow-hidden">
-            <div
-              className="absolute"
-              style={{ width: "153%", height: "153%", left: "-26.5%", top: "-26.5%" }}
-            >
-              {clockWanted && <MickeyWatch />}
-            </div>
-          </div>
-          {/* Top arc: "IT'S TIME TO" — letters grow outward from the baseline. */}
-          <div className="absolute" style={{ width: "140%", height: "140%", left: "-20%", top: "-20%" }}>
-            <ArcText
-              id="away-clock-arc-top"
-              text="It's Time To"
-              width={100}
-              height={100}
-              radius={TOP_ARC_R}
-              centerY={CIRCLE_CENTRE}
-              spanDeg={180}
-              fontSize={ARC_FONT}
-              flip={true}
-              color="var(--color-paper)"
-              /* The light crosses this phrase first, then the one below —
-                 clockwise along the top, which on screen is left to right. */
-              shimmer
-              shimmerPhaseMs={0}
-              shimmerActive={away}
-            />
-          </div>
-          {/* Bottom arc: "CONTACT NOAH" — letters grow inward, so this
-              baseline sits a cap-height further out to keep the same clear
-              space off the circle. */}
-          <div className="absolute" style={{ width: "140%", height: "140%", left: "-20%", top: "-20%" }}>
-            <BottomArcText
-              id="away-clock-arc-bottom"
-              text="Contact Noah"
-              width={100}
-              height={100}
-              radius={BOTTOM_ARC_R}
-              centerY={CIRCLE_CENTRE}
-              spanDeg={180}
-              fontSize={ARC_FONT}
-              color="var(--color-paper)"
-              /* One second later, so it starts as the phrase above finishes.
-                 Counter-clockwise along the bottom — which, like the top, is
-                 left to right on screen, so the two read in order. */
-              shimmer
-              shimmerPhaseMs={1000}
-              shimmerActive={away}
-            />
-          </div>
+          {/* The clock does not mount until the screen has been wanted
+              once — see clockWanted above. */}
+          <ClockFace
+            idPrefix="away-clock"
+            top="It's Time To"
+            bottom="Contact Noah"
+            live={clockWanted}
+            active={away}
+          />
         </div>
 
         {/* Stacked on a phone for the same reason as the group above. */}

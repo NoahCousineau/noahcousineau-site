@@ -78,6 +78,7 @@ npm run qa:responsive    # overflow + JS errors at 3 breakpoints (needs dev/star
 npm run qa:assets        # every image decodes on every project page (needs dev/start running)
 npm run qa:motion        # Apple's motion sheet on first touch (even mid-load), tilt on from load, objects move
 npm run qa:theme         # the rotating head's sprite sheet matches the active theme
+npm run qa:404           # the 404's clock lockup, and the away screen staying down on it
 ```
 
 All QA scripts hit `http://localhost:3000` unless `QA_BASE` says otherwise, and
@@ -121,6 +122,21 @@ corners with black) are rendered from it by `node tools/icons/build-icons.mjs`.
 Rerun that script if the SVG changes. This `favicon.ico` is NOT the stock
 Next.js triangle: that one was deliberately deleted on 2026-08-30 and later
 swept back in by accident. Check the image before deleting or replacing it.
+
+## The clock lockup and the 404
+
+`ClockFace.tsx` is the white disc, the live watch, and a phrase arced above and
+below it. Its geometry took several rounds to get right, so both callers share
+it: `AwayOverlay` ("It's Time To" / "Contact Noah") and the 404 page ("Oops!
+This is the" / "404 page!"). Don't copy the arc maths to a third place.
+
+The 404 holds the away screen down for as long as it is mounted, through
+`SuppressAwayScreen` and `lib/awayScreen` — a 404 keeps whatever URL was typed,
+so there is no path to match on. The arcs overflow the disc by a fifth of its
+size and the page reserves that as margin; without it the "return to safety"
+link sat on top of the bottom arc, which a screenshot did not make obvious and
+a measurement did. `npm run qa:404` covers all of it, with the home page as a
+control so it cannot pass by simply never seeing the screen.
 
 ## Verification habit
 
