@@ -1,3 +1,6 @@
+import { Fragment } from "react";
+
+import { parseIntro } from "@/lib/introText";
 import Image from "next/image";
 import { assetPath, type Project } from "@/lib/projects";
 
@@ -36,9 +39,34 @@ export function ProjectHero({ project }: { project: Project }) {
         </ul>
       )}
 
-      {project.intro && (
-        <p className="mt-10 max-w-[46ch] leading-relaxed">{project.intro}</p>
-      )}
+      {project.intro &&
+        parseIntro(project.intro).map((lines, pi) => (
+          <p
+            key={pi}
+            className={`max-w-[46ch] leading-relaxed ${pi === 0 ? "mt-10" : "mt-5"}`}
+          >
+            {lines.map((spans, li) => (
+              <Fragment key={li}>
+                {li > 0 && <br />}
+                {spans.map((span, si) =>
+                  span.href ? (
+                    <a
+                      key={si}
+                      href={span.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: "underline", textUnderlineOffset: "0.18em" }}
+                    >
+                      {span.text}
+                    </a>
+                  ) : (
+                    <Fragment key={si}>{span.text}</Fragment>
+                  )
+                )}
+              </Fragment>
+            ))}
+          </p>
+        ))}
     </header>
   );
 }

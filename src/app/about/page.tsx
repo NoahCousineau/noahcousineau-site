@@ -554,35 +554,22 @@ export default function About() {
           }}
         >
           <p className="m-0">
-            Engineering is the study of problem solving. This was the core
-            learning that I derived from my bachelors program in Aerospace
-            Engineering and from my career as an engineer. Despite dedicating
-            so much time to becoming an engineer, there was one other key
-            learning that I gained from my experience; I hated engineering.
+            Engineering is, at its core, the study of problem solving—a lesson
+            I learned while earning my aerospace engineering degree and
+            starting my career. But along the way, I learned something else: I
+            hated engineering.
           </p>
           <p className="m-0">
-            For a field that seemed to be teeming with creativity and
-            possibility, I found myself mired by dull calculations,
-            regimented procedures, and serious consequences to errors. If I
-            was going to devote myself to a career, I wanted to ensure it was
-            one where I could be creative and not be so grave and solemn.
-            This yearning for levity and creativity brought me to another
-            passion of mine, graphic design.
+            The field promised innovation, imagination and possibility, but the
+            day-to-day reality felt very different: dull calculations and rigid
+            procedures. So I went back to school and got a graduate degree in
+            graphic design.
           </p>
           <p className="m-0">
-            After a graduate graphic design program and working as a designer,
-            I’ve found something curious about my industry. Many designers
-            carry themselves with the same onus that I was required to have as
-            an engineer. Designers can be serious, stern, and humorless in
-            their character and work. If we find ourselves in a field full of
-            self expression and creativity, why be so stark about it?
-          </p>
-          <p className="m-0">
-            Like engineering, design is also a study of problem solving.
-            Unlike engineering, design can be solved however the designer
-            wants. I find that I still have a calculated problem-solving
-            approach to design like I did as an engineer. This time, I just
-            chose to have fun while solving the problem.
+            After several years working as a designer, I still bring an
+            engineer’s calculated, methodical approach to my work. But now the
+            problem-solving comes with a good deal more freedom and creativity.
+            The difference is now I get to have fun doing it.
           </p>
         </div>
       </section>

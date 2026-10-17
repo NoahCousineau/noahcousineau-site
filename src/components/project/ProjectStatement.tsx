@@ -86,24 +86,67 @@ function renderWithItalics(text: string, keyPrefix: string): React.ReactNode {
   );
 }
 
+const LABELLED_LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+
 /**
- * renderParagraph — combines the two paragraph-level text features:
- * parenthesis-italics markup AND URL auto-linking. Splits on italic
- * markup first, then runs linkify on each non-italic segment so a URL
- * can still appear outside (or, less usefully, inside) parens without
- * the two features conflicting.
+ * renderInline — the original pair of paragraph features: `(...)` for italics
+ * and bare addresses auto-linked by linkify.
  */
-function renderParagraph(text: string): React.ReactNode[] {
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   const segments = text.split(ITALIC_MARKUP_PATTERN);
   return segments.map((segment, i) =>
     i % 2 === 1 ? (
-      <em key={i} style={{ fontStyle: "italic" }}>
+      <em key={`${keyPrefix}-em-${i}`} style={{ fontStyle: "italic" }}>
         {segment}
       </em>
     ) : (
-      <span key={i}>{linkify(segment)}</span>
+      <span key={`${keyPrefix}-t-${i}`}>{linkify(segment)}</span>
     )
   );
+}
+
+/**
+ * renderParagraph — italics, links, and single line breaks.
+ *
+ * LABELLED LINKS ARE TAKEN OUT FIRST, and that order is the whole trick
+ * (2026-10-16). `[here](https://…)` is a link whose text is not the address,
+ * which Noah's Corita copy needs: "…can be found here." linking to the PRINT
+ * Awards page. linkify alone cannot do it — it only turns an address into a
+ * link showing that address, right for "visit socalearth.org".
+ *
+ * Written the obvious way round, it silently failed: the italics markup is
+ * `(...)`, so splitting on that first tore the `(https://…)` out of the link
+ * and rendered the URL in italics with a stray "[here]" beside it. Measured
+ * on the built page — the sentence never matched and no anchor carried the
+ * href. So the link is matched first and only the text between links goes
+ * through the italics pass.
+ *
+ * Single line breaks survive as <br>, which the "More Work" bulleted lines
+ * need; a blank line still means a new paragraph, and those are separate
+ * entries in the `paragraph` array.
+ */
+function renderParagraph(text: string): React.ReactNode[] {
+  return text.split("\n").flatMap((line, li) => {
+    const out: React.ReactNode[] = [];
+    let at = 0;
+    for (const m of line.matchAll(LABELLED_LINK)) {
+      if (m.index > at) out.push(...renderInline(line.slice(at, m.index), `${li}-${at}`));
+      out.push(
+        <a
+          key={`${li}-link-${m.index}`}
+          href={m[2]}
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:opacity-60 transition-opacity"
+        >
+          {m[1]}
+        </a>
+      );
+      at = m.index + m[0].length;
+    }
+    if (at < line.length) out.push(...renderInline(line.slice(at), `${li}-${at}`));
+    return li === 0 ? out : [<br key={`br-${li}`} />, ...out];
+  });
 }
 
 /**

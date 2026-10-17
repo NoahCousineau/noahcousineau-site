@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+import { introPlainText } from "@/lib/introText";
 import type { Metadata } from "next";
 import {
   getProject,
@@ -51,7 +53,7 @@ export async function generateMetadata(
   if (!project) return { title: "Not found" };
   return {
     title: TAB_TITLES[slug] ?? project.title,
-    description: project.intro.slice(0, 160),
+    description: introPlainText(project.intro).slice(0, 160),
   };
 }
 
