@@ -69,11 +69,26 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
       { label: "more work", href: "/work/more-work" },
     ],
   },
+  /* ABOUT/RÉSUMÉ MOVED LEFT TO MAKE ROOM (2026-10-17). Noah: "Insert the
+     links for the LinkedIn and Instagram pages in the footer, in between the
+     two columns. Shift the column with 'about me' and 'resume' to the left to
+     allow the two new links to be there."
+
+     The right-hand block is now three columns on the same 220.77u pitch the
+     contact pair already sat on, so the new one lands exactly where
+     about/résumé used to be and nothing else moves. */
   {
-    x: 1409.32,
+    x: 1188.55,
     items: [
       { label: "about me", href: "/about" },
       { label: "résumé", href: "/assets/_documents/noah-cousineau-resume.pdf" },
+    ],
+  },
+  {
+    x: 1409.32,
+    items: [
+      { label: "linkedin", href: "https://www.linkedin.com/in/noah-cousineau/" },
+      { label: "instagram", href: "https://www.instagram.com/noahcousineau/" },
     ],
   },
   {

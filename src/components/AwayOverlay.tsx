@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ClockFace from "./ClockFace";
 import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
-import { isAwayScreenSuppressed } from "@/lib/awayScreen";
+import { AWAY_SCREEN_ENABLED, isAwayScreenSuppressed } from "@/lib/awayScreen";
 import { ARTBOARD_U, clockWidth, lockupLinkStyle } from "@/lib/clockLockup";
 
 /*
@@ -157,7 +157,8 @@ export default function AwayOverlay({
    * a full-screen takeover with nothing behind it to be late for.
    */
   const [clockWanted, setClockWanted] = useState(false);
-  const away = forceOpen || awayState;
+  // Paused site-wide unless held open for the bench — see AWAY_SCREEN_ENABLED.
+  const away = forceOpen || (AWAY_SCREEN_ENABLED && awayState);
   /* Latch: the first time the screen is wanted, the clock mounts and stays. */
   useEffect(() => {
     if (away) setClockWanted(true);
@@ -206,7 +207,7 @@ export default function AwayOverlay({
      * `forceOpen` exists — see the prop's note. Held open, none of these
      * listeners should run either: there is nothing for them to raise, and a
      * dismiss would take down the thing you are trying to look at. */
-    if (forceOpen) return;
+    if (forceOpen || !AWAY_SCREEN_ENABLED) return;
     if (window.self !== window.top) return;
 
     let lastActivity = Date.now();

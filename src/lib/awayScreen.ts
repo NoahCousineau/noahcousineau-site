@@ -34,3 +34,18 @@ export function suppressAwayScreen(): () => void {
 export function isAwayScreenSuppressed(): boolean {
   return holders > 0;
 }
+
+/*
+ * PAUSED (2026-10-17). Noah: "I want to put a temporary pause on the 'it's
+ * time to contact Noah' page. Let's just disable this for now."
+ *
+ * One switch rather than a deletion, the same way the password gate was
+ * retired (see GATE_ENABLED in lib/gate). Every part still exists — the idle
+ * timer, the leaving triggers, the clock lockup, the contact links — and
+ * flipping this back to `true` restores all of it with nothing to rebuild.
+ *
+ * What reads it: AwayOverlay stops arming its triggers and refuses to raise
+ * itself. `forceOpen` still works, so /dev/clock can preview the screen while
+ * it is paused. qa/not-found.mjs checks the pause instead of the screen.
+ */
+export const AWAY_SCREEN_ENABLED = false;

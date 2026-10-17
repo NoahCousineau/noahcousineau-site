@@ -554,8 +554,8 @@ export default function About() {
           }}
         >
           <p className="m-0">
-            Engineering is, at its core, the study of problem solving—a lesson
-            I learned while earning my aerospace engineering degree and
+            Engineering is the study of problem solving. This is the core
+            lesson I learned while earning my aerospace engineering degree and
             starting my career. But along the way, I learned something else: I
             hated engineering.
           </p>

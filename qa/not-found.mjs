@@ -175,6 +175,13 @@ for (const [w, h] of [[1280, 860], [1512, 982], [390, 844]]) {
   await ctx.close();
 }
 
+/* Is the contact screen switched on? Paused on 2026-10-17 at Noah's request
+   (see AWAY_SCREEN_ENABLED in src/lib/awayScreen.ts). Read from the source
+   rather than assumed, so this file follows the switch both ways. */
+const AWAY_ENABLED = /AWAY_SCREEN_ENABLED\s*=\s*true/.test(
+  readFileSync(new URL("../src/lib/awayScreen.ts", import.meta.url), "utf8")
+);
+
 /* THE TWO LOCKUPS HAVE TO MATCH (2026-09-20). Noah: "make sure it's the same
    size as the clock and text in the 'It's time to contact noah' overlay."
    Measured before they shared their sizes: on a 390px phone the 404's disc was
@@ -210,50 +217,55 @@ const LOCKUP = `(() => {
 })()`;
 const readLockup = (page, scope) => page.evaluate(`((SCOPE) => ${LOCKUP})(${JSON.stringify(scope)})`);
 
-for (const [w, h] of [[390, 844], [1024, 800], [1280, 860], [1512, 982]]) {
-  const ctx = await browser.newContext({
-    viewport: { width: w, height: h },
-    deviceScaleFactor: 2,
-    isMobile: w < 768,
-    hasTouch: w < 768,
-  });
-  const page = await ctx.newPage();
-  const ready = async () => {
-    await page
-      .waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 40000 })
-      .catch(() => {});
-    await page.evaluate(() => document.fonts?.ready).catch(() => {});
-    await page.waitForTimeout(900);
-  };
-  await page.goto(B + MISSING, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await ready();
-  const four = await readLockup(page, "[data-not-found]");
+if (!AWAY_ENABLED) {
+  console.log("  --   lockup parity skipped: the contact screen is paused, so there is\n        no away screen to measure the 404 against. Flip AWAY_SCREEN_ENABLED\n        back to true and these four comparisons run again.");
+} else {
+  for (const [w, h] of [[390, 844], [1024, 800], [1280, 860], [1512, 982]]) {
+    const ctx = await browser.newContext({
+      viewport: { width: w, height: h },
+      deviceScaleFactor: 2,
+      isMobile: w < 768,
+      hasTouch: w < 768,
+    });
+    const page = await ctx.newPage();
+    const ready = async () => {
+      await page
+        .waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 40000 })
+        .catch(() => {});
+      await page.evaluate(() => document.fonts?.ready).catch(() => {});
+      await page.waitForTimeout(900);
+    };
+    await page.goto(B + MISSING, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await ready();
+    const four = await readLockup(page, "[data-not-found]");
 
-  await page.goto(B + "/", { waitUntil: "domcontentloaded", timeout: 120000 });
-  await ready();
-  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-  await page.waitForTimeout(4200);
-  const awayL = await readLockup(page, "[data-away-screen]");
+    await page.goto(B + "/", { waitUntil: "domcontentloaded", timeout: 120000 });
+    await ready();
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await page.waitForTimeout(4200);
+    const awayL = await readLockup(page, "[data-away-screen]");
 
-  const near = (a, b, tol) => Math.abs(a - b) <= tol;
-  report(
-    near(four.disc, awayL.disc, 2) &&
-      near(four.arcPx, awayL.arcPx, 0.5) &&
-      near(four.linkPx, awayL.linkPx, 0.6),
-    `${w}x${h}: 404 lockup matches the away screen`,
-    `disc ${four.disc}/${awayL.disc}  arc type ${four.arcPx}/${awayL.arcPx}px  link ${four.linkPx}/${awayL.linkPx}`
-  );
-  report(
-    four.lower.length === 0 && awayL.lower.length === 0,
-    `${w}x${h}: arc text is capitals in the text itself`,
-    `lowercase letters: 404 ${four.lower.length}, away ${awayL.lower.length}`
-  );
-  await ctx.close();
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    report(
+      near(four.disc, awayL.disc, 2) &&
+        near(four.arcPx, awayL.arcPx, 0.5) &&
+        near(four.linkPx, awayL.linkPx, 0.6),
+      `${w}x${h}: 404 lockup matches the away screen`,
+      `disc ${four.disc}/${awayL.disc}  arc type ${four.arcPx}/${awayL.arcPx}px  link ${four.linkPx}/${awayL.linkPx}`
+    );
+    report(
+      four.lower.length === 0 && awayL.lower.length === 0,
+      `${w}x${h}: arc text is capitals in the text itself`,
+      `lowercase letters: 404 ${four.lower.length}, away ${awayL.lower.length}`
+    );
+    await ctx.close();
+  }
 }
 
 // The away screen: down here, alive elsewhere.
-for (const [path, want] of [[MISSING, false], ["/", true]]) {
-  const label = path === "/" ? "home (control)" : "404";
+for (const [path, want] of [[MISSING, false], ["/", AWAY_ENABLED]]) {
+  const label =
+    path === "/" ? (AWAY_ENABLED ? "home (control)" : "home (paused)") : "404";
   const { ctx, page, errs } = await open(path);
 
   // Leaving: blur the window and wait out the debounce.
