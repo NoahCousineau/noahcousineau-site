@@ -53,32 +53,32 @@ const REST_DEG = -12;
  *  behind the curtain until the footer starts to show, so every extra unit
  *  of run-up is distance it has to cover in the same stretch of scrolling,
  *  which is what made it hurry. */
-const RUN_UP_UNITS = 60;
+const RUN_UP_UNITS = 140;
 
-/* IT ARRIVES LATE, AND IT SETTLES (2026-10-18). Noah: "The C is rolling in
- * aggressively. It also appears to be sliding more than it is rolling. It
- * also doesn't have to appear immediately, there can be a bit of a delay in
- * it rolling in to make the roll seem calmer and more natural."
+/* A TIMED ROLL, NOT A SCRUBBED ONE (2026-10-18, second pass). Noah: "The C
+ * is still rolling in aggressively. Let's slow it down a lot and make it
+ * feel like it comes to a natural smooth stop."
  *
- * The rotation was never the problem: measured on the built page it turns
- * 0.405 degrees per pixel travelled against a true rolling 0.403 for its
- * radius, so it is not slipping at all. What read as sliding was the motion
- * either side of it — a constant speed from the first pixel of the reveal to
- * a dead stop, which nothing that actually rolls ever does.
+ * It was tied to the scroll, which meant the reader set its speed: a flick
+ * of the wheel threw it across the footer. Worse, the speed could not be
+ * reduced much, because the mark is hidden behind the curtain until the
+ * footer starts to show — about one screen of scrolling for the whole roll,
+ * and easing can only redistribute that, never lengthen it. Measured at the
+ * calmest it got that way, it still peaked at 0.91px per pixel scrolled.
  *
- * So the mark now waits out the first part of the reveal, then eases in and
- * decelerates into its resting angle. Smoothstep rather than a plain
- * ease-out: an ease-out is fastest at the very moment it appears, which is
- * the aggressive entrance again. This way it gathers pace and loses it.
+ * So arriving at the footer now STARTS a roll of its own, the way the head's
+ * rise has always worked, and the clock is the animation's rather than the
+ * reader's. That buys the two things asked for: a duration long enough to
+ * read, and an ease-out that lands it rather than stopping it. Entering at
+ * speed and losing it is also what a real one would do — it arrives already
+ * rolling, and friction takes it.
  *
- * The visible window cannot simply be made longer, which was the obvious
- * fix: the footer sits behind an opaque curtain, so the mark is hidden until
- * the curtain's bottom edge clears the foot of the screen. Starting the
- * trigger earlier only rolls it where nobody can see.
+ * Scrolling back up reverses it, matching the head.
  */
-const DELAY_FRACTION = 0.3;
-/** 3t² − 2t³: no jolt at either end. */
-const smoothstep = (t: number) => t * t * (3 - 2 * t);
+const ROLL_SECONDS = 2.6;
+/** A beat after reaching the footer before it appears, per Noah's earlier
+ *  note. Free now: it no longer costs the roll any of its length. */
+const ROLL_DELAY_SECONDS = 0.45;
 /** Collision outline. A white-on-transparent raster of the same mark: the
  *  hook decodes it to measure the silhouette, and never displays it. */
 const MASK_SRC = "/assets/shared/c-logo-mask.png";
@@ -173,42 +173,49 @@ export default function FooterCLogo({
       return;
     }
 
+    /* A proxy the tween animates; `draw` turns it into the transform. */
+    const state = { v: 0 };
+    draw(0);
+
+    const roll = gsap.to(state, {
+      v: 1,
+      duration: ROLL_SECONDS,
+      delay: ROLL_DELAY_SECONDS,
+      // Enters with speed and loses it, which is how a rolling thing stops.
+      ease: "power2.out",
+      paused: true,
+      onUpdate: () => {
+        if (!grabbed.current) draw(state.v);
+      },
+      onComplete: () => {
+        if (!grabbed.current) arrive();
+      },
+    });
+
     const st = ScrollTrigger.create({
       trigger,
-      // The curtain's bottom edge crossing the viewport: its whole travel
-      // from "the footer starts to show" to "the footer is all there is".
+      // The moment the curtain's bottom edge clears the foot of the screen
+      // is the moment the mark could be seen — so that is when it sets off.
       start: "bottom bottom",
-      end: "bottom top",
-      invalidateOnRefresh: true,
-      onUpdate: (self) => {
+      onEnter: () => {
+        if (!grabbed.current) roll.play();
+      },
+      onLeaveBack: () => {
         if (grabbed.current) return;
-        const raw = self.progress;
-        // Parked off screen through the delay, then eased across what's left.
-        const p =
-          raw <= DELAY_FRACTION
-            ? 0
-            : smoothstep((raw - DELAY_FRACTION) / (1 - DELAY_FRACTION));
-        if (raw >= 0.999) {
-          if (!settledRef.current) arrive();
-          return;
-        }
+        // Hand the transform back before reversing, or the physics and the
+        // tween would both be writing it.
         if (settledRef.current) {
           settledRef.current = false;
           setSettled(false);
         }
-        draw(p);
+        roll.reverse();
       },
     });
-    // Paint where the scroll actually is, rather than assuming the top.
-    if (st.progress >= 0.999) arrive();
-    else
-      draw(
-        st.progress <= DELAY_FRACTION
-          ? 0
-          : smoothstep((st.progress - DELAY_FRACTION) / (1 - DELAY_FRACTION))
-      );
 
-    return () => st.kill();
+    return () => {
+      roll.kill();
+      st.kill();
+    };
   }, [containerRef, triggerRef, seedRotation]);
 
   return (
