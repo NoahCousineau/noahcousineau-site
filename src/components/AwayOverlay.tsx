@@ -102,7 +102,7 @@ const CONTACT_LEFT = [
 ];
 const CONTACT_RIGHT = [
   { label: "LinkedIn", href: "https://www.linkedin.com/in/noah-cousineau/" },
-  { label: "Instagram", href: "https://www.instagram.com/noahcousineau/" },
+  { label: "Instagram", href: "https://www.instagram.com/cousineau_design/" },
 ];
 
 /* The lockup's geometry now lives with it, in ClockFace. */

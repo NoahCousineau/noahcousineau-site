@@ -88,7 +88,7 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
     x: 1409.32,
     items: [
       { label: "linkedin", href: "https://www.linkedin.com/in/noah-cousineau/" },
-      { label: "instagram", href: "https://www.instagram.com/noahcousineau/" },
+      { label: "instagram", href: "https://www.instagram.com/cousineau_design/" },
     ],
   },
   {
