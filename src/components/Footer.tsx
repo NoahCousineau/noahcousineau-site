@@ -6,6 +6,7 @@ import { Stage, Place, uFont, uFontMin } from "./Stage";
 import PeekingHead, { PHONE_HEAD_WIDTH_UNITS } from "./PeekingHead";
 import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 import FallenHand from "./FallenHand";
+import FooterCLogo from "./FooterCLogo";
 import { useRef } from "react";
 import { THIRD_COLUMN_X } from "./footerLayout";
 
@@ -212,6 +213,7 @@ const ROW2_RULE_Y = 429.4;
  * footer simply shows as a tall black panel.
  */
 export default function Footer({ nextProjectHref }: { nextProjectHref?: string }) {
+  const artboardRef = useRef<HTMLDivElement>(null);
   const phone = useIsPhone();
   /* BELOW 1200 THE LINKS USE THE PHONE'S TWO COLUMNS, phones included — see
    * the note on useIsCompact for the arithmetic. Five columns of legible type
@@ -328,6 +330,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
         style={phone ? { height: "100dvh" } : undefined}
       >
       <div
+        ref={artboardRef}
         className="artboard relative mx-auto w-full h-full"
         style={{ containerType: "inline-size", ["--u" as string]: "calc(100cqw / 1920)" }}
       >
@@ -355,7 +358,20 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             and neither at its intended size. `compact` is the same line the
             links reflow on, so the footer now has one composition per tier
             rather than two halves of different ones. */}
-        {!(compact && nextProjectHref) && (
+        {/* DESKTOP GETS THE C MARK INSTEAD OF THE HEAD (2026-10-18). Noah:
+            "removing my head on the footer... Instead, I would like for my
+            secondary logo (the circular C logo), to take its place... roll in
+            along the bottom of the browser window... This is only for
+            desktop, I don't want to see this on mobile."
+
+            So the two tiers now draw different things, and the phone and the
+            in-between band keep the head on exactly the terms they had —
+            including standing it down on a compact project page, where the
+            teeter-totter needs the room. */}
+        {!compact && (
+          <FooterCLogo containerRef={artboardRef} triggerRef={spacerRef} />
+        )}
+        {compact && !nextProjectHref && (
           <PeekingHead
             centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
             widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
