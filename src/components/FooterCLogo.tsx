@@ -49,8 +49,36 @@ const DIAMETER_UNITS = 360;
 const REST_DEG = -12;
 /** Clear of the RIGHT edge before it starts (2026-10-18). Noah: "make sure
  *  we have a sense that it's rolling in from right to left from outside of
- *  the browser when we scroll down." */
-const RUN_UP_UNITS = 300;
+ *  the browser when we scroll down." Only just clear: the mark is hidden
+ *  behind the curtain until the footer starts to show, so every extra unit
+ *  of run-up is distance it has to cover in the same stretch of scrolling,
+ *  which is what made it hurry. */
+const RUN_UP_UNITS = 60;
+
+/* IT ARRIVES LATE, AND IT SETTLES (2026-10-18). Noah: "The C is rolling in
+ * aggressively. It also appears to be sliding more than it is rolling. It
+ * also doesn't have to appear immediately, there can be a bit of a delay in
+ * it rolling in to make the roll seem calmer and more natural."
+ *
+ * The rotation was never the problem: measured on the built page it turns
+ * 0.405 degrees per pixel travelled against a true rolling 0.403 for its
+ * radius, so it is not slipping at all. What read as sliding was the motion
+ * either side of it — a constant speed from the first pixel of the reveal to
+ * a dead stop, which nothing that actually rolls ever does.
+ *
+ * So the mark now waits out the first part of the reveal, then eases in and
+ * decelerates into its resting angle. Smoothstep rather than a plain
+ * ease-out: an ease-out is fastest at the very moment it appears, which is
+ * the aggressive entrance again. This way it gathers pace and loses it.
+ *
+ * The visible window cannot simply be made longer, which was the obvious
+ * fix: the footer sits behind an opaque curtain, so the mark is hidden until
+ * the curtain's bottom edge clears the foot of the screen. Starting the
+ * trigger earlier only rolls it where nobody can see.
+ */
+const DELAY_FRACTION = 0.3;
+/** 3t² − 2t³: no jolt at either end. */
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
 /** Collision outline. A white-on-transparent raster of the same mark: the
  *  hook decodes it to measure the silhouette, and never displays it. */
 const MASK_SRC = "/assets/shared/c-logo-mask.png";
@@ -154,8 +182,13 @@ export default function FooterCLogo({
       invalidateOnRefresh: true,
       onUpdate: (self) => {
         if (grabbed.current) return;
-        const p = self.progress;
-        if (p >= 0.999) {
+        const raw = self.progress;
+        // Parked off screen through the delay, then eased across what's left.
+        const p =
+          raw <= DELAY_FRACTION
+            ? 0
+            : smoothstep((raw - DELAY_FRACTION) / (1 - DELAY_FRACTION));
+        if (raw >= 0.999) {
           if (!settledRef.current) arrive();
           return;
         }
@@ -168,7 +201,12 @@ export default function FooterCLogo({
     });
     // Paint where the scroll actually is, rather than assuming the top.
     if (st.progress >= 0.999) arrive();
-    else draw(st.progress);
+    else
+      draw(
+        st.progress <= DELAY_FRACTION
+          ? 0
+          : smoothstep((st.progress - DELAY_FRACTION) / (1 - DELAY_FRACTION))
+      );
 
     return () => st.kill();
   }, [containerRef, triggerRef, seedRotation]);
