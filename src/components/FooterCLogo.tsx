@@ -41,13 +41,16 @@ import { useThrowable } from "@/lib/useThrowable";
 /** Across, as a fraction of the artboard. The head sat here too, under the
  *  right-hand link columns, so the mark takes its place. */
 const REST_CENTRE_X_UNITS = (1409.32 + 1630.09 + 204.22) / 2;
-/** The head is 300 units wide; the mark matches it. */
-const DIAMETER_UNITS = 300;
+/** The head was 300 units wide and the mark matched it; Noah asked for "a
+ *  bit bigger" on 2026-10-18. */
+const DIAMETER_UNITS = 360;
 /** Not perfectly straight, per Noah. The C's opening is what shows the
  *  angle, so this is the whole point of where it stops. */
 const REST_DEG = -12;
-/** Clear of the left edge before it starts, so it rolls in from off screen. */
-const RUN_UP_UNITS = 240;
+/** Clear of the RIGHT edge before it starts (2026-10-18). Noah: "make sure
+ *  we have a sense that it's rolling in from right to left from outside of
+ *  the browser when we scroll down." */
+const RUN_UP_UNITS = 300;
 /** Collision outline. A white-on-transparent raster of the same mark: the
  *  hook decodes it to measure the silhouette, and never displays it. */
 const MASK_SRC = "/assets/shared/c-logo-mask.png";
@@ -108,20 +111,25 @@ export default function FooterCLogo({
 
     /** Where it rolls from and how far, in px at the current width. */
     const geometry = () => {
-      const unit = container.clientWidth / 1920;
+      const width = container.clientWidth;
+      const unit = width / 1920;
       const radius = (DIAMETER_UNITS * unit) / 2;
       const restCentre = REST_CENTRE_X_UNITS * unit;
-      // Far enough left that the whole mark is off screen before it starts.
-      const distance = restCentre + radius + RUN_UP_UNITS * unit;
-      return { radius, distance };
+      // It starts beyond the RIGHT edge, far enough out to be fully hidden,
+      // and rolls leftward to its resting place.
+      const startCentre = width + radius + RUN_UP_UNITS * unit;
+      return { radius, distance: startCentre - restCentre };
     };
 
     const draw = (progress: number) => {
       const { radius, distance } = geometry();
+      // How far to the RIGHT of its resting place it still is.
       const remaining = distance * (1 - progress);
-      // Rolling, not sliding: the angle IS the arc length over the radius.
-      const spin = radius > 0 ? (-remaining / radius) * (180 / Math.PI) : 0;
-      el.style.transform = `translate(${-remaining}px, 0px) rotate(${REST_DEG + spin}deg)`;
+      /* Rolling, not sliding: the angle IS the arc length over the radius.
+         Travelling left turns it anticlockwise, so the angle unwinds down to
+         the resting one as it arrives. */
+      const spin = radius > 0 ? (remaining / radius) * (180 / Math.PI) : 0;
+      el.style.transform = `translate(${remaining}px, 0px) rotate(${REST_DEG + spin}deg)`;
     };
 
     const arrive = () => {
@@ -170,7 +178,9 @@ export default function FooterCLogo({
       ref={elRef}
       href="/about"
       aria-label="About me"
-      className="absolute block select-none cursor-pointer"
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
+      className="absolute block select-none"
       style={{
         left: `calc(var(--u) * ${REST_CENTRE_X_UNITS})`,
         bottom: 0,
@@ -179,7 +189,18 @@ export default function FooterCLogo({
         // Its own centre is the pivot, which is what a wheel turns about.
         marginLeft: `calc(var(--u) * ${-DIAMETER_UNITS / 2})`,
         color: "var(--color-paper)",
-      }}
+        /* IT IS A THING TO PICK UP, NOT A LINK TO CLICK (2026-10-18). Noah:
+           "the drag feature is awkward because it's showing a link to the
+           about me page rather than being able to be thrown." An <a> is
+           draggable by default, so grabbing it started the browser's own
+           link-drag — complete with a ghost image — and the physics never
+           saw the gesture. `draggable={false}` and the dragstart guard above
+           stop that; the grab cursor says what it is now. Clicking still
+           goes to the about page. */
+        cursor: "grab",
+        WebkitUserDrag: "none",
+        WebkitTouchCallout: "none",
+      } as React.CSSProperties}
       onPointerDown={() => {
         grabbed.current = true;
         dragDistance.current = 0;
