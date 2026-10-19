@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { gsap } from "gsap";
@@ -8,6 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { uFont } from "./Stage";
 import { THIRD_COLUMN_X } from "./footerLayout";
 import { useIsCompact } from "@/lib/useIsPhone";
+import { useThrowable } from "@/lib/useThrowable";
 
 /*
  * FALLEN HAND + NEXT PROJECT (2026-08-20, per Noah: "Let's have the hand on
@@ -165,14 +166,23 @@ const HAND_H_UNITS = (HAND_W_UNITS * 1490) / 2696;
  * link element's outer box. */
 const LABEL_MARGIN_BOTTOM_UNITS = HAND_H_UNITS * (1 - 0.32315) - 10;
 
+const HAND_SRC = "/assets/shared/pointing-hand-static-rotated.webp";
+
 export default function FallenHand({
   triggerRef,
   nextHref,
+  containerRef,
 }: {
   /** The footer's scroll spacer; see above for why this and not the footer. */
   triggerRef: React.RefObject<HTMLElement | null>;
   /** Destination for the label — the next project in the running order. */
   nextHref: string;
+  /* THE BOX THE HAND CAN BE THROWN AROUND IN (2026-10-18). Noah: "I would
+     like the pointing finger to be throwable. I love how it shows up
+     currently so please don't change this, but add the ability to throw the
+     pointing finger. This is for desktop only, not mobile."
+     The footer's artboard, which is also the C mark's boundary. */
+  containerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   /* THE COLUMN ARRANGEMENT RUNS THE WHOLE WAY DOWN FROM 1200, matching the
    * links beside it — see the note in Footer.tsx. Nothing here is
@@ -187,9 +197,66 @@ export default function FallenHand({
   const riseRef = useRef<HTMLDivElement>(null);
   /** The plank — "next project" and the rule it sits on, as one rigid body. */
   const plankRef = useRef<HTMLDivElement>(null);
+  /* THE HAND IS ONLY THROWABLE ONCE IT HAS LANDED. Until the fall's rocking
+     finishes, GSAP owns this element's transform; handing it to the physics
+     before then would have the two writing over each other every frame. The
+     entrance is untouched — the physics only takes the element afterwards. */
+  const [landed, setLanded] = useState(false);
+  /** Where the hand sat the instant before the physics took it, so the swap
+   *  of rotation origin (see below) can be cancelled out exactly. */
+  const restRect = useRef<DOMRect | null>(null);
+  const noContainer = useRef<HTMLDivElement>(null);
+  const { rotationRef } = useThrowable({
+    elementRef: handRef,
+    containerRef: containerRef ?? noContainer,
+    imageSrcs: [HAND_SRC],
+    enabled: !compact && landed && !!containerRef,
+    draggable: true,
+  });
+
+  /* CANCELLING THE PIVOT SWAP (2026-10-18).
+   *
+   * The two owners of this element rotate it about different points. The
+   * fall uses PIVOT — the hand's own lowest pixel, so it rocks on the floor
+   * — and useThrowable uses the silhouette's centroid, because that is the
+   * point its collision maths is written against. Swapping one for the other
+   * under a -6 degree rest angle moves the artwork about 8px sideways at
+   * 1512, which reads as a flinch the moment the hand settles.
+   *
+   * So: measure the hand before the handover, let the physics write its own
+   * origin on the next frame, and shift the element's layout position by
+   * whatever moved. The hook reads offsetLeft/offsetTop fresh every frame,
+   * so adjusting them is something it follows rather than fights. */
+  useEffect(() => {
+    if (!landed) return;
+    const hand = handRef.current;
+    const before = restRect.current;
+    if (!hand || !before) return;
+    const raf = requestAnimationFrame(() => {
+      const after = hand.getBoundingClientRect();
+      const dx = before.left - after.left;
+      const dy = before.top - after.top;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+      const bottom = parseFloat(getComputedStyle(hand).bottom) || 0;
+      hand.style.left = `${hand.offsetLeft + dx}px`;
+      hand.style.bottom = `${bottom - dy}px`;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [landed]);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      /* No fall to wait for — it is already sitting at its rest angle, so
+         the physics can have it at once. rAF rather than a bare setState so
+         this is not a synchronous render inside an effect. */
+      const hand = handRef.current;
+      const raf = requestAnimationFrame(() => {
+        if (hand) restRect.current = hand.getBoundingClientRect();
+        rotationRef.current = REST_ROTATION;
+        setLanded(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
     const hand = handRef.current;
     const trigger = triggerRef.current;
     if (!hand || !trigger) return;
@@ -314,6 +381,15 @@ export default function FallenHand({
               { rotate: rest + 1.2, duration: 0.24, ease: "sine.inOut" },
               { rotate: rest, duration: 0.22, ease: "sine.inOut" },
             ],
+            onComplete: () => {
+              /* The fall is over; the hand is now an object lying in the
+                 footer rather than an animation. Seed the physics with the
+                 angle it actually came to rest at, so it does not snap
+                 upright the moment it is picked up. */
+              restRect.current = hand.getBoundingClientRect();
+              rotationRef.current = rest;
+              setLanded(true);
+            },
           }
         );
       }
@@ -355,7 +431,7 @@ export default function FallenHand({
       }
     }, rootRef);
     return () => ctx.revert();
-  }, [triggerRef, compact]);
+  }, [triggerRef, compact, rotationRef]);
 
   /*
    * PHONE (2026-08-25). Noah: "let's remove the head. Have the hand replace
@@ -473,36 +549,58 @@ export default function FallenHand({
     );
   }
 
+  /* THE HAND IS ITS OWN ELEMENT NOW, not a flex child of the label's row
+     (2026-10-18). To be throwable it has to be positioned against the box it
+     is thrown around in — useThrowable reads offsetLeft/offsetTop and
+     confines the object to its offsetParent, and inside the row that parent
+     was the row itself, a box barely bigger than the hand.
+
+     Nothing moves. The row existed only to put the label one gap to the
+     right of the hand, and ROOT_LEFT_UNITS is defined as
+     `THIRD_COLUMN_X - HAND_W_UNITS - HAND_LABEL_GAP_UNITS` — so the label's
+     left edge was always exactly THIRD_COLUMN_X, which is where it is set
+     directly below. Both sit on `bottom: 0`, which is what `items-end` in a
+     bottom-anchored row was already doing for them. */
   return (
-    <div
-      ref={rootRef}
-      className="absolute flex items-end"
-      style={{
-        left: `calc(var(--u) * ${ROOT_LEFT_UNITS})`,
-        bottom: 0,
-        gap: `calc(var(--u) * ${HAND_LABEL_GAP_UNITS})`,
-      }}
-    >
+    <>
       <div
         ref={handRef}
         aria-hidden
-        className="pointer-events-none select-none shrink-0"
+        className="select-none absolute"
+        /* The browser's own image-drag would otherwise swallow the gesture
+           before a single pointermove reached the physics — the same thing
+           that stopped the C mark being draggable. */
+        onDragStart={(e) => e.preventDefault()}
         style={{
+          left: `calc(var(--u) * ${ROOT_LEFT_UNITS})`,
+          bottom: 0,
           width: `calc(var(--u) * ${HAND_W_UNITS})`,
           transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
           transform: `rotate(${REST_ROTATION}deg)`,
           willChange: "transform, opacity",
-        }}
+          cursor: containerRef ? "grab" : undefined,
+          touchAction: "none",
+          WebkitUserDrag: "none",
+        } as React.CSSProperties}
       >
         <Image
-          src="/assets/shared/pointing-hand-static-rotated.webp"
+          src={HAND_SRC}
           alt=""
           width={2696}
           height={1490}
           sizes="25vw"
-          className="w-full h-auto"
+          draggable={false}
+          className="w-full h-auto pointer-events-none"
         />
       </div>
+      <div
+        ref={rootRef}
+        className="absolute flex items-end"
+        style={{
+          left: `calc(var(--u) * ${THIRD_COLUMN_X})`,
+          bottom: 0,
+        }}
+      >
       {/* Matches the footer's own link treatment — same face, same size,
           same underline — so it reads as part of the footer rather than a
           separate control. marginBottom lands it at fingertip height (see
@@ -520,6 +618,7 @@ export default function FallenHand({
       >
         next project
       </Link>
-    </div>
+      </div>
+    </>
   );
 }

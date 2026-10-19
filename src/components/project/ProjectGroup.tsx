@@ -553,6 +553,32 @@ export function ProjectGroup({
            gap it can actually see. */
         paddingTop: `max(calc(var(--u) * ${STICKY_TOP_SPACE_UNITS}), var(--section-title-top-min, 0px))`,
         marginTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
+        /* ONE SURFACE ACROSS THE BAR (2026-10-18). Noah: "in the very top
+           bar, there's a very small sliver on the right... the graphic from
+           behind peeking through."
+
+           The bar used to be painted by TWO elements. This header's own
+           background only covered the section's CONTENT box — 176..1726 of
+           a 1902px window — and the outer ~176 units each side were covered
+           only by the section's background behind it. Two surfaces meeting
+           at the exact x where rows slide past is precisely where a seam can
+           open: the overhanging media in the first group reaches 104px past
+           this box on each side at 1902.
+
+           Negative margins out to the section's border box, cancelled by
+           equal padding, so the painted box is full-bleed while the title
+           and the rule below it do not move by a pixel — the rule's own
+           -grid-margin pull still lands on the same edge, because this
+           element's CONTENT box is unchanged.
+
+           Not reproducible in Chrome: 276 pinned frames at 1512 and 1902,
+           light and dark, at 2x, never showed anything but surface either
+           side. Fixed anyway because relying on a second element to finish
+           painting the bar is the bug whatever browser shows it. */
+        marginLeft: "calc(var(--u) * var(--grid-margin) * -1)",
+        marginRight: "calc(var(--u) * var(--grid-margin) * -1)",
+        paddingLeft: "calc(var(--u) * var(--grid-margin))",
+        paddingRight: "calc(var(--u) * var(--grid-margin))",
       }}
     >
       <h2

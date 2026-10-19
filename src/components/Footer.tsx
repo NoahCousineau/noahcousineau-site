@@ -7,6 +7,7 @@ import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 import FallenHand from "./FallenHand";
 import FooterCLogo from "./FooterCLogo";
 import { useRef } from "react";
+import { usePathname } from "next/navigation";
 import { THIRD_COLUMN_X } from "./footerLayout";
 
 /**
@@ -212,6 +213,16 @@ const ROW2_RULE_Y = 429.4;
  * footer simply shows as a tall black panel.
  */
 export default function Footer({ nextProjectHref }: { nextProjectHref?: string }) {
+  /* ONE MARK PER PAGE (2026-10-18). The footer lives in the root layout, so
+     clicking a link swaps the page beneath it and never remounts any of
+     this — the mark kept whatever state and position it was left in.
+     Reproduced: throw it on one page, click through to a second, and it sits
+     where it landed before a single pixel of scrolling and never rolls
+     again. That is "it's still preloaded", and also why it then seems
+     undraggable: it is not in the corner anyone looks for it in. Keying it
+     by pathname remounts it per page, the same trick PageLoaderInner uses
+     for the same reason. */
+  const pathname = usePathname();
   const artboardRef = useRef<HTMLDivElement>(null);
   const phone = useIsPhone();
   /* BELOW 1200 THE LINKS USE THE PHONE'S TWO COLUMNS, phones included — see
@@ -382,6 +393,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             at. The roll belongs to every width that is not a phone. */}
         {!phone && (
           <FooterCLogo
+            key={pathname}
             mode="roll"
             containerRef={artboardRef}
             triggerRef={spacerRef}
@@ -397,10 +409,14 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             longer mounted anywhere; the component is left on disk so the
             head can be put back by restoring this one block. */}
         {phone && !nextProjectHref && (
-          <FooterCLogo mode="loose" containerRef={artboardRef} />
+          <FooterCLogo key={pathname} mode="loose" containerRef={artboardRef} />
         )}
         {nextProjectHref && (
-          <FallenHand triggerRef={phone ? footerRef : spacerRef} nextHref={nextProjectHref} />
+          <FallenHand
+            triggerRef={phone ? footerRef : spacerRef}
+            nextHref={nextProjectHref}
+            containerRef={artboardRef}
+          />
         )}
         {/* CLEAR THE DROPPED CHROME (2026-08-31, the third place this bit).
             Between 768 and 1439 the C mark and the theme toggle are pushed

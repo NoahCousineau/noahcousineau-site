@@ -100,9 +100,10 @@ const MASK_SRC = "/assets/shared/c-logo-mask.png";
 export type CLogoMode = "roll" | "loose";
 
 /** Phone: smaller than the head it replaces, and big enough to catch. */
-const LOOSE_DIAMETER_UNITS = 760;
+/* A third smaller, and on the floor of the window (2026-10-18, Noah). */
+const LOOSE_DIAMETER_UNITS = 505;
 const LOOSE_CENTRE_X_UNITS = 960;
-const LOOSE_BOTTOM_UNITS = 150;
+const LOOSE_BOTTOM_UNITS = 0;
 
 export default function FooterCLogo({
   containerRef,
