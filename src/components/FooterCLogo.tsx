@@ -79,6 +79,8 @@ const ROLL_SECONDS = 2.6;
 /** A beat after reaching the footer before it appears, per Noah's earlier
  *  note. Free now: it no longer costs the roll any of its length. */
 const ROLL_DELAY_SECONDS = 0.45;
+/** With Reduce Motion on: still an arrival, just a brief one. */
+const REDUCED_ROLL_SECONDS = 0.7;
 /** Collision outline. A white-on-transparent raster of the same mark: the
  *  hook decodes it to measure the silhouette, and never displays it. */
 const MASK_SRC = "/assets/shared/c-logo-mask.png";
@@ -123,8 +125,6 @@ export default function FooterCLogo({
   const [settled, setSettled] = useState(false);
   /** Set the instant it is grabbed; scrolling never drives it again. */
   const grabbed = useRef(false);
-  /** Distinguishes a click (navigate) from the end of a drag (do not). */
-  const dragDistance = useRef(0);
 
   const { rotationRef } = useThrowable({
     elementRef: elRef,
@@ -135,6 +135,8 @@ export default function FooterCLogo({
     enabled: loose || settled,
     draggable: true,
     tilt: loose,
+    // Fired only when the press never became a drag.
+    onClick: () => router.push("/about"),
   });
 
   /* Seeded before the physics is switched on, so its first frame draws the
@@ -201,11 +203,18 @@ export default function FooterCLogo({
       setSettled(true);
     };
 
-    if (reduced) {
-      // No roll to watch; it is simply already there.
-      arrive();
-      return;
-    }
+    /* REDUCED MOTION STILL ROLLS (2026-10-18). Noah: "The C is still showing
+       up preloaded as well. This must be corrected."
+       
+       This used to skip the roll entirely and place the mark at rest, which
+       is precisely "preloaded" — and on every page, for anyone with Reduce
+       Motion switched on in their system settings. None of my tests emulated
+       that setting, which is why I could not reproduce it; emulating it
+       reproduced it first try (arrival x=1277, rolled=false).
+       
+       The setting asks for less motion, not for none at all on a decorative
+       mark, so it gets a short, gentle version rather than being denied the
+       arrival altogether. */
 
     /* A proxy the tween animates; `draw` turns it into the transform. */
     const state = { v: 0 };
@@ -213,8 +222,8 @@ export default function FooterCLogo({
 
     const roll = gsap.to(state, {
       v: 1,
-      duration: ROLL_SECONDS,
-      delay: ROLL_DELAY_SECONDS,
+      duration: reduced ? REDUCED_ROLL_SECONDS : ROLL_SECONDS,
+      delay: reduced ? 0 : ROLL_DELAY_SECONDS,
       // Enters with speed and loses it, which is how a rolling thing stops.
       ease: "power2.out",
       paused: true,
@@ -305,16 +314,15 @@ export default function FooterCLogo({
       } as React.CSSProperties}
       onPointerDown={() => {
         grabbed.current = true;
-        dragDistance.current = 0;
       }}
-      onPointerMove={(e) => {
-        if (e.buttons) dragDistance.current += Math.abs(e.movementX) + Math.abs(e.movementY);
-      }}
-      onClick={(e) => {
-        // A press that travelled is a throw, not a visit to the about page.
-        e.preventDefault();
-        if (dragDistance.current <= 4) router.push("/about");
-      }}
+      /* The browser must never follow this href itself: useThrowable decides
+         whether a press was a click or a drag, using the same threshold and
+         the same samples it uses to throw the thing, and only then is the
+         about page the right answer. Deciding it here in parallel was a
+         second, worse judge of the same question — a short or slow drag
+         counted as a click and navigated away mid-throw, which is what "I
+         still can't drag the C logo" looks like from the other side. */
+      onClick={(e) => e.preventDefault()}
     >
       {/* Inline rather than an <img> so it takes the footer's own paper
           colour and follows the theme when the footer inverts. */}
