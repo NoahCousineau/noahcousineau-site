@@ -367,7 +367,20 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             in-between band keep the head on exactly the terms they had —
             including standing it down on a compact project page, where the
             teeter-totter needs the room. */}
-        {!compact && (
+        {/* ROLLING EVERYWHERE EXCEPT A PHONE (2026-10-18, third pass). Noah:
+            "I'm still seeing it already loaded on some pages when I scroll
+            down to the bottom on desktop AND I don't have the ability to
+            drag and throw the C now."
+
+            This was keyed on `compact`, which is the footer's LAYOUT line at
+            1200 — so between 768 and 1199 the mark took the phone's
+            behaviour: sitting there already placed on ordinary pages, and
+            absent altogether on project pages, where the finger rule applied.
+            Measured at 1100 and 1199: "/" showed the mark with no roll, and
+            a project page showed no mark at all. That band is a desktop
+            window to anyone using one, which is exactly what he was looking
+            at. The roll belongs to every width that is not a phone. */}
+        {!phone && (
           <FooterCLogo
             mode="roll"
             containerRef={artboardRef}
@@ -383,7 +396,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             those footers now carry the finger alone. PeekingHead is no
             longer mounted anywhere; the component is left on disk so the
             head can be put back by restoring this one block. */}
-        {compact && !nextProjectHref && (
+        {phone && !nextProjectHref && (
           <FooterCLogo mode="loose" containerRef={artboardRef} />
         )}
         {nextProjectHref && (
