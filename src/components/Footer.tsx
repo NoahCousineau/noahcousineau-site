@@ -409,7 +409,14 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             longer mounted anywhere; the component is left on disk so the
             head can be put back by restoring this one block. */}
         {phone && !nextProjectHref && (
-          <FooterCLogo key={pathname} mode="loose" containerRef={artboardRef} />
+          <FooterCLogo
+            key={pathname}
+            mode="loose"
+            containerRef={artboardRef}
+            /* No curtain on a phone — the footer is an ordinary element
+               that scrolls, so it is its own trigger for the roll. */
+            triggerRef={footerRef}
+          />
         )}
         {nextProjectHref && (
           <FallenHand

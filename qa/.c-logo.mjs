@@ -199,10 +199,21 @@ console.log("\n  three desktop pages in a row, each reached by clicking a link")
   ok(first!==null, "page 1: the mark is there", first?`x=${first.x}`:"");
   ok(await peakThrow(first) > 150, "page 1: it throws");
   for(const step of [2,3]){
-    const href=await p.evaluate(()=>{ const a=[...document.querySelectorAll('a[href^="/work/"]')].find(a=>a.getBoundingClientRect().width>0); return a&&a.getAttribute("href"); });
+    /* NOT THE HAND. Since 2026-10-19 the pointing finger is itself a link
+       to the next project, it comes first in the DOM, and it is driven by
+       useThrowable rather than by the browser — so a synthetic .click() on
+       it is correctly prevented and nothing navigates. This check then
+       measured the SAME page twice and read a settling thrown mark as "it
+       was already rolled in on arrival". Click the words, with a real
+       mouse, and skip anything aria-hidden. */
+    const href=await p.evaluate(()=>{ const a=[...document.querySelectorAll('a[href^="/work/"]:not([aria-hidden])')].find(a=>a.getBoundingClientRect().width>0); return a&&a.getAttribute("href"); });
     if(!href){ ok(false, `page ${step}: no project link to click`); break; }
-    await p.evaluate(h=>{ [...document.querySelectorAll(`a[href="${h}"]`)].find(a=>a.getBoundingClientRect().width>0).click(); }, href);
+    /* Dispatched on the element rather than aimed at its coordinates: the
+       mark has just been thrown and can be lying on top of the link, and a
+       real click would land on the mark instead. */
+    await p.evaluate(h=>{ [...document.querySelectorAll(`a[href="${h}"]:not([aria-hidden])`)].find(a=>a.getBoundingClientRect().width>0).click(); }, href);
     await p.waitForTimeout(2600);
+    ok(new URL(p.url()).pathname===href, `page ${step}: the click actually navigated`, new URL(p.url()).pathname);
     const arrival=await mark(p);
     ok(arrival && arrival.x > 1512-60, `page ${step}: parked off the right edge on arrival`, `${href}, x=${arrival?.x}`);
     await toBottom(p);
@@ -249,6 +260,69 @@ console.log("\n  the finger still works on a desktop project page");
   ok(new URL(p.url()).pathname==="/work/socal-earth", "throwing it does not follow the link", new URL(p.url()).pathname);
   ok(errs.length===0, "no page errors", errs.join("; "));
   await p.screenshot({path:`${OUT}/clogo-project.png`});
+  await ctx.close(); }
+
+/* THE FOOTER INTRODUCES ITSELF EVERY TIME (2026-10-19). Noah: "everytime
+ * we see the footer, it should reset to it's default state with the C
+ * rolling in and the finger pointing to the 'next project' link." Both used
+ * to be one-shot: the hand fell the first time and never again, and the
+ * mark stopped obeying the scroll the moment it was picked up. */
+console.log("\n  leaving the footer and coming back");
+{ const {ctx,p,errs}=await open("/work/socal-earth",1512,982);
+  const hand=()=>p.evaluate(()=>{ const im=document.querySelector('footer [aria-hidden] img[src*="pointing-hand"]');
+    if(!im) return null; const e=im.parentElement, r=e.getBoundingClientRect();
+    const m=new DOMMatrixReadOnly(getComputedStyle(e).transform);
+    let d=Math.atan2(m.b,m.a)*180/Math.PI; d=((d%360)+360)%360;
+    return { x:Math.round(r.left+r.width/2), y:Math.round(r.top+r.height/2), deg:+d.toFixed(1),
+             href:e.getAttribute("href") }; });
+  const away=async()=>{ for(let i=0;i<16;i++){ await p.evaluate(()=>window.scrollBy(0,-window.innerHeight)); await p.waitForTimeout(160);} await p.waitForTimeout(1200); };
+  await toBottom(p);
+  const h0=await hand(), m0=await mark(p);
+  ok(h0 && /^\/work\//.test(h0.href||""), "the hand is a link to the next project", h0?.href);
+  ok(h0 && Math.abs(h0.deg-354)<1, "it points at the words, as it always has", `${h0?.deg} degrees`);
+  // throw them both well out of place
+  await p.mouse.move(h0.x,h0.y); await p.mouse.down();
+  for(let k=1;k<=10;k++){ await p.mouse.move(h0.x+k*60,h0.y-k*10); await p.waitForTimeout(12);} await p.mouse.up();
+  await p.mouse.move(m0.x,m0.y); await p.mouse.down();
+  for(let k=1;k<=10;k++){ await p.mouse.move(m0.x-k*70,m0.y-k*6); await p.waitForTimeout(12);} await p.mouse.up();
+  await p.waitForTimeout(2600);
+  const hT=await hand(), mT=await mark(p);
+  ok(Math.abs(hT.x-h0.x)>20||Math.abs(hT.deg-h0.deg)>5, "both can be thrown out of place", `hand ${hT.x}/${hT.deg}deg, mark ${mT.x}`);
+  await away();
+  const mAway=await mark(p);
+  ok(mAway && mAway.x>1512-60, "scrolling away rolls the mark back off the edge", `x=${mAway?.x}`);
+  await toBottom(p);
+  const h1=await hand(), m1=await mark(p);
+  ok(h1 && Math.abs(h1.x-h0.x)<=2 && Math.abs(h1.deg-354)<1, "coming back, the hand is pointing again", `x=${h1?.x} (was ${h0.x}), ${h1?.deg} degrees`);
+  ok(m1 && Math.abs(m1.x-m0.x)<=3, "and the mark has rolled in again", `x=${m1?.x} (was ${m0.x})`);
+  ok(errs.length===0, "no page errors", errs[0]||"");
+  await ctx.close(); }
+
+/* IT FALLS OVER (2026-10-19). Noah: "sometimes it will get stuck upright
+ * which feels unrealistic." Nothing used to make it: gravity was applied at
+ * the centre of mass only, so any pose it landed in was an equilibrium.
+ * Measured on the build before the toppling torque, four throws came to
+ * rest at 93, 75, 280 and 122 degrees — standing on an end every time. */
+console.log("\n  thrown hard, does it come to rest like a thing that fell?");
+{ const {ctx,p}=await open("/work/socal-earth",1512,982);
+  const hand=()=>p.evaluate(()=>{ const im=document.querySelector('footer [aria-hidden] img[src*="pointing-hand"]');
+    const e=im.parentElement, r=e.getBoundingClientRect();
+    const m=new DOMMatrixReadOnly(getComputedStyle(e).transform);
+    let d=Math.atan2(m.b,m.a)*180/Math.PI; d=((d%360)+360)%360;
+    return { x:Math.round(r.left+r.width/2), y:Math.round(r.top+r.height/2), deg:+d.toFixed(1) }; });
+  await toBottom(p);
+  const poses=[];
+  for(let n=0;n<4;n++){
+    const g=await hand();
+    await p.mouse.move(g.x,g.y); await p.mouse.down();
+    for(let k=1;k<=10;k++){ await p.mouse.move(g.x+(n%2?-1:1)*k*60,g.y-k*10); await p.waitForTimeout(12);} await p.mouse.up();
+    await p.waitForTimeout(9000);
+    const c=await hand();
+    const flat=((c.deg%180)+180)%180;              // 0 = on its side, 90 = on an end
+    poses.push({ deg:Math.round(c.deg), tilt:Math.round(90-Math.abs(90-flat)) });
+  }
+  const standing=poses.filter(x=>x.tilt>55).length;
+  ok(standing===0, "it never comes to rest standing on an end", poses.map(x=>`${x.deg}deg`).join(", "));
   await ctx.close(); }
 
 await b.close();

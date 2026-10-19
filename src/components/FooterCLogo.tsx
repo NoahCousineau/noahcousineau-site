@@ -6,6 +6,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { useThrowable } from "@/lib/useThrowable";
+import { whenScrollSettles } from "@/lib/scrollSettled";
 
 /**
  * THE C MARK ROLLS IN ALONG THE FOOTER (2026-10-18).
@@ -127,13 +128,13 @@ export default function FooterCLogo({
   /** Set the instant it is grabbed; scrolling never drives it again. */
   const grabbed = useRef(false);
 
-  const { rotationRef } = useThrowable({
+  const { rotationRef, reset } = useThrowable({
     elementRef: elRef,
     containerRef,
     imageSrcs: [MASK_SRC],
-    // Rolling: the tween owns the transform until it arrives. Loose: the
-    // physics owns it from the first frame, so a tilt can move it.
-    enabled: loose || settled,
+    // The tween owns the transform until the mark arrives; the physics
+    // takes over at the end of the roll, in both modes.
+    enabled: settled,
     draggable: true,
     tilt: loose,
     // Fired only when the press never became a drag.
@@ -154,20 +155,24 @@ export default function FooterCLogo({
   useEffect(() => {
     const el = elRef.current;
     const container = containerRef.current;
-    if (loose) {
-      // Sitting still at the angle it would have stopped at, until a hand or
-      // a tilt moves it. No trigger, no tween, nothing to scroll.
-      rotationRef.current = REST_DEG;
-      el?.style.setProperty("transform", `translate(0px, 0px) rotate(${REST_DEG}deg)`);
-      return;
-    }
-    /* THE CURTAIN, NOT THE SPACER (2026-10-18). On desktop the footer is
-       fixed behind `.site-content`, which slides up to uncover it; the spacer
-       only buys the scroll distance. Measured with the spacer as the trigger:
-       progress never left 0 and the mark sat off screen at its starting
-       angle through the whole page. The head watches the curtain for the same
-       reason — see PeekingHead. */
-    const curtain = document.querySelector<HTMLElement>(".site-content");
+    /* THE PHONE MARK ROLLS IN TOO (2026-10-19). Noah: "Let's make sure it
+       doesn't start centered, but also rolls in. The size of it is good
+       though."
+
+       It used to be placed straight at its resting spot with the physics
+       live from the first frame, so the phone footer always opened with the
+       mark already sitting in the middle of it. It takes the same roll as
+       the desktop one now. What stays different is where it stops, how big
+       it is, and that a tilt can move it once it has landed.
+
+       THE CURTAIN, NOT THE SPACER (2026-10-18), on desktop only. There the
+       footer is fixed behind `.site-content`, which slides up to uncover
+       it; the spacer only buys the scroll distance. Measured with the
+       spacer as the trigger: progress never left 0 and the mark sat off
+       screen at its starting angle through the whole page. On a phone there
+       is no curtain — the footer is an ordinary element that scrolls — so
+       the trigger is the footer itself. */
+    const curtain = loose ? null : document.querySelector<HTMLElement>(".site-content");
     const trigger = curtain ?? triggerRef?.current ?? null;
     if (!el || !container || !trigger) return;
 
@@ -179,7 +184,7 @@ export default function FooterCLogo({
       const width = container.clientWidth;
       const unit = width / 1920;
       const radius = (diameter * unit) / 2;
-      const restCentre = REST_CENTRE_X_UNITS * unit;
+      const restCentre = (loose ? LOOSE_CENTRE_X_UNITS : REST_CENTRE_X_UNITS) * unit;
       // It starts beyond the RIGHT edge, far enough out to be fully hidden,
       // and rolls leftward to its resting place.
       const startCentre = width + radius + RUN_UP_UNITS * unit;
@@ -255,18 +260,32 @@ export default function FooterCLogo({
          rather than to the page's length, so every page gets the same roll
          at the same moment — and, because the mark is only grabbable once it
          lands, the same is now true of picking it up. */
-      start: "bottom top+=35%",
+      /* Desktop watches the reveal and fires when it is about two thirds
+         done; the phone watches the footer itself and fires once it is
+         better than half on screen, which is the same moment in feel — the
+         mark is rolling as the footer arrives rather than waiting for it. */
+      start: loose ? "bottom bottom+=40%" : "bottom top+=35%",
       onEnter: () => {
-        if (!grabbed.current) roll.play();
+        roll.play();
       },
+      /* A THROWN MARK IS NOT SPECIAL ANY MORE (2026-10-19). Noah:
+         "everytime we see the footer, it should reset to it's default state
+         with the C rolling in". This used to bail out the moment the mark
+         had been picked up — scrolling never drove it again for the rest of
+         the page's life — so a reader who threw it once got a footer with
+         the mark lying wherever it had landed, from then on.
+
+         Order matters: hand the transform back to the tween BEFORE
+         reversing, and zero the physics before that, or the two spend the
+         reverse writing over each other. `reset` puts it back at its
+         layout home, which is where `draw` measures the roll from. */
       onLeaveBack: () => {
-        if (grabbed.current) return;
-        // Hand the transform back before reversing, or the physics and the
-        // tween would both be writing it.
+        grabbed.current = false;
         if (settledRef.current) {
           settledRef.current = false;
           setSettled(false);
         }
+        reset();
         roll.reverse();
       },
     });
@@ -276,14 +295,20 @@ export default function FooterCLogo({
        position — never fires onEnter, so the mark would simply be THERE.
        It plays the whole roll instead. A shortened one was tried first and
        is exactly what Noah objected to: a different animation depending on
-       how the reader got there. */
-    if (st.progress > 0 && !grabbed.current) roll.play();
+       how the reader got there.
+
+       Asked once the scroll has settled, not at mount: see whenScrollSettles
+       for what reading it too early did on a click-through. */
+    const stopWaiting = whenScrollSettles(() => {
+      if (st.progress > 0) roll.play();
+    });
 
     return () => {
+      stopWaiting();
       roll.kill();
       st.kill();
     };
-  }, [containerRef, triggerRef, seedRotation, loose, rotationRef, diameter]);
+  }, [containerRef, triggerRef, seedRotation, loose, rotationRef, diameter, reset]);
 
   return (
     <a

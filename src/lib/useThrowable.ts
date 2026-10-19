@@ -50,6 +50,24 @@ const THROW_SPIN = 0.42;
 const DRAG_LEAN_DEG_PER_SPEED = 0.016;
 const MAX_DRAG_LEAN_DEG = 22;
 const DRAG_THRESHOLD_PX = 4;
+/* TOPPLING (2026-10-19). Noah, on the pointing hand: "sometimes it will get
+ * stuck upright which feels unrealistic."
+ *
+ * It did, and nothing here could ever have done otherwise: gravity was only
+ * ever applied at the centre of mass, and the floor only resolved
+ * penetration and tied spin to horizontal speed. No torque, so any pose an
+ * object happened to land in was an equilibrium — balanced on a fingertip
+ * exactly as stable as lying flat.
+ *
+ * A real object stands only while its centre of mass is over its base.
+ * `contactOverhang` measures how far outside the base the centre of mass
+ * is, and this is the angular acceleration that overhang produces, in
+ * degrees per second squared at a full width of overhang. Inside the base
+ * the overhang is zero and a settled object is left alone, which is what
+ * stops this shaking everything that has already come to rest. */
+const TOPPLE_ACCEL = 1600;
+/** Overhang below this fraction of the width counts as balanced. */
+const TOPPLE_DEADZONE = 0.015;
 
 export function useThrowable({
   elementRef,
@@ -60,6 +78,7 @@ export function useThrowable({
   enabled = true,
   tilt = false,
   draggable = true,
+  topple = false,
 }: {
   /** The element that moves. Must be absolutely positioned in the container. */
   elementRef: React.RefObject<HTMLElement | null>;
@@ -82,6 +101,12 @@ export function useThrowable({
    * only ever falling straight down. Off by default, so every existing caller
    * keeps plain downward gravity to the pixel. */
   tilt?: boolean;
+  /* Let it fall over when it comes to rest balanced on a narrow part of
+   * itself. Off by default: the home grid's objects have been settled into
+   * poses Noah has already approved, and this would re-settle every one of
+   * them. The pointing hand asks for it because it is long, heavy at one
+   * end, and lands on its point often enough to notice. */
+  topple?: boolean;
   /* Physics WITHOUT the pointer handlers. Separating these is what makes tilt
    * safe on a phone: dragging an object requires claiming the touch with
    * `touch-action: none`, and on the home page that claim is what stopped the
@@ -230,6 +255,54 @@ export function useThrowable({
       y: el.offsetTop + shapeNow().pivot.y * el.offsetHeight + pos.current.y,
     });
 
+    /* HOW FAR THE CENTRE OF MASS HANGS PAST THE BASE, in px, signed: the
+     * side it is falling off is the side the answer points to, and zero
+     * means it is over its base and standing honestly.
+     *
+     * The base is not one point. Every hull vertex within a tolerance of
+     * the lowest is touching, so a shape lying on a flat edge is supported
+     * along that whole edge and stays put, while one up on a single vertex
+     * has a base of nothing and falls at the slightest offset. That span,
+     * not a single contact point, is what separates "resting" from
+     * "balanced" — and measuring it from the hull means it is the real
+     * outline that decides, the same outline the collisions already use.
+     *
+     * The hull is stored relative to the pivot — which IS the centroid —
+     * so the centre of mass sits at zero and the comparison is direct. */
+    const contactOverhang = (deg: number, W: number) => {
+      const hull = shapeNow().hull;
+      if (!hull || hull.length < 6) return 0;
+      const a = (deg * Math.PI) / 180;
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      const g = gravityDir.current;
+      // Across gravity, right-handed with it, so the sign reads as "which
+      // way it leans" even when a tilted phone has moved which way is down.
+      const tx = g.y;
+      const ty = -g.x;
+      let lowest = -Infinity;
+      for (let i = 0; i < hull.length; i += 2) {
+        const x = (hull[i] * cos - hull[i + 1] * sin) * W;
+        const y = (hull[i] * sin + hull[i + 1] * cos) * W;
+        const d = x * g.x + y * g.y;
+        if (d > lowest) lowest = d;
+      }
+      const tol = Math.max(1, W * 0.02);
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = 0; i < hull.length; i += 2) {
+        const x = (hull[i] * cos - hull[i + 1] * sin) * W;
+        const y = (hull[i] * sin + hull[i + 1] * cos) * W;
+        if (x * g.x + y * g.y < lowest - tol) continue;
+        const across = x * tx + y * ty;
+        if (across < lo) lo = across;
+        if (across > hi) hi = across;
+      }
+      if (lo > 0) return lo;
+      if (hi < 0) return hi;
+      return 0;
+    };
+
     /* NOTHING IS SIMULATED THAT NOBODY CAN SEE (2026-08-31).
      *
      * The loop below runs every frame whether or not the object is on screen,
@@ -273,6 +346,11 @@ export function useThrowable({
       syncOrigin();
       const idle = asleep.current && !dragging.current;
       const before = { x: pos.current.x, y: pos.current.y };
+      /* A topple changes the ANGLE and not the position, and the paint below
+         is skipped for an idle object whose position has not moved — so
+         without this the first frames of a fall are computed and thrown
+         away, and the object only visibly starts moving once it has slid. */
+      let toppling = false;
 
       const cr = container.getBoundingClientRect();
       const W = el.offsetWidth;
@@ -326,6 +404,20 @@ export function useThrowable({
         if (!idle && vel.current.y > WALL_REST_SPEED) vel.current.y = -vel.current.y * RESTITUTION;
         else vel.current.y = 0;
 
+        /* OUTSIDE the awake-only branch below on purpose: an object that
+           is stuck upright is by definition asleep, so a torque that only
+           ran while it was already moving could never be the thing that
+           knocks it over. This is also what wakes it. */
+        if (topple && !dragging.current) {
+          const over = contactOverhang(r, W);
+          if (Math.abs(over) > W * TOPPLE_DEADZONE) {
+            asleep.current = false;
+            toppling = true;
+            // Falls AWAY from whichever side is holding it up.
+            spin.current -= (over / W) * TOPPLE_ACCEL * dt;
+          }
+        }
+
         if (!idle && !dragging.current) {
           // Ground contact ties spin to horizontal speed the way a wheel
           // rolls. `down` is the effective rolling radius, floored at a
@@ -347,7 +439,7 @@ export function useThrowable({
         }
       }
 
-      if (!idle || before.x !== pos.current.x || before.y !== pos.current.y) apply();
+      if (toppling || !idle || before.x !== pos.current.x || before.y !== pos.current.y) apply();
     };
 
     const pointerPos = (e: PointerEvent) => {
@@ -475,7 +567,7 @@ export function useThrowable({
         raf.current = null;
       }
     };
-  }, [elementRef, containerRef, enabled, shapeNow, draggable]);
+  }, [elementRef, containerRef, enabled, shapeNow, draggable, topple]);
 
   /** Let gravity take over again — used when the artwork changes shape, so a
    *  newly grown object settles back onto a border instead of hanging where

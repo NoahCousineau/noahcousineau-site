@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { gsap } from "gsap";
@@ -8,7 +8,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { uFont } from "./Stage";
 import { THIRD_COLUMN_X } from "./footerLayout";
 import { useIsCompact } from "@/lib/useIsPhone";
+import { useRouter } from "next/navigation";
 import { useThrowable } from "@/lib/useThrowable";
+import { whenScrollSettles } from "@/lib/scrollSettled";
 
 /*
  * FALLEN HAND + NEXT PROJECT (2026-08-20, per Noah: "Let's have the hand on
@@ -190,7 +192,8 @@ export default function FallenHand({
    * case are now capped in px instead (PHONE_HAND_MAX_PX and friends), which
    * covers both tiers with one set of numbers. */
   const compact = useIsCompact();
-  const handRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const handRef = useRef<HTMLElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   /** The phone group's rise wrapper, so `rootRef` stays untransformed and can
    *  act as the trigger for its own arrival. */
@@ -206,13 +209,58 @@ export default function FallenHand({
    *  of rotation origin (see below) can be cancelled out exactly. */
   const restRect = useRef<DOMRect | null>(null);
   const noContainer = useRef<HTMLDivElement>(null);
-  const { rotationRef } = useThrowable({
+  const { rotationRef, reset } = useThrowable({
     elementRef: handRef,
     containerRef: containerRef ?? noContainer,
     imageSrcs: [HAND_SRC],
     enabled: !compact && landed && !!containerRef,
     draggable: true,
+    /* It is long and heavy at one end and it lands on its point often.
+       Noah: "sometimes it will get stuck upright which feels unrealistic." */
+    topple: true,
+    /* A press that never became a drag is a click, and the hand points at
+       the next project — so it goes there, the same as the words beside it.
+       useThrowable is the only judge of click-versus-drag; deciding it in
+       parallel here is what made short drags navigate away mid-throw. */
+    onClick: () => router.push(nextHref),
   });
+
+  /* BACK TO THE WAY IT ARRIVES, EVERY TIME THE FOOTER IS SEEN (2026-10-19).
+     Noah: "Make sure every time the finger loads, it's still in its typical
+     state where it's wobbling slightly and pointing to 'next project'... In
+     general everytime we see the footer, it should reset to it's default
+     state."
+
+     Two things have to be undone, not just the transform: the physics has
+     to let go of the element before GSAP writes to it again, or the two
+     spend a frame fighting; and the layout nudge that cancels the pivot
+     swap (below) has to go back to the position the artboard units give it,
+     or each visit would shift the hand a few more pixels along. */
+  const park = useCallback(() => {
+    /* DESKTOP ONLY. The phone hand is not throwable — it is the fulcrum the
+       see-saw balances on — so there is nothing to hand back, and `reset`
+       would write `rotate(0deg)` over the quarter turn that has it pointing
+       straight up at the label. It would end up pointing right, at nothing,
+       with no tween left to put it back. */
+    if (compact) return;
+    const hand = handRef.current;
+    setLanded(false);
+    restRect.current = null;
+    reset();
+    if (!hand) return;
+    hand.style.left = `calc(var(--u) * ${ROOT_LEFT_UNITS})`;
+    hand.style.bottom = "0px";
+    /* And the rotation origin, which the physics moved to the silhouette's
+       centroid when it took the element. Leaving it there would have the
+       NEXT fall rock about the middle of the hand instead of about its
+       lowest pixel — a different animation on the second visit than on the
+       first, which is the one thing about the entrance that must not
+       change. It is also what makes the handover measurable again: with
+       both owners already agreeing on the origin there is nothing for the
+       compensation below to find, so it stops correcting and the hand
+       creeps 8px to the right on every visit. */
+    hand.style.transformOrigin = `${PIVOT.xPct}% ${PIVOT.yPct}%`;
+  }, [compact, reset]);
 
   /* CANCELLING THE PIVOT SWAP (2026-10-18).
    *
@@ -262,6 +310,7 @@ export default function FallenHand({
     if (!hand || !trigger) return;
     gsap.registerPlugin(ScrollTrigger);
 
+    let stopWaiting = () => {};
     const ctx = gsap.context(() => {
       /* UP OUT OF THE PAGE, ON A PHONE ONLY (2026-09-02).
        *
@@ -305,7 +354,14 @@ export default function FallenHand({
         );
       }
 
+      /* PAUSED, AND DRIVEN BY THE TRIGGER BELOW (2026-10-19). This used to
+         be `once: true` — the fall happened the first time the footer was
+         reached and never again, so after a throw the hand simply stayed
+         wherever it had been left for the rest of the page's life. Noah
+         wants the footer to introduce itself every time: "everytime we see
+         the footer, it should reset to it's default state". */
       const tl = gsap.timeline({
+        paused: true,
         scrollTrigger: {
           trigger,
           // FIX (2026-08-20, per Noah: "make it start to rock as soon as we
@@ -326,7 +382,14 @@ export default function FallenHand({
           // instant that happens is the spacer's TOP reaching the
           // viewport's bottom, i.e. "top bottom", not its bottom.
           start: "top bottom",
-          once: true,
+          onEnter: () => {
+            park();
+            tl.restart();
+          },
+          onLeaveBack: () => {
+            park();
+            tl.pause(0);
+          },
         },
       });
 
@@ -381,6 +444,9 @@ export default function FallenHand({
               { rotate: rest + 1.2, duration: 0.24, ease: "sine.inOut" },
               { rotate: rest, duration: 0.22, ease: "sine.inOut" },
             ],
+            /* The physics takes the element only at the END of the fall —
+               until then GSAP owns the transform, and both writing it is a
+               fight neither wins. */
             onComplete: () => {
               /* The fall is over; the hand is now an object lying in the
                  footer rather than an animation. Seed the physics with the
@@ -429,9 +495,24 @@ export default function FallenHand({
           0
         );
       }
+      /* Arriving with the footer already on screen — a reload at the
+         bottom, or a browser restoring the scroll position — never crosses
+         the trigger, so nothing would fire and the hand would be sitting
+         there having never fallen. Same reasoning as the C mark's, and the
+         same wait: at mount, a click-through is still reporting the old
+         page's scroll position. */
+      stopWaiting = whenScrollSettles(() => {
+        if (tl.scrollTrigger && tl.scrollTrigger.progress > 0) {
+          park();
+          tl.restart();
+        }
+      });
     }, rootRef);
-    return () => ctx.revert();
-  }, [triggerRef, compact, rotationRef]);
+    return () => {
+      stopWaiting();
+      ctx.revert();
+    };
+  }, [triggerRef, compact, rotationRef, park]);
 
   /*
    * PHONE (2026-08-25). Noah: "let's remove the head. Have the hand replace
@@ -518,7 +599,7 @@ export default function FallenHand({
           style={{ height: `calc(${PHONE_ROT_H} * ${PHONE_HAND_W_CSS})` }}
         >
           <div
-            ref={handRef}
+            ref={handRef as React.RefObject<HTMLDivElement>}
             aria-hidden
             className="pointer-events-none select-none absolute"
             style={{
@@ -563,14 +644,33 @@ export default function FallenHand({
      bottom-anchored row was already doing for them. */
   return (
     <>
-      <div
-        ref={handRef}
+      {/* IT POINTS AT THE NEXT PROJECT, SO IT GOES THERE (2026-10-19). Noah:
+          "have the finger function as a link to the corresponding next
+          project. Make sure I can drag and throw the finger while being
+          able to click on it for the link function."
+
+          An anchor rather than a click handler on a div, so it behaves like
+          the link it is — a real destination in the status bar, and
+          cmd-click opens a tab. It is `aria-hidden` and out of the tab
+          order on purpose: the words beside it are the same link, and a
+          screen reader or a keyboard should be offered that one, once,
+          rather than the same destination twice with a picture of a hand
+          for a name. */}
+      <a
+        ref={handRef as React.RefObject<HTMLAnchorElement>}
+        href={nextHref}
         aria-hidden
+        tabIndex={-1}
+        draggable={false}
         className="select-none absolute"
-        /* The browser's own image-drag would otherwise swallow the gesture
-           before a single pointermove reached the physics — the same thing
-           that stopped the C mark being draggable. */
+        /* The browser's own link- and image-drag would otherwise swallow
+           the gesture before a single pointermove reached the physics — the
+           same thing that stopped the C mark being draggable. */
         onDragStart={(e) => e.preventDefault()}
+        /* Never let the browser follow this itself: useThrowable decides
+           whether a press was a click or a drag, from the same samples it
+           throws with, and only then is the next project the right answer. */
+        onClick={(e) => e.preventDefault()}
         style={{
           left: `calc(var(--u) * ${ROOT_LEFT_UNITS})`,
           bottom: 0,
@@ -578,7 +678,7 @@ export default function FallenHand({
           transformOrigin: `${PIVOT.xPct}% ${PIVOT.yPct}%`,
           transform: `rotate(${REST_ROTATION}deg)`,
           willChange: "transform, opacity",
-          cursor: containerRef ? "grab" : undefined,
+          cursor: containerRef ? "grab" : "pointer",
           touchAction: "none",
           WebkitUserDrag: "none",
         } as React.CSSProperties}
@@ -592,7 +692,7 @@ export default function FallenHand({
           draggable={false}
           className="w-full h-auto pointer-events-none"
         />
-      </div>
+      </a>
       <div
         ref={rootRef}
         className="absolute flex items-end"
