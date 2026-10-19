@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Stage, Place, uFont, uFontMin } from "./Stage";
-import PeekingHead, { PHONE_HEAD_WIDTH_UNITS } from "./PeekingHead";
 import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
 import FallenHand from "./FallenHand";
 import FooterCLogo from "./FooterCLogo";
@@ -369,15 +368,23 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             including standing it down on a compact project page, where the
             teeter-totter needs the room. */}
         {!compact && (
-          <FooterCLogo containerRef={artboardRef} triggerRef={spacerRef} />
-        )}
-        {compact && !nextProjectHref && (
-          <PeekingHead
-            centerXUnits={phone ? 960 : (1409.32 + 1630.09 + RULE_WIDTH) / 2}
-            widthUnits={phone ? PHONE_HEAD_WIDTH_UNITS : undefined}
-            riseTriggerRef={spacerRef}
-            riseSelfTrigger={phone}
+          <FooterCLogo
+            mode="roll"
+            containerRef={artboardRef}
+            triggerRef={spacerRef}
           />
+        )}
+        {/* THE HEAD IS GONE HERE TOO (2026-10-18). Noah: "On mobile, I would
+            like for the head in the footer to also be removed. Let's add the
+            C logo in the footer ONLY on pages where there is no finger."
+
+            `nextProjectHref` is only passed on a project page, so it is
+            exactly "is there a finger reaching for the next project" — and
+            those footers now carry the finger alone. PeekingHead is no
+            longer mounted anywhere; the component is left on disk so the
+            head can be put back by restoring this one block. */}
+        {compact && !nextProjectHref && (
+          <FooterCLogo mode="loose" containerRef={artboardRef} />
         )}
         {nextProjectHref && (
           <FallenHand triggerRef={phone ? footerRef : spacerRef} nextHref={nextProjectHref} />

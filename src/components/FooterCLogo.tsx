@@ -83,16 +83,45 @@ const ROLL_DELAY_SECONDS = 0.45;
  *  hook decodes it to measure the silhouette, and never displays it. */
 const MASK_SRC = "/assets/shared/c-logo-mask.png";
 
+/* ON A PHONE IT IS JUST A LOOSE OBJECT (2026-10-18). Noah: "On mobile, I
+ * would like for the head in the footer to also be removed. Let's add the C
+ * logo in the footer ONLY on pages where there is no finger... treat it how
+ * the loose objects on the homepage are. It should be draggable and able to
+ * be tilted around with the phone. Its boundary is restricted to the footer
+ * area."
+ *
+ * No roll there: the home grid's objects do not arrive, they sit where they
+ * are put until something moves them, and that is the behaviour being
+ * matched. The physics is live from the first frame so the phone's tilt can
+ * reach it, and the footer's own artboard is the box it cannot leave.
+ */
+export type CLogoMode = "roll" | "loose";
+
+/** Phone: smaller than the head it replaces, and big enough to catch. */
+const LOOSE_DIAMETER_UNITS = 760;
+const LOOSE_CENTRE_X_UNITS = 960;
+const LOOSE_BOTTOM_UNITS = 150;
+
+/** Landing with the footer already on screen still gets a roll, just a short
+ *  one — per Noah, "always having it roll in just slightly". Picking the
+ *  tween up partway covers the last of the distance in about a second. */
+const ALREADY_THERE_PROGRESS = 0.62;
+
 export default function FooterCLogo({
   containerRef,
   triggerRef,
+  mode = "roll",
 }: {
-  /** The footer's artboard. Must be this element's offsetParent. */
+  /** The footer's artboard. Must be this element's offsetParent, and it is
+   *  also the boundary the physics keeps it inside. */
   containerRef: React.RefObject<HTMLElement | null>;
   /** The desktop reveal spacer — arriving at the bottom of it is arriving at
    *  the footer, since the footer itself is fixed and never scrolls. */
-  triggerRef: React.RefObject<HTMLElement | null>;
+  triggerRef?: React.RefObject<HTMLElement | null>;
+  mode?: CLogoMode;
 }) {
+  const loose = mode === "loose";
+  const diameter = loose ? LOOSE_DIAMETER_UNITS : DIAMETER_UNITS;
   const router = useRouter();
   const elRef = useRef<HTMLAnchorElement>(null);
   /** True once the roll has finished and the physics owns the transform. */
@@ -106,8 +135,11 @@ export default function FooterCLogo({
     elementRef: elRef,
     containerRef,
     imageSrcs: [MASK_SRC],
-    enabled: settled,
+    // Rolling: the tween owns the transform until it arrives. Loose: the
+    // physics owns it from the first frame, so a tilt can move it.
+    enabled: loose || settled,
     draggable: true,
+    tilt: loose,
   });
 
   /* Seeded before the physics is switched on, so its first frame draws the
@@ -124,6 +156,13 @@ export default function FooterCLogo({
   useEffect(() => {
     const el = elRef.current;
     const container = containerRef.current;
+    if (loose) {
+      // Sitting still at the angle it would have stopped at, until a hand or
+      // a tilt moves it. No trigger, no tween, nothing to scroll.
+      rotationRef.current = REST_DEG;
+      el?.style.setProperty("transform", `translate(0px, 0px) rotate(${REST_DEG}deg)`);
+      return;
+    }
     /* THE CURTAIN, NOT THE SPACER (2026-10-18). On desktop the footer is
        fixed behind `.site-content`, which slides up to uncover it; the spacer
        only buys the scroll distance. Measured with the spacer as the trigger:
@@ -131,7 +170,7 @@ export default function FooterCLogo({
        angle through the whole page. The head watches the curtain for the same
        reason — see PeekingHead. */
     const curtain = document.querySelector<HTMLElement>(".site-content");
-    const trigger = curtain ?? triggerRef.current;
+    const trigger = curtain ?? triggerRef?.current ?? null;
     if (!el || !container || !trigger) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -141,7 +180,7 @@ export default function FooterCLogo({
     const geometry = () => {
       const width = container.clientWidth;
       const unit = width / 1920;
-      const radius = (DIAMETER_UNITS * unit) / 2;
+      const radius = (diameter * unit) / 2;
       const restCentre = REST_CENTRE_X_UNITS * unit;
       // It starts beyond the RIGHT edge, far enough out to be fully hidden,
       // and rolls leftward to its resting place.
@@ -212,11 +251,21 @@ export default function FooterCLogo({
       },
     });
 
+    /* ALWAYS A LITTLE ROLL (2026-10-18). Noah: "let's work on always having
+       it roll in just slightly." Arriving with the footer already on screen
+       — a reload at the bottom, or a browser restoring the scroll position —
+       never fired onEnter, so the mark was simply THERE, which is the one
+       case that looked placed rather than arrived. It now picks the tween up
+       partway and rolls the last of the way in. */
+    if (st.progress > 0 && !grabbed.current) {
+      roll.progress(ALREADY_THERE_PROGRESS).play();
+    }
+
     return () => {
       roll.kill();
       st.kill();
     };
-  }, [containerRef, triggerRef, seedRotation]);
+  }, [containerRef, triggerRef, seedRotation, loose, rotationRef, diameter]);
 
   return (
     <a
@@ -227,12 +276,12 @@ export default function FooterCLogo({
       onDragStart={(e) => e.preventDefault()}
       className="absolute block select-none"
       style={{
-        left: `calc(var(--u) * ${REST_CENTRE_X_UNITS})`,
-        bottom: 0,
-        width: `calc(var(--u) * ${DIAMETER_UNITS})`,
-        height: `calc(var(--u) * ${DIAMETER_UNITS})`,
+        left: `calc(var(--u) * ${loose ? LOOSE_CENTRE_X_UNITS : REST_CENTRE_X_UNITS})`,
+        bottom: `calc(var(--u) * ${loose ? LOOSE_BOTTOM_UNITS : 0})`,
+        width: `calc(var(--u) * ${diameter})`,
+        height: `calc(var(--u) * ${diameter})`,
         // Its own centre is the pivot, which is what a wheel turns about.
-        marginLeft: `calc(var(--u) * ${-DIAMETER_UNITS / 2})`,
+        marginLeft: `calc(var(--u) * ${-diameter / 2})`,
         color: "var(--color-paper)",
         /* IT IS A THING TO PICK UP, NOT A LINK TO CLICK (2026-10-18). Noah:
            "the drag feature is awkward because it's showing a link to the
