@@ -1,6 +1,6 @@
 import { chromium } from "playwright-core";
 const B=process.env.QA_BASE||"http://localhost:3000";
-const OUT="/private/tmp/claude-501/-Users-noahcousineau-Desktop-portfolio-noahcousineau-site/5a92aba5-9f87-47c5-91a0-843e0e91e314/scratchpad";
+const OUT=process.env.OUT||".";
 const b=await chromium.launch({executablePath:"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"});
 let fails=0;
 const ok=(c,l,d="")=>{ if(!c) fails++; console.log(`  ${c?"ok  ":"FAIL"} ${l.padEnd(50)} ${d}`); };
@@ -168,6 +168,52 @@ console.log("\n  phone 390x844 — the head is gone, the mark is loose");
   ok(hand, "the finger is still there");
   await ctx.close(); }
 
+/* REACHED BY CLICKING, NEVER BY LOADING (2026-10-18).
+ *
+ * This is the blind spot that hid "it's still preloaded and I can't drag
+ * it" through five rounds of fixes. The footer lives in the root layout, so
+ * a link click swaps the page beneath it and remounts nothing: the mark
+ * kept the position and the settled state it was left in, forever. Every
+ * check here loaded its page fresh, which is the one way the bug cannot
+ * show. Noah, on the fifth round: "It is still 'preloaded' and I can't drag
+ * the C logo on desktop."
+ *
+ * And it is judged on how far the mark GOT, not where it stopped. Thrown
+ * hard it tumbles, hits a wall and can come to rest 23px from where it
+ * started having crossed 1100px on the way — end position cannot tell that
+ * from a mark that never moved, which cost three rounds of chasing a bug
+ * that was not there. */
+console.log("\n  three desktop pages in a row, each reached by clicking a link");
+{ const {ctx,p,errs}=await open("/",1512,982);
+  const peakThrow=async(from)=>{
+    let peak=0;
+    await p.mouse.move(from.x,from.y); await p.mouse.down();
+    for(let k=1;k<=10;k++){ await p.mouse.move(from.x-k*70,from.y-k*6); await p.waitForTimeout(12);
+      const s=await mark(p); if(s) peak=Math.max(peak,Math.abs(s.x-from.x)); }
+    await p.mouse.up();
+    for(let k=0;k<15;k++){ const s=await mark(p); if(s) peak=Math.max(peak,Math.abs(s.x-from.x)); await p.waitForTimeout(100); }
+    return Math.round(peak);
+  };
+  await toBottom(p);
+  const first=await mark(p);
+  ok(first!==null, "page 1: the mark is there", first?`x=${first.x}`:"");
+  ok(await peakThrow(first) > 150, "page 1: it throws");
+  for(const step of [2,3]){
+    const href=await p.evaluate(()=>{ const a=[...document.querySelectorAll('a[href^="/work/"]')].find(a=>a.getBoundingClientRect().width>0); return a&&a.getAttribute("href"); });
+    if(!href){ ok(false, `page ${step}: no project link to click`); break; }
+    await p.evaluate(h=>{ [...document.querySelectorAll(`a[href="${h}"]`)].find(a=>a.getBoundingClientRect().width>0).click(); }, href);
+    await p.waitForTimeout(2600);
+    const arrival=await mark(p);
+    ok(arrival && arrival.x > 1512-60, `page ${step}: parked off the right edge on arrival`, `${href}, x=${arrival?.x}`);
+    await toBottom(p);
+    const rested=await mark(p);
+    ok(rested && rested.x < 1512-100, `page ${step}: it rolls in, same as a fresh load`, `${arrival?.x} -> ${rested?.x}`);
+    ok(await peakThrow(rested) > 150, `page ${step}: and it is still draggable`);
+  }
+  ok(errs.length===0, "no page errors", errs[0]||"");
+  await ctx.close();
+}
+
 console.log("\n  the finger still works on a desktop project page");
 { const {ctx,p,errs}=await open("/work/socal-earth",1512,982);
   await toBottom(p);
@@ -178,6 +224,29 @@ console.log("\n  the finger still works on a desktop project page");
   ok(hand && hand.onScreen, "the fallen hand is still in the project footer", JSON.stringify(hand));
   const c=await p.evaluate(()=>!!document.querySelector('footer a[aria-label="About me"] svg'));
   ok(c, "and the C mark is there too");
+  /* THROWABLE, DESKTOP ONLY (2026-10-18). Noah: "I would like the pointing
+     finger to be throwable. I love how it shows up currently so please
+     don't change this." So: it still arrives on the footer's bottom edge
+     at its rest angle, and it can now be picked up once it has landed. */
+  const handBox=()=>p.evaluate(()=>{
+    const i=[...document.querySelectorAll("footer img")].find(x=>/hand|finger|pointing/i.test(x.src));
+    if(!i) return null; const h=i.parentElement, r=h.getBoundingClientRect();
+    const host=h.offsetParent, hb=host.getBoundingClientRect();
+    const f=document.querySelector("footer").getBoundingClientRect();
+    return { x:Math.round(r.left+r.width/2), y:Math.round(r.top+40),
+             layoutBottom:Math.round(hb.top+h.offsetTop+h.offsetHeight), footerBottom:Math.round(f.bottom),
+             deg:+(Math.atan2(new DOMMatrixReadOnly(getComputedStyle(h).transform).b, new DOMMatrixReadOnly(getComputedStyle(h).transform).a)*180/Math.PI).toFixed(1) };});
+  const h0=await handBox();
+  ok(h0 && Math.abs(h0.layoutBottom-h0.footerBottom)<=2, "the hand still rests on the footer's bottom edge", `${h0?.layoutBottom} vs ${h0?.footerBottom}`);
+  ok(h0 && Math.abs(h0.deg-(-6))<0.5, "still at its rest angle", `${h0?.deg} degrees`);
+  let hpeak=0;
+  await p.mouse.move(h0.x,h0.y); await p.mouse.down();
+  for(let k=1;k<=10;k++){ await p.mouse.move(h0.x+k*60,h0.y-k*10); await p.waitForTimeout(12);
+    const s=await handBox(); if(s) hpeak=Math.max(hpeak,Math.abs(s.x-h0.x)); }
+  await p.mouse.up();
+  for(let k=0;k<15;k++){ const s=await handBox(); if(s) hpeak=Math.max(hpeak,Math.abs(s.x-h0.x)); await p.waitForTimeout(100); }
+  ok(hpeak>150, "and it can be thrown", `peak ${Math.round(hpeak)}px away`);
+  ok(new URL(p.url()).pathname==="/work/socal-earth", "throwing it does not follow the link", new URL(p.url()).pathname);
   ok(errs.length===0, "no page errors", errs.join("; "));
   await p.screenshot({path:`${OUT}/clogo-project.png`});
   await ctx.close(); }
