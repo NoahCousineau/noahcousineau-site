@@ -102,11 +102,6 @@ const LOOSE_DIAMETER_UNITS = 760;
 const LOOSE_CENTRE_X_UNITS = 960;
 const LOOSE_BOTTOM_UNITS = 150;
 
-/** Landing with the footer already on screen still gets a roll, just a short
- *  one — per Noah, "always having it roll in just slightly". Picking the
- *  tween up partway covers the last of the distance in about a second. */
-const ALREADY_THERE_PROGRESS = 0.62;
-
 export default function FooterCLogo({
   containerRef,
   triggerRef,
@@ -233,9 +228,24 @@ export default function FooterCLogo({
 
     const st = ScrollTrigger.create({
       trigger,
-      // The moment the curtain's bottom edge clears the foot of the screen
-      // is the moment the mark could be seen — so that is when it sets off.
-      start: "bottom bottom",
+      /* NEAR THE END OF THE REVEAL, NOT THE START (2026-10-18). Noah: "the C
+         logo doesn't always roll in. Sometimes it's already loaded on the
+         page. Make sure that there's a sense that it's rolling in smoothly
+         the same way and the same time on every page on desktop."
+
+         It used to set off the moment the curtain's bottom edge cleared the
+         foot of the screen — the first instant the mark COULD be seen. On a
+         short page that happens early in the scroll, so the roll finished
+         before the reader had arrived and the mark was simply sitting there;
+         on a long one it was still rolling when they got there. Measured
+         1.2s after reaching the bottom: /, /about and /work were already at
+         rest while socal-earth and more-work were still at 1309 and 1453.
+
+         Firing when the reveal is about two thirds done ties it to arriving
+         rather than to the page's length, so every page gets the same roll
+         at the same moment — and, because the mark is only grabbable once it
+         lands, the same is now true of picking it up. */
+      start: "bottom top+=35%",
       onEnter: () => {
         if (!grabbed.current) roll.play();
       },
@@ -251,15 +261,13 @@ export default function FooterCLogo({
       },
     });
 
-    /* ALWAYS A LITTLE ROLL (2026-10-18). Noah: "let's work on always having
-       it roll in just slightly." Arriving with the footer already on screen
-       — a reload at the bottom, or a browser restoring the scroll position —
-       never fired onEnter, so the mark was simply THERE, which is the one
-       case that looked placed rather than arrived. It now picks the tween up
-       partway and rolls the last of the way in. */
-    if (st.progress > 0 && !grabbed.current) {
-      roll.progress(ALREADY_THERE_PROGRESS).play();
-    }
+    /* ALWAYS THE SAME ROLL (2026-10-18). Arriving with the footer already
+       uncovered — a reload at the bottom, or a browser restoring the scroll
+       position — never fires onEnter, so the mark would simply be THERE.
+       It plays the whole roll instead. A shortened one was tried first and
+       is exactly what Noah objected to: a different animation depending on
+       how the reader got there. */
+    if (st.progress > 0 && !grabbed.current) roll.play();
 
     return () => {
       roll.kill();
