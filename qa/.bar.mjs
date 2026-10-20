@@ -108,6 +108,43 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   await p.screenshot({ path: `${OUT}/bar-${tag}.png`, clip: { x: 0, y: 0, width: w, height: Math.min(150, m.bar.bottom + 50) } });
   await ctx.close();
 }
+/* NOTHING UNTIL THE SECTIONS ARRIVE (2026-10-19). Noah: "I don't like how
+ * the page title, icon, and section title are visible at this point. I want
+ * these to only appear when we reach the section... Have these bits of text
+ * and the icon fade in as we reach the very top of the project content."
+ * The strip and the FIRST section's name are both in the flow until the
+ * scroll pins them, so both used to ride up the page over the statement
+ * block. Later sections are not in that position — they arrive behind a bar
+ * that is already pinned — so they are left alone. */
+console.log("\n  desktop 1902 — the header fading in with the first section");
+{
+  const ctx = await b.newContext({ viewport: { width: 1902, height: 950 } });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
+  const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
+  await p.goto(`${BASE}/work/sprouts-farmers-market`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
+  const st = () => p.evaluate(() => { const g = (s) => { const e = document.querySelector(s); if (!e) return null;
+    const cs = getComputedStyle(e); return { op: +cs.opacity, fs: cs.fontSize, fw: cs.fontWeight }; };
+    return { strip: g(".proj-bar-head"), first: g(".proj-bar-fade"), title: g(".proj-bar-title"),
+             ready: document.documentElement.dataset.projBar || "" }; });
+  const before = await st();
+  ok(before.strip && before.strip.op === 0, "the symbol and page title are invisible on the way down", `opacity ${before.strip?.op}`);
+  ok(before.first && before.first.op === 0, "so is the first section's name", `opacity ${before.first?.op}`);
+  for (let k = 0; k < 80; k++) { await p.mouse.wheel(0, 400); await p.waitForTimeout(50);
+    if ((await p.evaluate(() => document.documentElement.dataset.projBar)) === "ready") break; }
+  await p.waitForTimeout(900);
+  const after = await st();
+  ok(after.strip && after.strip.op === 1, "both fade in once the sections reach the top", `strip ${after.strip?.op}, name ${after.first?.op}`);
+  ok(after.first && after.first.op === 1, "the first section's name with them", `opacity ${after.first?.op}`);
+  const sec = await p.evaluate(() => { const all = [...document.querySelectorAll(".sticky.top-0")].map(e => ({ e, r: e.getBoundingClientRect() }))
+      .filter(o => o.r.top > -3 && o.r.top < 5); const n = all[all.length - 1]?.e.querySelector(".proj-bar-section");
+    return n ? { fs: getComputedStyle(n).fontSize, fw: getComputedStyle(n).fontWeight } : null; });
+  ok(sec && after.title && sec.fs === after.title.fs, "the page title is the section title's size", `${after.title?.fs} vs ${sec?.fs}`);
+  ok(after.title && Number(after.title.fw) >= 600 && Number(sec.fw) < 600, "and differs from it only by being bold",
+     `title ${after.title?.fw}, section ${sec?.fw}`);
+  await ctx.close();
+}
+
 /* LONG SECTION NAMES ON A PHONE (2026-10-19). Noah: "on mobile sometimes
  * the section names get so long that they start to touch the page icon.
  * Please increase the size of the page icons on mobile and shrink section

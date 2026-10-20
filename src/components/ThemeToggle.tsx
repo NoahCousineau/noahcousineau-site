@@ -47,7 +47,16 @@ export default function ThemeToggle() {
       style={{
         // /20 -> /40, 2026-08-24: "move both the home page and the
         // sunglasses icon closer to the border of the browser window."
-        right: "calc(100vw / 40)",
+        /* CLEAR OF THE WORDMARK IN THE FOOTER (2026-10-19). Noah: "nudge
+           the light mode/dark mode switch to the right a bit so it doesn't
+           interfere with the 'cousineau' logo in the footer." It sat 48
+           units in, which put its left edge at 1812 against a wordmark
+           whose box ends at 1830 — 18px of overlap, landing the switch on
+           the U. Half that inset clears it with room to spare, and the C
+           mark opposite keeps its own: the wordmark begins with a round C,
+           so its ink starts well inside its box on that side and there is
+           nothing to clear. */
+        right: "calc(100vw / 80)",
         /* `top-5` spelled out so --chrome-drop can be added to it (2026-08-25:
            "move the 'c' and toggle down by a small amount"). The variable is
            0 on a desktop, so this is the same 1.25rem it has always been;

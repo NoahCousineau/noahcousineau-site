@@ -214,7 +214,7 @@ const DESCRIPTOR_SIZE_UNITS = 26.67;
 /* The multiplier is a custom property so the phone can double it with a
  * media query — this is a server component and cannot read the hook. See
  * globals.css. */
-const DESCRIPTOR_SIZE_CSS =
+export const DESCRIPTOR_SIZE_CSS =
   `clamp(0.63rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS} * var(--descriptor-scale)), calc(2rem * var(--descriptor-scale)))`;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
@@ -552,7 +552,7 @@ export function ProjectGroup({
           once for the whole page — see ProjectBarHead. */}
       <div className="proj-bar">
         <h2
-          className="proj-bar-section leading-none"
+          className={`proj-bar-section leading-none${stackIndex === 0 ? " proj-bar-fade" : ""}`}
           style={{ fontSize: DESCRIPTOR_SIZE_CSS, fontFamily: "var(--font-sans)" }}
         >
           {descriptor}

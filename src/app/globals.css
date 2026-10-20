@@ -367,6 +367,32 @@ html {
   /* Above every section: those carry stackIndex + 1, a single digit. */
   z-index: 40;
 }
+/* NOTHING UNTIL THE SECTIONS ARRIVE (2026-10-19). Noah: "I don't like how
+   the page title, icon, and section title are visible at this point. I want
+   these to only appear when we reach the section... Have these bits of text
+   and the icon fade in as we reach the very top of the project content.
+   This is only relevant to the very first/top project."
+
+   `proj-bar-fade` carries the same behaviour for the FIRST section's name,
+   which rode up the page alongside this strip for the same reason: both are
+   in the flow until the scroll pins them. Every later section's name
+   arrives behind the bar that is already pinned, which is the stacking
+   effect working as designed, so they are left alone. */
+.proj-bar-head,
+.proj-bar-fade {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+:root[data-proj-bar="ready"] .proj-bar-head,
+:root[data-proj-bar="ready"] .proj-bar-fade {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .proj-bar-head,
+  .proj-bar-fade {
+    transition: none;
+  }
+}
 .proj-bar-head > * {
   position: absolute;
   top: var(--chrome-centre);

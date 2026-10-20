@@ -66,8 +66,33 @@ const DRAG_THRESHOLD_PX = 4;
  * the overhang is zero and a settled object is left alone, which is what
  * stops this shaking everything that has already come to rest. */
 const TOPPLE_ACCEL = 1600;
-/** Overhang below this fraction of the width counts as balanced. */
-const TOPPLE_DEADZONE = 0.015;
+/* HOW FAR INSIDE ITS BASE THE CENTRE OF MASS HAS TO BE, as a fraction of
+ * the object's width, before the pose counts as settled rather than
+ * precarious.
+ *
+ * Zero would be the textbook rule — stand while the centre of mass is over
+ * the base — and it is not enough: a hand that lands on the heel of its
+ * palm has a base a few pixels wide, and if the centre of mass happens to
+ * fall within those few pixels the textbook says it stands there for ever.
+ * It did: the pointing hand came to rest at 267 degrees, bolt upright,
+ * after this had already shipped once. Real objects do not balance on a
+ * knife edge, because nothing in the world is that still. Requiring a
+ * margin is what makes a narrow base behave like a narrow base.
+ *
+ * And the margin a pose needs grows with how TALL it is. An object tips
+ * when it is leaned past the angle at which its centre of mass clears the
+ * edge of its base, and that angle is atan(base half-width / centre-of-mass
+ * height) — so the same base holds a low shape steadily and a tall one
+ * barely at all. Without this the pointing hand kept standing bolt upright
+ * on the flat cut at its wrist, which is a wide base by measurement and a
+ * ridiculous way for a hand to come to rest; 267 degrees, once every two
+ * runs, after the margin above had already shipped. 0.3 is a tip angle of
+ * about 24 degrees, which is roughly the nudge a thing gets from being
+ * put down. (It was first set at 0.3 while chasing a hand that kept
+ * standing at 273 degrees; that turned out to be the sleep check erasing
+ * the torque — see the note there — not this threshold.) */
+const TOPPLE_STABILITY = 0.04;
+const TOPPLE_TIP = 0.45;
 
 export function useThrowable({
   elementRef,
@@ -153,6 +178,15 @@ export function useThrowable({
   const spin = useRef(0);
   const asleep = useRef(true);
   const dragging = useRef(false);
+  /* AN AUTHORED POSE IS NOT A SIMULATED ONE (2026-10-19). The pointing hand
+     arrives at -6 degrees because that is where its fall animation puts it,
+     and the toppling below promptly rotated it to -4.2 and called that
+     settled — a rest Noah has approved, quietly re-tuned by the physics.
+     Nothing topples until it has been picked up at least once; after that
+     every pose it reaches is the simulation's own and fair game. `reset`
+     clears this, because going back to the authored pose means going back
+     to not having been touched. */
+  const everGrabbed = useRef(false);
   const movedEnough = useRef(false);
   const grabOffset = useRef({ x: 0, y: 0 });
   const samples = useRef<{ x: number; y: number; t: number }[]>([]);
@@ -190,6 +224,7 @@ export function useThrowable({
     rot.current = 0;
     spin.current = 0;
     asleep.current = true;
+    everGrabbed.current = false;
     const el = elementRef.current;
     if (el) el.style.transform = "translate(0px, 0px) rotate(0deg)";
   }, [elementRef]);
@@ -326,8 +361,19 @@ export function useThrowable({
         if (across < lo) lo = across;
         if (across > hi) hi = across;
       }
-      if (lo > 0) return lo;
-      if (hi < 0) return hi;
+      /* The centre of mass sits at zero, so the base supports it when
+         zero is inside [lo, hi] — with a margin at each end, see
+         TOPPLE_STABILITY. Outside that, the answer is how far beyond it
+         has gone, signed toward the side it is falling off. Continuous
+         across the boundary, so an object does not jump into motion. */
+      /* `lowest` is the projection of the base along gravity from the
+         pivot, and the pivot IS the centre of mass — so it is exactly the
+         height of the centre of mass above the ground. */
+      const margin = Math.max(W * TOPPLE_STABILITY, lowest * TOPPLE_TIP);
+      const beyondLow = lo + margin;
+      const beyondHigh = hi - margin;
+      if (beyondLow > 0 && beyondLow >= -beyondHigh) return beyondLow;
+      if (beyondHigh < 0) return beyondHigh;
       return 0;
     };
 
@@ -443,9 +489,9 @@ export function useThrowable({
            is stuck upright is by definition asleep, so a torque that only
            ran while it was already moving could never be the thing that
            knocks it over. This is also what wakes it. */
-        if (topple && !dragging.current) {
+        if (topple && everGrabbed.current && !dragging.current) {
           const over = contactOverhang(r, W);
-          if (Math.abs(over) > W * TOPPLE_DEADZONE) {
+          if (over !== 0) {
             asleep.current = false;
             toppling = true;
             // Falls AWAY from whichever side is holding it up.
@@ -462,7 +508,20 @@ export function useThrowable({
           const rollSpin = (vel.current.x / rEff) * (180 / Math.PI);
           spin.current += (rollSpin - spin.current) * Math.min(1, ROLL_LOCK_RATE * dt);
           vel.current.x *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * dt);
+          /* NOT WHILE IT IS BEING TIPPED OVER (2026-10-19). A gentle
+             topple is a slow one: at 273 degrees the pointing hand stood
+             with its centre of mass 9px outside the safe part of its base,
+             which is a real torque but a small one — about 55 deg/s^2, or
+             0.9 deg/s of spin in a frame. This test then found that spin
+             below the sleep threshold, zeroed it, and put the object back
+             to sleep; the next frame woke it, added another 0.9, and slept
+             it again. It stood there for ever, being tipped over one
+             sixtieth of a second at a time. Only a hard overhang — over
+             51px, enough to clear SLEEP_SPIN in a single frame — ever
+             actually fell, which is why this looked like the stability
+             threshold being too fine rather than the spin being erased. */
           if (
+            !toppling &&
             Math.abs(vel.current.y) < SLEEP_SPEED &&
             Math.abs(vel.current.x) < SLEEP_SPEED &&
             Math.abs(spin.current) < SLEEP_SPIN
@@ -492,6 +551,7 @@ export function useThrowable({
       // the drag alive outside the element's bounds), so it must not be able
       // to take the drag down with it.
       dragging.current = true;
+      everGrabbed.current = true;
       movedEnough.current = false;
       const p = pointerPos(e);
       const piv = pivotPos();
