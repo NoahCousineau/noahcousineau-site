@@ -353,6 +353,34 @@ console.log("\n  catching the C mark mid-roll");
   ok(errs.length===0, "no page errors", errs[0]||"");
   await ctx.close(); }
 
+/* ONE LINE WEIGHT IN THE FOOTER (2026-10-19). Noah: "make sure all the
+ * horizontal rules that are being used have the same line thickness.
+ * Please also make the rule under 'next project' move up to resemble the
+ * other rules." The odd one out was a flat 2px border where the rest are
+ * 2 artboard units — and it could not be fixed by changing the number,
+ * because a border cannot hold a fractional width: Chrome rounded 1.57px
+ * down to 1. It is a div now, like the others. */
+console.log("\n  the footer's rules, on desktop");
+{ const {ctx,p}=await open("/work/socal-earth",1512,982);
+  await toBottom(p);
+  const d=await p.evaluate(()=>{
+    const hs=[];
+    for(const el of document.querySelectorAll("footer div, footer span")){ const r=el.getBoundingClientRect();
+      if(r.height>0.3&&r.height<6&&r.width>80&&getComputedStyle(el).backgroundColor!=="rgba(0, 0, 0, 0)") hs.push(+r.height.toFixed(2)); }
+    const np=[...document.querySelectorAll("footer a")].find(a=>a.textContent.trim()==="next project");
+    const rule=np?.querySelector("span"); const about=[...document.querySelectorAll("footer a")].find(a=>/about me/i.test(a.textContent));
+    const ar=about.getBoundingClientRect();
+    const theirs=[...document.querySelectorAll("footer div")].map(e=>e.getBoundingClientRect())
+      .filter(r2=>r2.height>0.3&&r2.height<6&&Math.abs(r2.left-ar.left)<4&&r2.top>ar.bottom-2&&r2.top<ar.bottom+20)[0];
+    const rr=rule?.getBoundingClientRect();
+    const txt=np.getBoundingClientRect();
+    return { thicknesses:[...new Set(hs)], theirGap: theirs?+(theirs.top-ar.bottom).toFixed(2):null,
+             ourGap: rr?+(rr.top-(txt.top+ (txt.height-rr.height-(rr.top-txt.top)) )).toFixed(2):null,
+             ruleTop: rr?Math.round(rr.top):null };});
+  ok(d.thicknesses.length===1, "every rule in the footer is the same thickness", JSON.stringify(d.thicknesses));
+  ok(!!d.ruleTop, "the next-project rule is a rule, not a border");
+  await ctx.close(); }
+
 /* THE ABOUT PAGE'S HEAD FALLS IN (2026-10-19). Noah: "the head currently is
  * 'preloaded' on the page. Instead, I would like for the head to fall down
  * just like the other icons on the pages." It is held above the red band,
@@ -368,10 +396,22 @@ console.log("\n  the about page head");
   const head=()=>p.evaluate(()=>{ const img=document.querySelector("main img[src*=head], section img[src*=head]");
     const w=img?.closest("div.absolute"); if(!w) return null;
     const r=w.getBoundingClientRect(); const band=w.offsetParent.getBoundingClientRect();
-    return { bottom:Math.round(r.bottom), band:Math.round(band.bottom), vis:getComputedStyle(w).visibility }; });
+    return { bottom:Math.round(r.bottom), band:Math.round(band.bottom), bandTop:Math.round(band.top),
+             vis:getComputedStyle(w).visibility }; });
   await p.waitForFunction(()=>!document.querySelector("[data-page-loader]"),null,{timeout:90000}).catch(()=>{});
   const early=await head();
   ok(early && early.vis==="hidden", "it is not on the page to begin with", `visibility: ${early?.vis}`);
+  /* IT FALLS IN, IT DOES NOT APPEAR (2026-10-19). Noah: "the head sorta
+     'pops' in, rather than fall in." It did: the band's ceiling — there so
+     a thrown head bounces off the top rather than leaving — caught the
+     lifted head on its first frame and parked it on the top edge, so it
+     was painted already half on screen. Measured before the fix: lifted to
+     a bottom of -373, painted at 376. The first frame anyone sees must be
+     ABOVE the band. */
+  let firstSeen=null;
+  for(let k=0;k<80 && !firstSeen;k++){ const h=await head(); if(h&&h.vis==="visible") firstSeen=h; await p.waitForTimeout(50); }
+  ok(firstSeen && firstSeen.bottom<=0, "the first frame of it is above the band, off screen",
+     firstSeen?`bottom ${firstSeen.bottom}`:"never appeared");
   let top=1e9, low=-1e9;
   for(let k=0;k<70;k++){ const h=await head();
     if(h&&h.vis==="visible"){ top=Math.min(top,h.bottom); low=Math.max(low,h.bottom); }

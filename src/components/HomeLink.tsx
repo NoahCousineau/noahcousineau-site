@@ -57,7 +57,16 @@ export default function HomeLink() {
         left: "calc(100vw / 40)",
         // See the note below: the artboard unit spelled out, because `--u`
         // lives on <main> and this is fixed outside it.
-        top: "max(var(--home-mark-top-floor), calc(100vw / 1920 * 28.25 - 14.75px))",
+        /* ON THE HEADER'S CENTRELINE (2026-10-19). Noah: "Make sure all
+           the content in the header is along the center of the header
+           area. As we can see here, it's a bit too high up." That line is
+           now a variable — see --chrome-centre in globals.css, which also
+           carries the phone floor this used to apply itself — and this mark
+           sits on it, 14.75px being the distance from its border box to its
+           own ink (22.75px down, less the 8px that `-m-2` pulls the box up).
+           The derivation that used to live here, from the old section
+           title's optical centre, is in that variable's note. */
+        top: "calc(var(--chrome-centre) - 14.75px)",
       }}
       /* 2026-08-24, Noah: "move both the home page and the sunglasses icon
          closer to the border of the browser window to make them not

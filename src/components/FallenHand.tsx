@@ -166,7 +166,18 @@ const HAND_H_UNITS = (HAND_W_UNITS * 1490) / 2696;
  * ~10u bottom padding (its underline sits below the text baseline), since
  * what needs to land at fingertip height is the visible text, not the
  * link element's outer box. */
-const LABEL_MARGIN_BOTTOM_UNITS = HAND_H_UNITS * (1 - 0.32315) - 10;
+/* HOW FAR THE UNDERLINE HANGS BELOW THE WORDS (2026-10-19). Noah: "make
+ * the rule under 'next project' move up to resemble the other rules." It
+ * was 10 units; the footer's own link rules sit about 1.1 below their text,
+ * and this now matches them.
+ *
+ * The margin below carries the same number, which is what keeps the WORDS
+ * at fingertip height while the rule rises to meet them: the margin
+ * positions the link's outer box, and the padding is the part of that box
+ * which hangs under the text. Change one without the other and the lockup
+ * slides off the finger. */
+const LABEL_RULE_GAP_UNITS = 1.1;
+const LABEL_MARGIN_BOTTOM_UNITS = HAND_H_UNITS * (1 - 0.32315) - LABEL_RULE_GAP_UNITS;
 
 const HAND_SRC = "/assets/shared/pointing-hand-static-rotated.webp";
 
@@ -711,12 +722,40 @@ export default function FallenHand({
         style={{
           fontFamily: "var(--font-sans)",
           fontSize: uFont(17.9),
-          borderBottom: "2px solid currentColor",
-          paddingBottom: "calc(var(--u) * 10)",
+          /* The rule itself is the element below, not a border — see
+             the note there. */
           marginBottom: `calc(var(--u) * ${LABEL_MARGIN_BOTTOM_UNITS})`,
         }}
       >
         next project
+        {/* THE SAME RULE AS EVERY OTHER ONE IN THE FOOTER (2026-10-19).
+            Noah: "make sure all the horizontal rules that are being used
+            have the same line thickness. Please also make the rule under
+            'next project' move up to resemble the other rules."
+
+            It was a flat 2px, where the footer's link rules are 2 artboard
+            units — identical only at 1920 and drifting apart everywhere
+            else — and it hung 10 units under the words where theirs sit
+            about one.
+
+            A div rather than the `border-bottom` it used to be, because a
+            border cannot hold a fractional width: Chrome rounded 2 units
+            (1.57px at 1512) down to a flat 1px while the footer's rules,
+            which are divs with a height, kept the 1.57. Same element, same
+            maths, same line.
+
+            The words do not move — they are what the fingertip is under,
+            and the see-saw is the point of this lockup — so the rule
+            closes the gap from below. LABEL_MARGIN_BOTTOM_UNITS carries
+            the same gap for exactly that reason. */}
+        <span
+          className="block w-full"
+          style={{
+            height: `calc(var(--u) * 2)`,
+            marginTop: `calc(var(--u) * ${LABEL_RULE_GAP_UNITS})`,
+            background: "currentColor",
+          }}
+        />
       </Link>
       </div>
     </>

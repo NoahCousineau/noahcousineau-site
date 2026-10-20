@@ -2,6 +2,7 @@
   {
     "slug": "sprouts-farmers-market",
     "title": "SPROUTS FARMERS MARKET",
+    "titleCase": "Sprouts Farmers Market",
     "disciplines": [
       "OOH",
       "Marketing",
@@ -371,6 +372,7 @@
   {
     "slug": "corita-art-center",
     "title": "CORITA ART CENTER",
+    "titleCase": "Corita Art Center",
     "disciplines": [
       "Branding",
       "Print",
@@ -753,6 +755,7 @@
   {
     "slug": "socal-earth",
     "title": "SoCAL EARTH",
+    "titleCase": "SoCal Earth",
     "disciplines": [
       "Brand Creation",
       "Illustration",
@@ -1498,6 +1501,7 @@
   {
     "slug": "cultural-olympiad-poster",
     "title": "CULTURAL OLYMPIAD POSTER",
+    "titleCase": "Cultural Olympiad Poster",
     "disciplines": [
       "Poster Design",
       "Animation",
@@ -1644,6 +1648,7 @@
   {
     "slug": "valley-strong-credit-union",
     "title": "VALLEY STRONG CREDIT UNION",
+    "titleCase": "Valley Strong Credit Union",
     "disciplines": [
       "Visual Identity",
       "Marketing",
@@ -1952,6 +1957,7 @@
   {
     "slug": "more-work",
     "title": "More Work",
+    "titleCase": "More Work",
     "disciplines": [],
     "intro": "This page contains various other projects, including my ArtCenter Graduate Graphic Design thesis, Forced Perspective: An Exhibit on Brand. This thesis explored how branding shapes our understanding of the world. I created original artwork and an exhibition, then documented the project in a 300-page book. This and other internship and student design work can be seen below.",
     "protected": true,

@@ -279,6 +279,9 @@ export default function RagdollHead({
      icons on the pages." False until it has been let go: until then the
      head is held above the arena, hidden, and the physics is asleep. */
   const dropped = useRef(false);
+  /** False from the moment it is let go until it has fallen all the way
+   *  into the band; the ceiling is off until then. */
+  const insideArena = useRef(false);
 
   // Which head is on screen — the light cut-out, or the sunglasses one in
   // dark mode. The silhouettes differ, so this drives a re-measure.
@@ -427,9 +430,38 @@ export default function RagdollHead({
       if (done) return;
       done = true;
       timer = window.setTimeout(() => {
-        dropped.current = true;
         const wrap = wrapRef.current;
-        if (wrap) wrap.style.visibility = "visible";
+        const container = containerRef.current;
+        if (!wrap || !container) return;
+        /* THE LIFT HAPPENS HERE, not at mount (2026-10-19). Noah: "the head
+           sorta 'pops' in, rather than fall in."
+
+           It did. The head was raised above the band on its first frame and
+           then left there — but the silhouette is measured asynchronously
+           from the decoded artwork, and finishing that measurement re-seats
+           a head nobody has touched. So the lift was quietly undone some
+           time before the release, and what the reader saw was the head
+           appearing just above the band and dropping the last few
+           centimetres. Measured: hidden at top=-717, then visible at
+           top=-46 in a single frame, falling from there.
+
+           Lifting at the moment of release instead means nothing can get
+           between the two.
+
+           And it is lifted clear of the BAND'S TOP EDGE, not by a fixed
+           multiple of the band's height the way the project pages lift
+           their icons (`dropFrom` in useDropField). Those are small objects
+           in a tall arena; this head is nearly as tall as the band it lives
+           in, so 0.45 of a band height left it starting with most of itself
+           already on screen — which is the "pops in" all over again. Its
+           own rendered bottom goes to the band's top, and 0.45 of a band
+           height above that is the run-up. */
+        const cr = container.getBoundingClientRect();
+        pos.current.y -= wrap.getBoundingClientRect().bottom - cr.top + cr.height * 0.45;
+        wrap.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${rotationRef.current}deg)`;
+        dropped.current = true;
+        insideArena.current = false;
+        wrap.style.visibility = "visible";
         asleep.current = false;
       }, DROP_DELAY_MS);
     };
@@ -441,7 +473,7 @@ export default function RagdollHead({
       window.clearTimeout(timer);
       stop();
     };
-  }, []);
+  }, [containerRef]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -556,14 +588,6 @@ export default function RagdollHead({
         if (cr0.height > 0 && wrap.offsetWidth > 0) {
           const drop = supportAt(shape.current.support, 90 - rotationRef.current) * wrap.offsetWidth;
           pos.current.y += cr0.height - drop - pivotScreen().y;
-          /* Seated on the floor first and then lifted clear of the top of
-             the arena, rather than placed above by a guess: the seat is
-             what knows where the floor is for this particular head, and
-             the lift is then measured from a known quantity. A theme swap
-             re-seats a head that has already landed, which is the existing
-             behaviour and must stay — hence the flag rather than a check
-             on whether this is the first frame. */
-          if (!dropped.current) pos.current.y -= cr0.height + wrap.offsetHeight;
           needsSnap.current = false;
           apply();
         }
@@ -605,6 +629,7 @@ export default function RagdollHead({
         const maxX = cr.width - right;
         const minY = up;
         const maxY = cr.height - down;
+        if (!insideArena.current && p.y >= minY) insideArena.current = true;
 
         // CORNER REST — below this incoming speed, a side-wall touch just
         // clamps position, with no bounce/torque injected. Without this, a
@@ -640,8 +665,24 @@ export default function RagdollHead({
         }
 
         if (p.y < minY) {
-          pos.current.y += minY - p.y;
-          vel.current.y = Math.abs(vel.current.y) * RESTITUTION;
+          /* NOT WHILE IT IS STILL ON ITS WAY IN (2026-10-19). The head is
+             dropped from above the red band, and this ceiling — which
+             exists so a thrown head bounces off the top of the band rather
+             than leaving it — was catching it on its very first frame and
+             parking it on the top edge. That is the whole of the "pops in"
+             Noah saw: the lift was applied, the clamp undid it before a
+             single frame was painted, and what was left was a head
+             appearing at the top of the band and dropping the rest of the
+             way. Measured: lifted to a bottom of -373, painted at 376.
+
+             The ceiling comes back the moment the head is first fully
+             inside, so a throw still bounces off it. Same reasoning as
+             `confinedRef` in useThrowable, and as the note in useDropField
+             about an object "legitimately above the arena". */
+          if (insideArena.current) {
+            pos.current.y += minY - p.y;
+            vel.current.y = Math.abs(vel.current.y) * RESTITUTION;
+          }
         } else if (p.y > maxY) {
           // Sit exactly on the floor — the bottom of the VISIBLE head now
           // meets the bottom of the red header, with no transparent gap.

@@ -50,6 +50,17 @@ export type ProjectPageData = {
 export type Project = {
   slug: string;
   title: string;
+  /* THE SAME NAME, WRITTEN OUT RATHER THAN SHOUTED (2026-10-19). Noah, on
+     the project page's header bar: "make sure these are in title case. It
+     should be 'Corita Art Center' for example, not 'CORITA ART CENTER'."
+
+     A separate field rather than a transform of `title`, because no
+     transform gets these right: lowercasing and re-capitalising turns
+     "SoCAL EARTH" into "Socal Earth", and CSS `capitalize` leaves existing
+     capitals alone and so changes nothing at all. And a separate field
+     rather than restyling `title`, because that string is the hero's
+     wordmark and its capitals are the stylisation there. */
+  titleCase?: string;
   disciplines: string[];
   intro: string;
   protected: boolean;

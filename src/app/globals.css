@@ -303,6 +303,12 @@ html {
      left margin, between the fixed C mark and the page title. On a phone it
      moves out to the content margin — see the media query below. */
   --header-symbol-left: 106;
+  /* A phone's bar needs more side room than the grid margin gives it: the
+     section name is centred on the page and the symbol sits out in the
+     margin, so without this a long name runs straight into it. Noah: "the
+     section names get so long that they start to touch the page icon."
+     Zero on desktop, where the margin is already wide enough. */
+  --proj-bar-side-min: 0px;
 }
 
 /*
@@ -331,46 +337,53 @@ html {
 .proj-bar {
   display: flex;
   align-items: center;
-  padding-left: calc(var(--u) * var(--grid-margin));
-  padding-right: calc(var(--u) * var(--grid-margin));
-  /* ON THE SAME LINE AS THE C AND THE TOGGLE, in a bar that is taller than
-     that line is deep. Noah's mockup draws the symbol level with the C's
-     ink and the bar's underside well below it, so the content is NOT
-     centred in the bar — it is centred on the chrome's line, and the bar
-     then extends past it to where he drew the red line.
-     The padding does the centring: a content box running from the top of
-     the bar to twice the chrome's centreline puts its middle exactly on
-     that centreline, whatever the type inside it measures. On a phone the
-     chrome sits low enough that twice its centreline is already taller
-     than the desktop figure, so the bar grows instead and the padding
-     falls to nothing. */
+  padding-left: max(calc(var(--u) * var(--grid-margin)), var(--proj-bar-side-min));
+  padding-right: max(calc(var(--u) * var(--grid-margin)), var(--proj-bar-side-min));
+  /* CENTRED IN THE BAR, AND THE CHROME IS ON THAT LINE TOO. The padding
+     does it: a content box running from the top of the bar to twice the
+     centreline puts its middle exactly on that line, whatever the type
+     inside it measures. On a phone the chrome sits low enough that twice
+     its centreline already exceeds the desktop figure, so the bar grows
+     instead and the padding falls to nothing. */
   min-height: max(calc(var(--u) * 72), calc(var(--chrome-centre) * 2));
   padding-bottom: max(0px, calc(var(--u) * 72 - var(--chrome-centre) * 2));
 }
-/* THE CENTRELINE IS THIS BOX'S, NOT THE BAR'S. The symbol is positioned
-   rather than laid out — it belongs in the margin, outside the content —
-   and anchoring it to the bar itself put it half of the phone's 78px top
-   padding above everything else: symbol centred on y=51, section name on
-   y=87. Measuring both from the content box is what makes "aligned on a
-   horizontal centerline" true on a bar whose padding is not symmetric. */
-.proj-bar-inner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
+/* ONE HEADER, NOT ONE PER SECTION (2026-10-19). Noah: "when we scroll on
+   project pages now, there's a repeat of the page title and the icon, as
+   well as there being a new section name. Let's not have this. Instead,
+   keep the header the same. The only change is that when we scroll into a
+   new section, the section name will change."
+
+   Each section's bar used to carry its own copy of the symbol and the page
+   title, so an arriving section brought a second set of both up the screen
+   behind the pinned one. They are rendered ONCE now, in a sticky strip that
+   spans the whole run of sections and sits above every one of them. Height
+   zero so it takes no room in the flow — the bars it floats over are what
+   give the band its background and its rule. */
+.proj-bar-head {
+  position: sticky;
+  top: 0;
+  height: 0;
+  /* Above every section: those carry stackIndex + 1, a single digit. */
+  z-index: 40;
+}
+.proj-bar-head > * {
+  position: absolute;
+  top: var(--chrome-centre);
+  translate: 0 -50%;
 }
 .proj-bar-symbol {
-  position: absolute;
-  /* Out into the left margin by the difference between where the symbol
-     goes and where the content starts. Negative on desktop (106 against a
-     178 margin), zero on a phone, where the symbol sits at the margin
-     itself — one expression, both tiers. */
-  left: calc(var(--u) * (var(--header-symbol-left) - var(--grid-margin)));
-  top: 50%;
-  translate: 0 -50%;
-  height: max(calc(var(--u) * 44), 22px);
+  left: calc(var(--u) * var(--header-symbol-left));
+  /* Bigger on a phone than the artboard unit gives it, per Noah, and the
+     bar's side padding is widened to match so a long section name cannot
+     reach it. */
+  height: max(calc(var(--u) * 44), 34px);
   width: auto;
+}
+.proj-bar-title {
+  left: calc(var(--u) * var(--grid-margin));
+  font-weight: 700;
+  white-space: nowrap;
 }
 .proj-bar-section {
   /* Flush right, against the same margin the page title starts at. */
@@ -382,8 +395,12 @@ html {
   }
   .proj-bar-section {
     /* Centred ON THE PAGE, which falls out of centring it in the content
-       box: the bar's two side paddings are equal. */
+       box: the bar's two side paddings are equal. A long name wraps inside
+       that band rather than growing into the symbol — at 390 the longest
+       section title on the site is 49 characters, which no type size that
+       is still readable will fit on one line beside an icon. */
     margin-right: auto;
+    text-align: center;
   }
 }
 
@@ -414,12 +431,15 @@ html {
     /* Out to the content margin, which is just clear of the fixed C mark:
        its ring ends at 48px on a 390 screen, i.e. 236 units. */
     --header-symbol-left: 250;
+    /* Clear of the symbol on the left and the toggle on the right, applied
+       to both sides so the section name stays centred on the page. */
+    --proj-bar-side-min: 96px;
     /* "Please also double the size of the section title type on mobile."
        ...and again: "for the mobile project pages, let's double the size of
        the section titles again." 2 -> 4. */
     /* 4 -> 3.5, 2026-08-29: "I would also like the mobile section titles to
        be just a tad smaller as well." 21.7px -> 19.0px at 390. */
-    --descriptor-scale: 3.5;
+    --descriptor-scale: 3;
   }
 
   .js-project-row {
@@ -525,10 +545,20 @@ html {
      that element's box from its ink — written out rather than referenced
      because the mark is fixed-position and outside any artboard, so `--u`
      does not exist for it and 100vw/1920 is what it has always used. The
-     phone branch falls out of --home-mark-top-floor on its own. */
+     phone branch falls out of --home-mark-top-floor on its own.
+
+     36 UNITS, NOT 28.25 (2026-10-19). Noah: "Make sure all the content in
+     the header is along the center of the header area. As we can see here,
+     it's a bit too high up." 28.25 was the old section title's optical
+     centre, derived back when the bar was a title stacked on a rule; in a
+     72-unit bar it sits in the upper third. Half of 72 is the middle of it,
+     and the C and the toggle come down to that line with everything else
+     rather than being left behind on the old one — they are part of the
+     header area he is pointing at. The phone is untouched: its floor wins
+     either way. */
   --chrome-centre: max(
     calc(var(--home-mark-top-floor) + 14.75px),
-    calc(100vw / 1920 * 28.25)
+    calc(100vw / 1920 * 36)
   );
   /* HOW FAR THE CHROME HAS MOVED FROM WHERE THE DESKTOP LAYOUT EXPECTS IT
      (2026-08-31).

@@ -18,6 +18,8 @@ import {
 import ProjectHeader from "@/components/project/ProjectHeader";
 import { ProjectStatement } from "@/components/project/ProjectStatement";
 import { ProjectGroup } from "@/components/project/ProjectGroup";
+import { ProjectBarHead } from "@/components/project/ProjectBarHead";
+import { Stage } from "@/components/Stage";
 
 /* Gap between the end of the statement paragraph and the first content
  * section. 300 -> 420 -> 780 (2026-08-20, per Noah: "add a lot more space
@@ -180,14 +182,18 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             overflow: "clip",
           }}
         >
+        {/* The gap above the first section is rendered HERE rather than
+            inside that section, so the header strip below it starts
+            sticking exactly where the sections begin — put before the gap,
+            it would ride down over the statement block on the way in. */}
+        <Stage heightUnits={FIRST_GROUP_TOP_GAP_UNITS} />
+        <ProjectBarHead slug={project.slug} title={project.titleCase ?? project.title} />
         {groups.map((group, i) => (
           <ProjectGroup
             key={group.descriptor}
             slug={project.slug}
-            pageTitle={project.title}
             descriptor={group.descriptor}
             rows={group.rows}
-            topGapUnits={i === 0 ? FIRST_GROUP_TOP_GAP_UNITS : undefined}
             bgColor={group.bgColor}
             stackIndex={i}
           />

@@ -49,7 +49,10 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
     const all = [...document.querySelectorAll(".sticky.top-0")].map(e => ({ e, r: e.getBoundingClientRect() }))
       .filter(o => o.r.top > -3 && o.r.top < 5 && o.r.height > 10);
     const hdr = all[all.length - 1]; if (!hdr) return null;
-    const q = (sel) => { const e = hdr.e.querySelector(sel); if (!e) return null;
+    /* Page-wide, not inside the pinned bar: since 2026-10-19 the symbol
+       and the page title are rendered ONCE for the whole run of sections,
+       in their own sticky strip, instead of once per section. */
+    const q = (sel) => { const e = document.querySelector(sel); if (!e) return null;
       const r = e.getBoundingClientRect();
       return { left: Math.round(r.left), right: Math.round(r.right), mid: Math.round(r.top + r.height / 2),
                shown: getComputedStyle(e).display !== "none", text: (e.textContent || "").trim() }; };
@@ -60,13 +63,25 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
              rule: (() => { const r = hdr.e.lastElementChild.getBoundingClientRect();
                             return { left: Math.round(r.left), right: Math.round(r.right) }; })(),
              chrome: cr ? { right: Math.round(cr.right), mid: Math.round(cr.top + cr.height / 2) } : null,
-             symbol: q(".proj-bar-symbol"), title: q(".proj-bar-title"), section: q(".proj-bar-section") };
+             titleWeight: (() => { const e = document.querySelector(".proj-bar-title"); return e ? getComputedStyle(e).fontWeight : "0"; })(),
+             barCentre: Math.round(hdr.r.top + (hdr.r.height - hdr.r.height * 0) / 2),
+             copies: { symbol: document.querySelectorAll(".proj-bar-symbol").length,
+                       title: document.querySelectorAll(".proj-bar-title").length,
+                       section: [...document.querySelectorAll(".proj-bar-section")].length },
+             symbol: q(".proj-bar-symbol"), title: q(".proj-bar-title"),
+             section: (() => { const e = hdr.e.querySelector(".proj-bar-section"); if (!e) return null;
+               const r = e.getBoundingClientRect();
+               return { left: Math.round(r.left), right: Math.round(r.right), mid: Math.round(r.top + r.height / 2),
+                        shown: true, text: (e.textContent || "").trim() }; })() };
   });
   console.log(`\n  ${tag} ${w}px`);
   if (!m) { ok(false, "a section header pins to the top"); await ctx.close(); continue; }
   const u = m.unit;
   ok(Math.abs(m.rule.left) <= 1 && Math.abs(m.rule.right - m.vw) <= 1, "the rule spans the whole window", `${m.rule.left}..${m.rule.right} of ${m.vw}`);
   ok(!!m.symbol, "the page's own symbol is in the bar", m.symbol ? `x ${m.symbol.left}..${m.symbol.right}` : "missing");
+  ok(m.copies.symbol === 1 && m.copies.title === 1, "exactly one symbol and one page title on the page",
+     `${m.copies.symbol} symbol, ${m.copies.title} title, ${m.copies.section} section names`);
+  ok(m.copies.section > 1, "the section name is the thing that repeats", `${m.copies.section} of them`);
   ok(!!m.section && m.section.shown, "the section name is in the bar", m.section?.text);
 
   const mids = [m.symbol, m.section].concat(tag === "desktop" ? [m.title] : []).filter(v => v && v.shown).map(v => v.mid);
@@ -74,9 +89,13 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   ok(Math.max(...mids) - Math.min(...mids) <= 2, "everything shares one centreline, the chrome included", mids.join(", "));
 
   if (tag === "desktop") {
-    ok(Math.abs(m.bar.units - 80) <= 1.5, "the bar reaches the line Noah drew (80 units)", `${m.bar.units} units`);
+      ok(Math.abs(m.bar.units - 80) <= 1.5, "the bar reaches the line Noah drew (80 units)", `${m.bar.units} units`);
+    ok(Math.abs(m.section.mid - (m.bar.bottom - 8 * u) / 2) <= 2, "the content is centred in the bar",
+       `content at ${m.section.mid}, bar centre ${Math.round((m.bar.bottom - 8 * u) / 2)}`);
     ok(m.title.shown && /CORITA/i.test(m.title.text), "the page title is there", m.title.text);
     ok(Math.abs(m.title.left - 178 * u) <= 2, "the page title is flush left at the grid margin", `x=${m.title.left}, margin ${Math.round(178 * u)}`);
+    ok(!/^[^a-z]*$/.test(m.title.text), "the page title is in title case, not shouted", m.title.text);
+    ok(Number(m.titleWeight) >= 600, "and bold", `font-weight ${m.titleWeight}`);
     ok(Math.abs(m.section.right - (m.vw - 178 * u)) <= 2, "the section name is flush right", `ends ${m.section.right}, margin ${Math.round(m.vw - 178 * u)}`);
     ok(Math.abs(m.symbol.left - 106 * u) <= 3, "the symbol sits between the C mark and the title", `x=${m.symbol.left}, wanted ${Math.round(106 * u)}`);
     ok(m.symbol.left > m.chrome.right && m.symbol.right < m.title.left, "and clears both of them", `C ends ${m.chrome.right}, title starts ${m.title.left}`);
@@ -89,6 +108,45 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   await p.screenshot({ path: `${OUT}/bar-${tag}.png`, clip: { x: 0, y: 0, width: w, height: Math.min(150, m.bar.bottom + 50) } });
   await ctx.close();
 }
+/* LONG SECTION NAMES ON A PHONE (2026-10-19). Noah: "on mobile sometimes
+ * the section names get so long that they start to touch the page icon.
+ * Please increase the size of the page icons on mobile and shrink section
+ * titles as needed so they don't touch." The longest on the site is 49
+ * characters, which no readable size fits on one line beside an icon on a
+ * 390 screen — so the bar's side padding keeps the name out of the
+ * symbol's lane and it wraps inside that band instead. */
+console.log("\n  phone 390 — the longest section names on the site");
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
+  const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
+  await p.goto(`${BASE}/work/more-work`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
+  const seen = new Map();
+  for (let k = 0; k < 400 && seen.size < 6; k++) {
+    await p.mouse.wheel(0, 400); await p.waitForTimeout(45);
+    const d = await p.evaluate(() => {
+      const all = [...document.querySelectorAll(".sticky.top-0")].map(e => ({ e, r: e.getBoundingClientRect() }))
+        .filter(o => o.r.top > -3 && o.r.top < 5 && o.r.height > 10);
+      const h = all[all.length - 1]; if (!h) return null;
+      const n = h.e.querySelector(".proj-bar-section"); const sym = document.querySelector(".proj-bar-symbol");
+      if (!n || !sym) return null;
+      const nr = n.getBoundingClientRect(), sr = sym.getBoundingClientRect();
+      const tog = document.querySelector("button.fixed").getBoundingClientRect();
+      return { text: n.textContent.trim(), toIcon: Math.round(nr.left - sr.right), toToggle: Math.round(tog.left - nr.right),
+               overflows: Math.round(nr.bottom) > Math.round(h.r.bottom) };
+    });
+    if (d && !seen.has(d.text)) seen.set(d.text, d);
+  }
+  ok(seen.size >= 5, "walked the long-named sections", `${seen.size} of them`);
+  const worstIcon = Math.min(...[...seen.values()].map(d => d.toIcon));
+  const worstTog = Math.min(...[...seen.values()].map(d => d.toToggle));
+  ok(worstIcon >= 6, "no section name touches the page icon", `closest ${worstIcon}px`);
+  ok(worstTog >= 6, "nor the toggle", `closest ${worstTog}px`);
+  ok([...seen.values()].every(d => !d.overflows), "and none spill out of the bar");
+  await ctx.close();
+}
+
 await b.close();
 console.log(bad ? `\n  ${bad} FAILED\n` : "\n  the header bar reads the same on both tiers\n");
 process.exit(bad ? 1 : 0);

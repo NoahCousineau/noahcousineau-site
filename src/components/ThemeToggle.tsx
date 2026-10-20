@@ -54,7 +54,12 @@ export default function ThemeToggle() {
            HomeLink's floor adds the identical term, which is what keeps the
            two marks on the shared centreline they were aligned to earlier
            today. See --chrome-drop in globals.css. */
-        top: "calc(1.25rem + var(--chrome-drop))",
+        /* The same centreline the C mark and the project header bar use —
+           see --chrome-centre in globals.css. 8px is this control's own
+           box-to-ink offset. The phone value is unchanged by the switch:
+           --chrome-centre resolves to 48px there, and 48 - 8 is the 1.25rem
+           + 20px drop this used to compute. */
+        top: "calc(var(--chrome-centre) - 8px)",
         // Until the stored preference is known the knob would be guessing
         // which end to sit at, and a visible slide on hydration reads as a
         // glitch. Holding it invisible for that one tick costs nothing — the

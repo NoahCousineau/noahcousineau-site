@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { PROJECT_OBJECTS } from "@/lib/projectObjects";
 import { InViewVideo } from "./InViewVideo";
 import { Stage } from "@/components/Stage";
 import StackedSection from "./StackedSection";
@@ -229,7 +228,7 @@ const DESCRIPTOR_SIZE_CSS =
  * better and only gets bigger. Every image on the site is a photograph or a
  * scan of physical artwork, which is exactly the content that compresses
  * well and exactly the content 100 wastes the most on. */
-const IMAGE_QUALITY = 85;
+export const IMAGE_QUALITY = 85;
 
 /*
  * THE `fit` CELLS WERE SHIPPING THE ORIGINALS (2026-09-03).
@@ -461,7 +460,6 @@ function Rule() {
 
 export function ProjectGroup({
   slug,
-  pageTitle,
   descriptor,
   rows,
   topGapUnits,
@@ -469,9 +467,6 @@ export function ProjectGroup({
   stackIndex = 0,
 }: {
   slug: string;
-  /** The project's own display title, shown flush left in the sticky bar on
-   *  desktop (2026-10-19). Hidden on a phone, where there is no room. */
-  pageTitle: string;
   /** Italic serif label at the top of the grouping, e.g. "Times Square Advertisement". Rendered exactly as typed — write it in Title Case. */
   descriptor: string;
   rows: MediaRow[];
@@ -533,13 +528,6 @@ export function ProjectGroup({
   // behind the header, and on a section being able to cover its
   // predecessor.
   const surface = bgColor || "var(--color-paper)";
-  /* The page's own symbol — the hand-shot object that stands for this
-     project everywhere else on the site, the clay heart for Corita, the
-     green apple for Sprouts. `heroFrame` is the frame where the object is
-     finished rather than mid-draw, which is the one the home grid and the
-     project header both come to rest on. */
-  const object = PROJECT_OBJECTS[slug];
-  const symbol = object ? object.frames[Math.max(0, (object.heroFrame ?? 1) - 1)] : null;
   const header = (
     <div
       className="sticky top-0 z-20"
@@ -559,39 +547,19 @@ export function ProjectGroup({
         marginRight: "calc(var(--u) * var(--grid-margin) * -1)",
       }}
     >
+      {/* The section name is the ONLY thing in here that changes from one
+          section to the next. The symbol and the page title are rendered
+          once for the whole page — see ProjectBarHead. */}
       <div className="proj-bar">
-        <div className="proj-bar-inner">
-        {symbol && (
-          <Image
-            className="proj-bar-symbol"
-            src={symbol}
-            alt=""
-            aria-hidden
-            width={object!.width}
-            height={object!.height}
-            quality={IMAGE_QUALITY}
-          />
-        )}
-        {/* Chrome rather than content: the page's own title, repeated at
-            the top of every section. `aria-hidden` so a screen reader is
-            told it once, by the page's heading, instead of four times. */}
-        <p
-          className="proj-bar-title leading-none"
-          aria-hidden
-          style={{ fontSize: DESCRIPTOR_SIZE_CSS, fontFamily: "var(--font-sans)" }}
-        >
-          {pageTitle}
-        </p>
         <h2
           className="proj-bar-section leading-none"
           style={{ fontSize: DESCRIPTOR_SIZE_CSS, fontFamily: "var(--font-sans)" }}
         >
           {descriptor}
         </h2>
-        </div>
       </div>
-      {/* Full-bleed without any negative margin of its own now: the bar it
-          sits in already spans the section's border box. */}
+      {/* Full-bleed without any negative margin of its own: the bar it sits
+          in already spans the section's border box. */}
       <Rule />
     </div>
   );
