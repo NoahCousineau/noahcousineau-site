@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PROJECT_OBJECTS } from "@/lib/projectObjects";
 import { InViewVideo } from "./InViewVideo";
 import { Stage } from "@/components/Stage";
 import StackedSection from "./StackedSection";
@@ -175,16 +176,10 @@ export const RULE_WEIGHT_CSS = `calc(var(--u) * ${RULE_WEIGHT_UNITS})`;
 // possibly-revertible ("I might want to revert this later"), which is why
 // it stays a single named constant rather than being inlined.
 const SECTION_PADDING_UNITS = 150;
-// Small space carried ABOVE the descriptor inside the sticky header, per
-// Noah: "I want a small space above the title, the title itself, and the
-// bar immediately below it to be sticky." This is intentionally much
-// smaller than SECTION_PADDING_UNITS — it's the breathing room that stays
-// glued to the title once pinned, not the between-sections gap.
-// Roughly halved (34 -> 16) on 2026-08-20, second pass — Noah: "make the
-// top gap white bar that hosts the project title name thinner. This will
-// allow more room for the images below." See DESCRIPTOR_GAP_UNITS below
-// for the matching cut to the space under the title.
-const STICKY_TOP_SPACE_UNITS = 16;
+/* The space above and below the bar's content moved into `.proj-bar` in
+   globals.css on 2026-10-19, when the bar became a centred row rather than
+   a stack of title-then-rule. The phone's floor went with it, and is still
+   `--section-title-top-min`. */
 
 /* SECTION TITLE (2026-08-20, per Noah: "change the section titles to the
  * Akzidenz-Grotesk type that we've been using. I also want it smaller. the
@@ -222,7 +217,6 @@ const DESCRIPTOR_SIZE_UNITS = 26.67;
  * globals.css. */
 const DESCRIPTOR_SIZE_CSS =
   `clamp(0.63rem, calc(var(--u) * ${DESCRIPTOR_SIZE_UNITS} * var(--descriptor-scale)), calc(2rem * var(--descriptor-scale)))`;
-const DESCRIPTOR_GAP_UNITS = 10;
 // Default cell quality: 100 (Next.js maximum) — no compression.
 // Source images are 1500px wide max; at 1440px grid = ~1.04x no compression.
 // All images rendered at full source resolution for maximum PPI.
@@ -467,6 +461,7 @@ function Rule() {
 
 export function ProjectGroup({
   slug,
+  pageTitle,
   descriptor,
   rows,
   topGapUnits,
@@ -474,6 +469,9 @@ export function ProjectGroup({
   stackIndex = 0,
 }: {
   slug: string;
+  /** The project's own display title, shown flush left in the sticky bar on
+   *  desktop (2026-10-19). Hidden on a phone, where there is no room. */
+  pageTitle: string;
   /** Italic serif label at the top of the grouping, e.g. "Times Square Advertisement". Rendered exactly as typed — write it in Title Case. */
   descriptor: string;
   rows: MediaRow[];
@@ -535,82 +533,66 @@ export function ProjectGroup({
   // behind the header, and on a section being able to cover its
   // predecessor.
   const surface = bgColor || "var(--color-paper)";
+  /* The page's own symbol — the hand-shot object that stands for this
+     project everywhere else on the site, the clay heart for Corita, the
+     green apple for Sprouts. `heroFrame` is the frame where the object is
+     finished rather than mid-draw, which is the one the home grid and the
+     project header both come to rest on. */
+  const object = PROJECT_OBJECTS[slug];
+  const symbol = object ? object.frames[Math.max(0, (object.heroFrame ?? 1) - 1)] : null;
   const header = (
     <div
       className="sticky top-0 z-20"
       style={{
         background: surface,
-        /* MORE AIR ABOVE THE TITLE ON A PHONE (2026-08-30). Noah: "make sure
-           there is a bit more space above the section titles on the project
-           title pages on mobile... it's just getting a bit too close to the
-           top of the browser."
-           
-           16 units is 12.6px at 1512 and 3.3px at 390 — the artboard unit
-           shrinks with the window, so the gap that reads as generous on a
-           desktop all but vanishes on a phone, and the title ends up almost
-           touching the top edge when the header sticks. A floor in real
-           pixels keeps the desktop exactly as drawn and gives the phone a
-           gap it can actually see. */
-        paddingTop: `max(calc(var(--u) * ${STICKY_TOP_SPACE_UNITS}), var(--section-title-top-min, 0px))`,
         marginTop: `calc(var(--u) * ${SECTION_PADDING_UNITS})`,
         /* ONE SURFACE ACROSS THE BAR (2026-10-18). Noah: "in the very top
            bar, there's a very small sliver on the right... the graphic from
-           behind peeking through."
-
-           The bar used to be painted by TWO elements. This header's own
-           background only covered the section's CONTENT box — 176..1726 of
-           a 1902px window — and the outer ~176 units each side were covered
-           only by the section's background behind it. Two surfaces meeting
-           at the exact x where rows slide past is precisely where a seam can
-           open: the overhanging media in the first group reaches 104px past
-           this box on each side at 1902.
-
-           Negative margins out to the section's border box, cancelled by
-           equal padding, so the painted box is full-bleed while the title
-           and the rule below it do not move by a pixel — the rule's own
-           -grid-margin pull still lands on the same edge, because this
-           element's CONTENT box is unchanged.
-
-           Not reproducible in Chrome: 276 pinned frames at 1512 and 1902,
-           light and dark, at 2x, never showed anything but surface either
-           side. Fixed anyway because relying on a second element to finish
-           painting the bar is the bug whatever browser shows it. */
+           behind peeking through." The bar used to be painted by TWO
+           elements — this header's background covered only the section's
+           content box, and the outer margins were left to the section's
+           background behind it. Two surfaces meeting at the exact x where
+           rows slide past is where a seam can open. Out to the section's
+           border box, and the bar's own padding puts the content back where
+           it belongs. */
         marginLeft: "calc(var(--u) * var(--grid-margin) * -1)",
         marginRight: "calc(var(--u) * var(--grid-margin) * -1)",
-        paddingLeft: "calc(var(--u) * var(--grid-margin))",
-        paddingRight: "calc(var(--u) * var(--grid-margin))",
       }}
     >
-      <h2
-        className="leading-none"
-        style={{
-          fontSize: DESCRIPTOR_SIZE_CSS,
-          fontFamily: "var(--font-sans)",
-          marginBottom: `calc(var(--u) * ${DESCRIPTOR_GAP_UNITS})`,
-        }}
-      >
-        {descriptor}
-      </h2>
-
-      {/* FULL-BLEED, unlike every other Rule() on the page (2026-08-23, per
-          Noah: "lets make the line immediately under the section title span
-          the whole browser width. This is only for the top line, not the
-          grid lines"). The header sits inside the section's own
-          GRID_MARGIN_UNITS side padding — negative margins matching that
-          padding pull just this one rule back out to the section's outer
-          edge, which is the shared artboard width every full-bleed rule on
-          the site already uses as "the browser" (the home grid's rules and
-          the project-header rule both stop at 1920u, not literal viewport
-          width past that cap). The title text above it is untouched, still
-          inset at the normal margin. */}
-      <div
-        style={{
-          marginLeft: "calc(var(--u) * var(--grid-margin) * -1)",
-          marginRight: "calc(var(--u) * var(--grid-margin) * -1)",
-        }}
-      >
-        <Rule />
+      <div className="proj-bar">
+        <div className="proj-bar-inner">
+        {symbol && (
+          <Image
+            className="proj-bar-symbol"
+            src={symbol}
+            alt=""
+            aria-hidden
+            width={object!.width}
+            height={object!.height}
+            quality={IMAGE_QUALITY}
+          />
+        )}
+        {/* Chrome rather than content: the page's own title, repeated at
+            the top of every section. `aria-hidden` so a screen reader is
+            told it once, by the page's heading, instead of four times. */}
+        <p
+          className="proj-bar-title leading-none"
+          aria-hidden
+          style={{ fontSize: DESCRIPTOR_SIZE_CSS, fontFamily: "var(--font-sans)" }}
+        >
+          {pageTitle}
+        </p>
+        <h2
+          className="proj-bar-section leading-none"
+          style={{ fontSize: DESCRIPTOR_SIZE_CSS, fontFamily: "var(--font-sans)" }}
+        >
+          {descriptor}
+        </h2>
+        </div>
       </div>
+      {/* Full-bleed without any negative margin of its own now: the bar it
+          sits in already spans the section's border box. */}
+      <Rule />
     </div>
   );
   return (

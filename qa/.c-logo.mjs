@@ -325,6 +325,64 @@ console.log("\n  thrown hard, does it come to rest like a thing that fell?");
   ok(standing===0, "it never comes to rest standing on an end", poses.map(x=>`${x.deg}deg`).join(", "));
   await ctx.close(); }
 
+/* CATCHABLE THE WHOLE WAY IN (2026-10-19). Noah: "I would like for the C
+ * logo to be draggable and throwable at any point when it is on screen. I
+ * noticed that it currently can only be thrown when it finishes rolling."
+ * Watched DURING the scroll, because the roll fires part way down and takes
+ * about three seconds — scrolling to the footer first and only then looking
+ * finds a mark that has already arrived, which is what this used to do. */
+console.log("\n  catching the C mark mid-roll");
+{ const {ctx,p,errs}=await open("/",1512,982);
+  let caught=null;
+  for(let k=0;k<60 && !caught;k++){
+    await p.mouse.wheel(0,900);
+    const a=await mark(p); await p.waitForTimeout(70); const c=await mark(p);
+    if(a&&c&&Math.abs(c.x-a.x)>6&&c.x<1512&&c.x>100) caught=c;
+  }
+  ok(!!caught, "caught it while it was still travelling", caught?`x=${caught.x}`:"never saw it move");
+  if(caught){
+    let peak=0;
+    await p.mouse.move(caught.x,caught.y); await p.mouse.down(); await p.waitForTimeout(60);
+    const held=await mark(p);
+    for(let k=1;k<=10;k++){ await p.mouse.move(caught.x-k*55,caught.y+k*4); await p.waitForTimeout(14);
+      const sx=await mark(p); if(sx) peak=Math.max(peak,Math.abs(sx.x-held.x)); }
+    await p.mouse.up(); await p.waitForTimeout(1200);
+    ok(peak>150, "it follows the hand from where it was caught", `${Math.round(peak)}px`);
+    ok(new URL(p.url()).pathname==="/", "and catching it does not navigate", new URL(p.url()).pathname);
+  }
+  ok(errs.length===0, "no page errors", errs[0]||"");
+  await ctx.close(); }
+
+/* THE ABOUT PAGE'S HEAD FALLS IN (2026-10-19). Noah: "the head currently is
+ * 'preloaded' on the page. Instead, I would like for the head to fall down
+ * just like the other icons on the pages." It is held above the red band,
+ * hidden, until the loader lifts and the same beat the project icons wait
+ * out has passed. Its resting bounding box dips past the band on any build
+ * — the head lies at an angle, and a rotated box's AABB always reaches
+ * further than the artwork — so the test is that it lands IN the band. */
+console.log("\n  the about page head");
+{ const ctx=await b.newContext({viewport:{width:1512,height:982},deviceScaleFactor:2});
+  const p=await ctx.newPage();
+  const errs=[]; p.on("pageerror",e=>errs.push(e.message.slice(0,70)));
+  await p.goto(B+"/about",{waitUntil:"domcontentloaded",timeout:120000});
+  const head=()=>p.evaluate(()=>{ const img=document.querySelector("main img[src*=head], section img[src*=head]");
+    const w=img?.closest("div.absolute"); if(!w) return null;
+    const r=w.getBoundingClientRect(); const band=w.offsetParent.getBoundingClientRect();
+    return { bottom:Math.round(r.bottom), band:Math.round(band.bottom), vis:getComputedStyle(w).visibility }; });
+  await p.waitForFunction(()=>!document.querySelector("[data-page-loader]"),null,{timeout:90000}).catch(()=>{});
+  const early=await head();
+  ok(early && early.vis==="hidden", "it is not on the page to begin with", `visibility: ${early?.vis}`);
+  let top=1e9, low=-1e9;
+  for(let k=0;k<70;k++){ const h=await head();
+    if(h&&h.vis==="visible"){ top=Math.min(top,h.bottom); low=Math.max(low,h.bottom); }
+    await p.waitForTimeout(100); }
+  ok(low>top+80, "it falls a long way down", `${top} -> ${low}`);
+  const a=await head(); await p.waitForTimeout(2500); const c=await head();
+  ok(a&&c&&Math.abs(c.bottom-a.bottom)<=2, "and comes to rest", `${a?.bottom} -> ${c?.bottom}`);
+  ok(c && c.bottom>c.band && c.bottom-c.band<70, "landing in the red band", `head ${c?.bottom}, band ${c?.band}`);
+  ok(errs.length===0, "no page errors", errs[0]||"");
+  await ctx.close(); }
+
 await b.close();
 console.log(fails?`\n  ${fails} FAILED`:"\n  the C mark rolls in, throws, and links — desktop only");
 process.exit(fails?1:0);

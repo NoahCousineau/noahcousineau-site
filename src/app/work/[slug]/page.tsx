@@ -184,6 +184,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
           <ProjectGroup
             key={group.descriptor}
             slug={project.slug}
+            pageTitle={project.title}
             descriptor={group.descriptor}
             rows={group.rows}
             topGapUnits={i === 0 ? FIRST_GROUP_TOP_GAP_UNITS : undefined}

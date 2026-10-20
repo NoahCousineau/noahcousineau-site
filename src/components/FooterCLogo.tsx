@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -123,18 +123,33 @@ export default function FooterCLogo({
   const diameter = loose ? LOOSE_DIAMETER_UNITS : DIAMETER_UNITS;
   const router = useRouter();
   const elRef = useRef<HTMLAnchorElement>(null);
-  /** True once the roll has finished and the physics owns the transform. */
-  const [settled, setSettled] = useState(false);
+  /* The physics is on from the first frame now (see below), so there is no
+     longer a render that depends on having arrived — only the ref, which
+     the scroll handler reads. */
   /** Set the instant it is grabbed; scrolling never drives it again. */
   const grabbed = useRef(false);
 
-  const { rotationRef, reset } = useThrowable({
+  /* GRABBABLE THE WHOLE WAY IN (2026-10-19). Noah: "I would like for the C
+     logo to be draggable and throwable at any point when it is on screen. I
+     noticed that it currently can only be thrown when it finishes rolling."
+
+     The physics is switched on from the first frame now, rather than at the
+     end of the roll, and two things make that safe. It stays ASLEEP until
+     something grabs it, so gravity never gets hold of it mid-arrival; and
+     it is not confined until it has arrived, because the containment runs
+     even on a sleeping object and would otherwise shove a mark that starts
+     off the right edge straight back inside.
+
+     The roll tells the physics where it has put the mark on every frame
+     (see `draw`), so whenever a hand closes on it the drag carries on from
+     exactly there instead of snapping back to the resting place. */
+  const confined = useRef(false);
+  const { rotationRef, reset, place } = useThrowable({
     elementRef: elRef,
     containerRef,
     imageSrcs: [MASK_SRC],
-    // The tween owns the transform until the mark arrives; the physics
-    // takes over at the end of the roll, in both modes.
-    enabled: settled,
+    enabled: true,
+    confinedRef: confined,
     draggable: true,
     tilt: loose,
     // Fired only when the press never became a drag.
@@ -200,13 +215,16 @@ export default function FooterCLogo({
          the resting one as it arrives. */
       const spin = radius > 0 ? (remaining / radius) * (180 / Math.PI) : 0;
       el.style.transform = `translate(${remaining}px, 0px) rotate(${REST_DEG + spin}deg)`;
+      // Keep the physics' idea of where it is in step with the tween's, so
+      // a hand closing on it mid-roll picks it up where it actually is.
+      place(remaining, 0, REST_DEG + spin);
     };
 
     const arrive = () => {
       draw(1);
+      confined.current = true;
       seedRotation();
       settledRef.current = true;
-      setSettled(true);
     };
 
     /* REDUCED MOTION STILL ROLLS (2026-10-18). Noah: "The C is still showing
@@ -281,10 +299,8 @@ export default function FooterCLogo({
          layout home, which is where `draw` measures the roll from. */
       onLeaveBack: () => {
         grabbed.current = false;
-        if (settledRef.current) {
-          settledRef.current = false;
-          setSettled(false);
-        }
+        confined.current = false;
+        settledRef.current = false;
         reset();
         roll.reverse();
       },
@@ -308,7 +324,7 @@ export default function FooterCLogo({
       roll.kill();
       st.kill();
     };
-  }, [containerRef, triggerRef, seedRotation, loose, rotationRef, diameter, reset]);
+  }, [containerRef, triggerRef, seedRotation, loose, rotationRef, diameter, reset, place]);
 
   return (
     <a
@@ -339,7 +355,13 @@ export default function FooterCLogo({
         WebkitTouchCallout: "none",
       } as React.CSSProperties}
       onPointerDown={() => {
+        /* The roll checks this every frame and stops drawing the moment it
+           is set, so the hand and the tween never write the transform in
+           the same breath. And a mark in someone's hand is a mark that has
+           arrived, whatever the tween thinks — so it starts being kept
+           inside the footer from here on. */
         grabbed.current = true;
+        confined.current = true;
       }}
       /* The browser must never follow this href itself: useThrowable decides
          whether a press was a click or a drag, using the same threshold and

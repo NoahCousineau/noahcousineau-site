@@ -6,6 +6,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { headAsset } from "@/lib/headAssets";
 import { useIsPhone } from "@/lib/useIsPhone";
 import { subscribeTilt } from "@/lib/deviceTilt";
+import { isPageReady, subscribePageReady } from "@/lib/pageReady";
 
 /*
  * RAGDOLL HEAD — grab it, drag it, throw it. On release it keeps the
@@ -92,6 +93,10 @@ const HEAD_RIGHT_UNITS = 32.235;
 const HEAD_BOTTOM_UNITS = 0;
 
 // --- Physics constants (px/s, px/s^2) -------------------------------------
+/** How long the page sits still before the head is let go, measured from
+ *  the loading overlay lifting. Matched to the project pages' own
+ *  DROP_DELAY_MS so the two read as the same gesture. */
+const DROP_DELAY_MS = 1600;
 const GRAVITY = 2600;
 /** Energy kept after a bounce. */
 const RESTITUTION = 0.5;
@@ -268,6 +273,12 @@ export default function RagdollHead({
   const interacted = useRef(false);
   /** Ask the loop to seat the head exactly on the floor next frame. */
   const needsSnap = useRef(true);
+  /* IT FALLS IN, LIKE EVERY OTHER OBJECT ON THE SITE (2026-10-19). Noah:
+     "On the about page, the head currently is 'preloaded' on the page.
+     Instead, I would like for the head to fall down just like the other
+     icons on the pages." False until it has been let go: until then the
+     head is held above the arena, hidden, and the physics is asleep. */
+  const dropped = useRef(false);
 
   // Which head is on screen — the light cut-out, or the sunglasses one in
   // dark mode. The silhouettes differ, so this drives a re-measure.
@@ -399,6 +410,39 @@ export default function RagdollHead({
     };
   }, [headSrc]);
 
+  /* LET GO OF IT ONCE THE PAGE IS THERE (2026-10-19).
+   *
+   * The same beat the project pages use for their falling icons: measured
+   * from the moment the loading overlay lifts rather than from mount, so
+   * the drop is not spent behind the loader, and a clear pause of
+   * stillness first — Noah's original brief for those was "a few seconds
+   * after the page loads, several graphics will fall from above".
+   *
+   * Waking the physics IS the release: the head is already sitting above
+   * the arena with gravity ready to act on it. */
+  useEffect(() => {
+    let timer = 0;
+    let done = false;
+    const letGo = () => {
+      if (done) return;
+      done = true;
+      timer = window.setTimeout(() => {
+        dropped.current = true;
+        const wrap = wrapRef.current;
+        if (wrap) wrap.style.visibility = "visible";
+        asleep.current = false;
+      }, DROP_DELAY_MS);
+    };
+    if (isPageReady()) letGo();
+    const stop = subscribePageReady(() => {
+      if (isPageReady()) letGo();
+    });
+    return () => {
+      window.clearTimeout(timer);
+      stop();
+    };
+  }, []);
+
   useEffect(() => {
     const wrap = wrapRef.current;
     const container = containerRef.current;
@@ -512,6 +556,14 @@ export default function RagdollHead({
         if (cr0.height > 0 && wrap.offsetWidth > 0) {
           const drop = supportAt(shape.current.support, 90 - rotationRef.current) * wrap.offsetWidth;
           pos.current.y += cr0.height - drop - pivotScreen().y;
+          /* Seated on the floor first and then lifted clear of the top of
+             the arena, rather than placed above by a guess: the seat is
+             what knows where the floor is for this particular head, and
+             the lift is then measured from a known quantity. A theme swap
+             re-seats a head that has already landed, which is the existing
+             behaviour and must stay — hence the flag rather than a check
+             on whether this is the first frame. */
+          if (!dropped.current) pos.current.y -= cr0.height + wrap.offsetHeight;
           needsSnap.current = false;
           apply();
         }
@@ -779,6 +831,11 @@ export default function RagdollHead({
         // this with the measured centre of area once it's known.
         transformOrigin: "50% 45%",
         willChange: "transform",
+        /* Hidden until it is let go. An object waiting above the arena is
+           still an object on the page — useDropField learned the same
+           thing the hard way, with every unreleased icon sitting visibly
+           in a heap in the corner until its timer came round. */
+        visibility: "hidden",
       }}
     >
       <HeadWithEyes rotationRef={rotationRef} priority alt="Noah Cousineau" />

@@ -299,6 +299,92 @@ html {
 :root {
   --grid-margin: 178;
   --descriptor-scale: 1;
+  /* Where the project page's symbol sits in the sticky header bar: in the
+     left margin, between the fixed C mark and the page title. On a phone it
+     moves out to the content margin — see the media query below. */
+  --header-symbol-left: 106;
+}
+
+/*
+ * THE PROJECT PAGE'S STICKY HEADER BAR (2026-10-19).
+ *
+ * Noah: "I want the header to be just a bit larger... Where the orange box
+ * is, I want the section name to move there, flush right. Where the section
+ * title was, I want the page title to go here... Where the green box is, I
+ * want the corresponding page symbol... On mobile, I don't want the page
+ * name. There's not enough room. I would like the section name to be center
+ * aligned on the page. I would like the page icon to be on the left side of
+ * the page, just to the right of the C logo. For both the mobile and
+ * desktop, I would like the content to be aligned on a horizontal
+ * centerline."
+ *
+ * In CSS rather than in the component because ProjectGroup is a server
+ * component and cannot read the breakpoint hook — the two layouts have to
+ * be one piece of markup that the media query rearranges.
+ *
+ * The bar sizes ITSELF. `min-height` sets the desktop figure — 72 units of
+ * content over an 8-unit rule, which lands its underside where Noah drew
+ * the red line — while the section name stays in normal flow, so where the
+ * type is bigger than that (a phone, which scales the descriptor by 3.5)
+ * the bar grows to hold it instead of clipping it.
+ */
+.proj-bar {
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--u) * var(--grid-margin));
+  padding-right: calc(var(--u) * var(--grid-margin));
+  /* ON THE SAME LINE AS THE C AND THE TOGGLE, in a bar that is taller than
+     that line is deep. Noah's mockup draws the symbol level with the C's
+     ink and the bar's underside well below it, so the content is NOT
+     centred in the bar — it is centred on the chrome's line, and the bar
+     then extends past it to where he drew the red line.
+     The padding does the centring: a content box running from the top of
+     the bar to twice the chrome's centreline puts its middle exactly on
+     that centreline, whatever the type inside it measures. On a phone the
+     chrome sits low enough that twice its centreline is already taller
+     than the desktop figure, so the bar grows instead and the padding
+     falls to nothing. */
+  min-height: max(calc(var(--u) * 72), calc(var(--chrome-centre) * 2));
+  padding-bottom: max(0px, calc(var(--u) * 72 - var(--chrome-centre) * 2));
+}
+/* THE CENTRELINE IS THIS BOX'S, NOT THE BAR'S. The symbol is positioned
+   rather than laid out — it belongs in the margin, outside the content —
+   and anchoring it to the bar itself put it half of the phone's 78px top
+   padding above everything else: symbol centred on y=51, section name on
+   y=87. Measuring both from the content box is what makes "aligned on a
+   horizontal centerline" true on a bar whose padding is not symmetric. */
+.proj-bar-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.proj-bar-symbol {
+  position: absolute;
+  /* Out into the left margin by the difference between where the symbol
+     goes and where the content starts. Negative on desktop (106 against a
+     178 margin), zero on a phone, where the symbol sits at the margin
+     itself — one expression, both tiers. */
+  left: calc(var(--u) * (var(--header-symbol-left) - var(--grid-margin)));
+  top: 50%;
+  translate: 0 -50%;
+  height: max(calc(var(--u) * 44), 22px);
+  width: auto;
+}
+.proj-bar-section {
+  /* Flush right, against the same margin the page title starts at. */
+  margin-left: auto;
+}
+@media (max-width: 767px) {
+  .proj-bar-title {
+    display: none;
+  }
+  .proj-bar-section {
+    /* Centred ON THE PAGE, which falls out of centring it in the content
+       box: the bar's two side paddings are equal. */
+    margin-right: auto;
+  }
 }
 
 /*
@@ -325,6 +411,9 @@ html {
        338px, which is 235 and 1664 in artboard units — a 250-unit margin
        clears both with a little air. */
     --grid-margin: 250;
+    /* Out to the content margin, which is just clear of the fixed C mark:
+       its ring ends at 48px on a 390 screen, i.e. 236 units. */
+    --header-symbol-left: 250;
     /* "Please also double the size of the section title type on mobile."
        ...and again: "for the mobile project pages, let's double the size of
        the section titles again." 2 -> 4. */
@@ -427,6 +516,20 @@ html {
      them by separate amounts would silently undo that. Zero here, so the
      desktop is untouched; the phone value is in the media query below. */
   --chrome-drop: 0px;
+  /* WHERE THE TOP ROW OF THE PAGE SITS (2026-10-19): the centreline the
+     fixed C mark and the theme toggle share, so anything else that wants to
+     be on their line can ask for it instead of re-deriving it and drifting.
+     The project page's header bar is the first caller.
+
+     It is HomeLink's own `top` expression plus the 14.75px that separates
+     that element's box from its ink — written out rather than referenced
+     because the mark is fixed-position and outside any artboard, so `--u`
+     does not exist for it and 100vw/1920 is what it has always used. The
+     phone branch falls out of --home-mark-top-floor on its own. */
+  --chrome-centre: max(
+    calc(var(--home-mark-top-floor) + 14.75px),
+    calc(100vw / 1920 * 28.25)
+  );
   /* HOW FAR THE CHROME HAS MOVED FROM WHERE THE DESKTOP LAYOUT EXPECTS IT
      (2026-08-31).
      

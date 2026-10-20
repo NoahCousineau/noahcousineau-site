@@ -79,6 +79,7 @@ export function useThrowable({
   tilt = false,
   draggable = true,
   topple = false,
+  confinedRef,
 }: {
   /** The element that moves. Must be absolutely positioned in the container. */
   elementRef: React.RefObject<HTMLElement | null>;
@@ -113,6 +114,18 @@ export function useThrowable({
    * page scrolling at all when a thumb landed on a tile. Tilt needs no touch
    * at all, so it can have the motion without taking the gesture. */
   draggable?: boolean;
+  /* WHILE THIS READS FALSE THE OBJECT IS NOT KEPT INSIDE ITS BOX (2026-10-19).
+   *
+   * For an arrival that begins OUTSIDE the box: the C mark rolls in from
+   * past the right edge, and the containment below — which runs even while
+   * the object is asleep, deliberately — would otherwise shove it back
+   * inside on its first frame and spend the whole roll fighting the tween.
+   *
+   * A ref rather than a prop because it flips in the middle of a gesture:
+   * grabbing the mark mid-roll confines it there and then, and anything in
+   * this effect's dependencies would tear the listeners down and drop the
+   * drag at exactly that moment. */
+  confinedRef?: React.RefObject<boolean>;
 }) {
   /* ONE OUTLINE PER FRAME, not one for the whole animation. Noah: "do a more
    * accurate job of capturing the silhouettes of the objects at all frames."
@@ -154,6 +167,21 @@ export function useThrowable({
   useEffect(() => {
     onClickRef.current = onClick;
   }, [onClick]);
+
+  /* WHERE THE OBJECT IS, ACCORDING TO WHOEVER IS DRIVING IT (2026-10-19).
+   *
+   * An arrival animation owns the transform until it finishes, so the
+   * physics' idea of position would be stale from the first frame — and a
+   * reader who grabs the thing mid-flight would see it jump back to its
+   * layout home as the drag took over. The animation says where it has put
+   * it, every frame, and the handover is then seamless whenever it happens.
+   * It stays ASLEEP: this says where the thing is, not that it is moving. */
+  const place = useCallback((x: number, y: number, deg: number) => {
+    pos.current = { x, y };
+    rot.current = deg;
+    vel.current = { x: 0, y: 0 };
+    spin.current = 0;
+  }, []);
 
   /** Put it back where it started, upright and still. */
   const reset = useCallback(() => {
@@ -354,6 +382,7 @@ export function useThrowable({
 
       const cr = container.getBoundingClientRect();
       const W = el.offsetWidth;
+      const confined = confinedRef ? confinedRef.current !== false : true;
 
       if (!idle && !dragging.current) {
         /* Along the gravity vector rather than straight down. With the
@@ -377,6 +406,12 @@ export function useThrowable({
       const down = supportAt(shapeNow().support, 90 - r) * W;
       const left = supportAt(shapeNow().support, 180 - r) * W;
       const up = supportAt(shapeNow().support, 270 - r) * W;
+
+      if (!confined) {
+        // Still on its way in; there is nothing to collide with yet.
+        if (!idle || before.x !== pos.current.x || before.y !== pos.current.y) apply();
+        return;
+      }
 
       if (p.x < left) {
         pos.current.x += left - p.x;
@@ -567,7 +602,7 @@ export function useThrowable({
         raf.current = null;
       }
     };
-  }, [elementRef, containerRef, enabled, shapeNow, draggable, topple]);
+  }, [elementRef, containerRef, enabled, shapeNow, draggable, topple, confinedRef]);
 
   /** Let gravity take over again — used when the artwork changes shape, so a
    *  newly grown object settles back onto a border instead of hanging where
@@ -576,5 +611,5 @@ export function useThrowable({
     asleep.current = false;
   }, []);
 
-  return { reset, wake, rotationRef: rot };
+  return { reset, wake, place, rotationRef: rot };
 }
