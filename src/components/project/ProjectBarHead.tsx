@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { PROJECT_OBJECTS } from "@/lib/projectObjects";
 import { DESCRIPTOR_SIZE_CSS, IMAGE_QUALITY } from "./ProjectGroup";
@@ -44,24 +44,45 @@ export function ProjectBarHead({ slug, title }: { slug: string; title: string })
      to rest. */
   const object = PROJECT_OBJECTS[slug];
   const symbol = object ? object.frames[Math.max(0, (object.heroFrame ?? 1) - 1)] : null;
-  const sentinel = useRef<HTMLDivElement>(null);
   const [arrived, setArrived] = useState(false);
 
   useEffect(() => {
-    const mark = sentinel.current;
-    if (!mark) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        /* Not-intersecting means one of two very different things: the
-           sections are still below the fold, or they have gone past the
-           top. Only the second is an arrival, hence the check on which
-           side of the window it left by. */
-        setArrived(!e.isIntersecting && e.boundingClientRect.top < 0);
-      },
-      { threshold: 0 }
-    );
-    io.observe(mark);
-    return () => io.disconnect();
+    /* WAIT FOR THE FIRST SECTION'S OWN BAR, not for the section's top edge
+       (2026-10-20). Noah: "when we scroll close to the first section, the
+       page comes up a little too early. Please look into making it so the
+       top project information only comes up when the viewport has the
+       whole project in."
+
+       It came up early because the sentinel this used to watch sat at this
+       strip's place in the flow, which is where the SECTION starts — and
+       every section carries 150 units of its own above its header. So the
+       symbol and the title arrived at the top of the window with the
+       section's bar still a sixth of a screen below them, climbing, and
+       the band they belong to not yet there. Watching the bar itself ties
+       them to the moment it actually pins.
+
+       `proj-bar-fade` is on the first section's name, and the bar is its
+       sticky ancestor; the same element the fade is for. */
+    const first = document
+      .querySelector<HTMLElement>(".proj-bar-fade")
+      ?.closest<HTMLElement>(".sticky");
+    if (!first) return;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      setArrived(first.getBoundingClientRect().top <= 0.5);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   useEffect(() => {
@@ -75,7 +96,6 @@ export function ProjectBarHead({ slug, title }: { slug: string; title: string })
 
   return (
     <>
-      <div ref={sentinel} aria-hidden style={{ height: 0 }} />
       <div className="proj-bar-head" aria-hidden>
         {symbol && (
           <Image

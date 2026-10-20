@@ -93,6 +93,14 @@ const TOPPLE_ACCEL = 1600;
  * the torque — see the note there — not this threshold.) */
 const TOPPLE_STABILITY = 0.04;
 const TOPPLE_TIP = 0.45;
+/* ONE MARGIN, NOT TWO (2026-10-20). This was briefly a separate, wider
+ * margin for "may it sleep here" than for "is it being pushed" — which
+ * left a limbo in between: a pose too precarious to settle in and not
+ * precarious enough to be nudged out of, where the object sat awake and
+ * motionless for ever. The slack is folded into the single margin instead,
+ * so not-settled and being-pushed are the same condition and the only
+ * place it can come to rest is one it would genuinely hold. */
+const TOPPLE_SETTLE_SLACK = 1.6;
 
 export function useThrowable({
   elementRef,
@@ -332,7 +340,7 @@ export function useThrowable({
      *
      * The hull is stored relative to the pivot — which IS the centroid —
      * so the centre of mass sits at zero and the comparison is direct. */
-    const contactOverhang = (deg: number, W: number) => {
+    const contactOverhang = (deg: number, W: number, slack = 1) => {
       const hull = shapeNow().hull;
       if (!hull || hull.length < 6) return 0;
       const a = (deg * Math.PI) / 180;
@@ -369,7 +377,8 @@ export function useThrowable({
       /* `lowest` is the projection of the base along gravity from the
          pivot, and the pivot IS the centre of mass — so it is exactly the
          height of the centre of mass above the ground. */
-      const margin = Math.max(W * TOPPLE_STABILITY, lowest * TOPPLE_TIP);
+      const margin =
+        Math.max(W * TOPPLE_STABILITY, lowest * TOPPLE_TIP) * TOPPLE_SETTLE_SLACK * slack;
       const beyondLow = lo + margin;
       const beyondHigh = hi - margin;
       if (beyondLow > 0 && beyondLow >= -beyondHigh) return beyondLow;
@@ -506,7 +515,22 @@ export function useThrowable({
           // spin at angles where the pivot sits close to the ground.
           const rEff = Math.max(down, W * 0.2);
           const rollSpin = (vel.current.x / rEff) * (180 / Math.PI);
-          spin.current += (rollSpin - spin.current) * Math.min(1, ROLL_LOCK_RATE * dt);
+          /* NOT WHILE IT IS GOING OVER (2026-10-20). Rolling ties spin to
+             how fast the thing is travelling along the floor, which is
+             right for something being dragged or thrown across it and
+             wrong for something pivoting on a contact edge: a toppling
+             object is not moving sideways at all, so this pulled spin
+             back toward zero at 9 per second while the topple was adding
+             about 0.9 a frame. The topple lost every time.
+
+             This is what actually kept the pointing hand standing at 273
+             degrees — not the stability threshold, which I widened twice,
+             and not only the sleep check, which I had already stopped
+             erasing the spin. Measured at that pose: a torque wanting
+             +0.88 deg/s per frame, and spin drifting NEGATIVE instead. */
+          if (!toppling) {
+            spin.current += (rollSpin - spin.current) * Math.min(1, ROLL_LOCK_RATE * dt);
+          }
           vel.current.x *= Math.max(0, 1 - FLOOR_FRICTION_PER_SEC * dt);
           /* NOT WHILE IT IS BEING TIPPED OVER (2026-10-19). A gentle
              topple is a slow one: at 273 degrees the pointing hand stood

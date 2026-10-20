@@ -62,7 +62,19 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
              bar: { bottom: Math.round(hdr.r.bottom), units: +(hdr.r.height / (innerWidth / 1920)).toFixed(1) },
              rule: (() => { const r = hdr.e.lastElementChild.getBoundingClientRect();
                             return { left: Math.round(r.left), right: Math.round(r.right) }; })(),
-             chrome: cr ? { right: Math.round(cr.right), mid: Math.round(cr.top + cr.height / 2) } : null,
+             /* CONTENT BOXES, NOT BORDER BOXES. Both controls carry 8px of
+                padding (with a matching negative margin) to widen what the
+                pointer can hit, and none of it is visible — comparing the
+                outer boxes makes a comfortable 7px gap read as a 1px
+                overlap. */
+             chrome: (() => { const t = [...document.querySelectorAll("button")]
+                 .map(e => ({ e, cs: getComputedStyle(e) })).find(o => o.cs.position === "fixed");
+               const tr = t && t.e.getBoundingClientRect();
+               const cPad = c ? parseFloat(getComputedStyle(c).paddingRight) || 0 : 0;
+               const tPad = t ? parseFloat(t.cs.paddingLeft) || 0 : 0;
+               return cr ? { right: Math.round(cr.right - cPad), mid: Math.round(cr.top + cr.height / 2),
+                             togLeft: tr ? Math.round(tr.left + tPad) : null,
+                             togRight: tr ? Math.round(tr.right - (parseFloat(t.cs.paddingRight) || 0)) : null } : null; })(),
              titleWeight: (() => { const e = document.querySelector(".proj-bar-title"); return e ? getComputedStyle(e).fontWeight : "0"; })(),
              barCentre: Math.round(hdr.r.top + (hdr.r.height - hdr.r.height * 0) / 2),
              copies: { symbol: document.querySelectorAll(".proj-bar-symbol").length,
@@ -101,8 +113,17 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
     ok(m.symbol.left > m.chrome.right && m.symbol.right < m.title.left, "and clears both of them", `C ends ${m.chrome.right}, title starts ${m.title.left}`);
   } else {
     ok(!m.title.shown, "no page title — there is no room for it", m.title.text);
-    const centre = Math.round((m.section.left + m.section.right) / 2);
-    ok(Math.abs(centre - m.vw / 2) <= 2, "the section name is centred on the page", `centre ${centre} of ${m.vw}`);
+    /* FLUSH RIGHT, mirroring the symbol's own margin on the left
+       (2026-10-20). Noah: "I like how the icon is aligned to the left side
+       of the grid. Instead of having the section title centered on mobile,
+       let's have it aligned to the right side, flush right." */
+    ok(Math.abs((m.vw - m.section.right) - m.symbol.left) <= 2,
+       "the section name's right margin mirrors the symbol's left one",
+       `${m.vw - m.section.right}px against ${m.symbol.left}px`);
+    ok(m.chrome.togLeft - m.section.right >= 4, "and it clears the toggle",
+       `${m.chrome.togLeft - m.section.right}px, against ${m.symbol.left - m.chrome.right}px between the C and the symbol`);
+    ok(m.chrome.togRight <= m.vw, "the toggle is on screen, not past the edge",
+       `its visible edge ends at ${m.chrome.togRight} of ${m.vw}`);
     ok(m.symbol.left > m.chrome.right && m.symbol.left - m.chrome.right < 20, "the symbol is just right of the C mark", `C ends ${m.chrome.right}, symbol at ${m.symbol.left}`);
   }
   await p.screenshot({ path: `${OUT}/bar-${tag}.png`, clip: { x: 0, y: 0, width: w, height: Math.min(150, m.bar.bottom + 50) } });
@@ -130,8 +151,26 @@ console.log("\n  desktop 1902 — the header fading in with the first section");
   const before = await st();
   ok(before.strip && before.strip.op === 0, "the symbol and page title are invisible on the way down", `opacity ${before.strip?.op}`);
   ok(before.first && before.first.op === 0, "so is the first section's name", `opacity ${before.first?.op}`);
-  for (let k = 0; k < 80; k++) { await p.mouse.wheel(0, 400); await p.waitForTimeout(50);
-    if ((await p.evaluate(() => document.documentElement.dataset.projBar)) === "ready") break; }
+  /* NOT A MOMENT EARLY (2026-10-20). Noah: "when we scroll close to the
+     first section, the page comes up a little too early. Please look into
+     making it so the top project information only comes up when the
+     viewport has the whole project in." The strip's own place in the flow
+     is where the SECTION starts, and every section carries 150 units above
+     its header — so watching a sentinel there announced the header a sixth
+     of a screen before the bar it belongs to arrived. Creep back toward it
+     and nothing may show while that bar is still on its way down. */
+  let early = null;
+  for (let k = 0; k < 400; k++) {
+    await p.mouse.wheel(0, 140); await p.waitForTimeout(40);
+    const where = await p.evaluate(() => { const bar = document.querySelector(".proj-bar-fade")?.closest(".sticky");
+      const strip = document.querySelector(".proj-bar-head");
+      return bar ? { top: Math.round(bar.getBoundingClientRect().top), op: +getComputedStyle(strip).opacity } : null; });
+    if (!where) continue;
+    if (where.top > 2 && where.op > 0.05 && !early) early = where;
+    if (where.top <= 0) break;
+  }
+  ok(!early, "nothing shows while the first section's bar is still climbing",
+     early ? `opacity ${early.op} with the bar still ${early.top}px down` : "stayed hidden the whole way");
   await p.waitForTimeout(900);
   const after = await st();
   ok(after.strip && after.strip.op === 1, "both fade in once the sections reach the top", `strip ${after.strip?.op}, name ${after.first?.op}`);
@@ -169,8 +208,12 @@ console.log("\n  phone 390 — the longest section names on the site");
       const n = h.e.querySelector(".proj-bar-section"); const sym = document.querySelector(".proj-bar-symbol");
       if (!n || !sym) return null;
       const nr = n.getBoundingClientRect(), sr = sym.getBoundingClientRect();
-      const tog = document.querySelector("button.fixed").getBoundingClientRect();
-      return { text: n.textContent.trim(), toIcon: Math.round(nr.left - sr.right), toToggle: Math.round(tog.left - nr.right),
+      const t = [...document.querySelectorAll("button")].map(e => ({ e, cs: getComputedStyle(e) }))
+        .find(o => o.cs.position === "fixed");
+      const tog = t.e.getBoundingClientRect();
+      // Its visible edge, not its padding box — see the note in the bar check.
+      const togLeft = tog.left + (parseFloat(t.cs.paddingLeft) || 0);
+      return { text: n.textContent.trim(), toIcon: Math.round(nr.left - sr.right), toToggle: Math.round(togLeft - nr.right),
                overflows: Math.round(nr.bottom) > Math.round(h.r.bottom) };
     });
     if (d && !seen.has(d.text)) seen.set(d.text, d);

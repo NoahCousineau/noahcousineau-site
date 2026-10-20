@@ -55,8 +55,12 @@ export default function ThemeToggle() {
            the U. Half that inset clears it with room to spare, and the C
            mark opposite keeps its own: the wordmark begins with a round C,
            so its ink starts well inside its box on that side and there is
-           nothing to clear. */
-        right: "calc(100vw / 80)",
+           nothing to clear.
+
+           DESKTOP ONLY, through the variable: applied at every width it
+           put this control 3px past the right edge of a phone, where there
+           is no wordmark beside it to clear in the first place. */
+        right: "var(--chrome-right)",
         /* `top-5` spelled out so --chrome-drop can be added to it (2026-08-25:
            "move the 'c' and toggle down by a small amount"). The variable is
            0 on a desktop, so this is the same 1.25rem it has always been;
