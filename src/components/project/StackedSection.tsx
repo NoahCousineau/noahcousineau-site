@@ -116,6 +116,33 @@ function documentTop(node: HTMLElement | null): number {
   return y;
 }
 
+/* The sheet edge — see the note on the section's own styles below. In
+ * artboard units, so the curve and the shadow scale with everything else
+ * instead of reading as a hairline on a wide monitor and a slab on a
+ * phone. Taken off Noah's markup, where the curve turns down over about
+ * 25 units at the far left and right. */
+const SHEET_RADIUS_UNITS = 28;
+const SHEET_SHADOW_LIFT_UNITS = 4;
+const SHEET_SHADOW_BLUR_UNITS = 16;
+const SHEET_SHADOW_ALPHA = 0.18;
+/* WITH A FLOOR IN REAL PIXELS, the same treatment the small type gets (see
+ * uFontMin in Stage). The artboard unit is a linear zoom, so at 390 these
+ * came out as a 5.7px curve under a 3px blur — arithmetically present and
+ * invisible. Noah asked for this on both tiers. */
+const SHEET_RADIUS_CSS = `max(calc(var(--u) * ${SHEET_RADIUS_UNITS}), 14px)`;
+/* NO COMMAS IN THE SHADOW ITSELF. A box-shadow is a comma-separated list
+ * of shadows, and the build's style serializer splits this value on commas
+ * to handle that — so `max(var(--u) * 4, 2px)` came out the other side as
+ * `max(var(--u) * 4`, and the whole declaration was dropped as invalid.
+ * (The border-radius beside it, written the same way, survives: only
+ * box-shadow gets the list treatment.) The two lengths move into custom
+ * properties, where the commas are safe, and the colour uses the
+ * space-separated form, which has none. */
+const SHEET_LIFT_CSS = `max(calc(var(--u) * ${SHEET_SHADOW_LIFT_UNITS}), 2px)`;
+const SHEET_BLUR_CSS = `max(calc(var(--u) * ${SHEET_SHADOW_BLUR_UNITS}), 8px)`;
+const SHEET_SHADOW_CSS =
+  `0 calc(-1 * var(--sheet-lift)) var(--sheet-blur) rgb(0 0 0 / ${SHEET_SHADOW_ALPHA})`;
+
 export default function StackedSection({
   stackIndex,
   surface,
@@ -217,10 +244,32 @@ export default function StackedSection({
           // `top` is set imperatively above, once the height is known.
           zIndex: stackIndex + 1,
           background: surface,
+          /* A SHEET OF PAPER LAID ON THE LAST ONE (2026-10-20). Noah: "I
+             want to add just a slight drop shadow underneath each
+             section... In the zone I highlighted, there should be a slight
+             drop shadow and a curve at both ends of the page. The concept
+             here is to make the project section look like it is on top of
+             the previous work, like sheets of paper."
+
+             Two halves of the same idea, both on this section's own top
+             edge: rounded corners, so it reads as the corner of a sheet
+             rather than a join, and a shadow cast UPWARD onto whatever is
+             behind — which, because each section carries a higher z-index
+             than the one before, is always the section it is covering.
+
+             Only the top of the shadow is ever seen. The sides fall
+             outside the window, since these run the full width, and the
+             bottom is painted over by the skirt below, which is this
+             section's own child and so comes later in paint order. */
+          borderTopLeftRadius: SHEET_RADIUS_CSS,
+          borderTopRightRadius: SHEET_RADIUS_CSS,
+          "--sheet-lift": SHEET_LIFT_CSS,
+          "--sheet-blur": SHEET_BLUR_CSS,
+          boxShadow: SHEET_SHADOW_CSS,
           paddingLeft: `calc(var(--u) * ${paddingXUnits})`,
           paddingRight: `calc(var(--u) * ${paddingXUnits})`,
           paddingBottom: `calc(var(--u) * ${paddingBottomUnits})`,
-        }}
+        } as React.CSSProperties}
       >
         {header}
         <div

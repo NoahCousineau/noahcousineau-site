@@ -227,6 +227,39 @@ console.log("\n  phone 390 — the longest section names on the site");
   await ctx.close();
 }
 
+/* SHEETS OF PAPER (2026-10-20). Noah: "I want to add just a slight drop
+ * shadow underneath each section... there should be a slight drop shadow
+ * and a curve at both ends of the page. The concept here is to make the
+ * project section look like it is on top of the previous work, like sheets
+ * of paper."
+ *
+ * The shadow is checked as a COMPUTED value, not as source: a box-shadow is
+ * a comma-separated list, the build's style serializer splits the value on
+ * commas to handle that, and `max(var(--u) * 4, 2px)` came out the other
+ * side as `max(var(--u) * 4` — dropping the whole declaration silently.
+ * Nothing in the source looked wrong. */
+console.log("\n  the sheet edge on each section");
+for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
+  const ctx = await b.newContext({ viewport: { width: w, height: h }, isMobile: w < 768, hasTouch: w < 768 });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
+  const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
+  await p.goto(`${BASE}/work/socal-earth`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
+  const d = await p.evaluate(() => {
+    const all = [...document.querySelectorAll("section.sticky")];
+    return all.map(e => { const cs = getComputedStyle(e);
+      return { r: parseFloat(cs.borderTopLeftRadius), rr: parseFloat(cs.borderTopRightRadius), shadow: cs.boxShadow }; });
+  });
+  ok(d.length > 1, `${tag}: there are stacked sections to check`, `${d.length}`);
+  ok(d.every(x => x.r >= 10 && x.rr >= 10), `${tag}: every section's top corners are curved`, `${d[0]?.r}px / ${d[0]?.rr}px`);
+  ok(d.every(x => x.shadow && x.shadow !== "none"), `${tag}: and every one casts a shadow`, d[0]?.shadow || "none");
+  /* Cast UPWARD, onto the section it is covering — a positive offset would
+     put it under the sheet where nothing can see it. */
+  const up = /(-?[\d.]+)px (-?[\d.]+)px/.exec(d[0]?.shadow || "");
+  ok(up && parseFloat(up[2]) < 0, `${tag}: the shadow falls above the edge, not below it`, up ? `${up[2]}px` : "unparsed");
+  await ctx.close();
+}
+
 await b.close();
 console.log(bad ? `\n  ${bad} FAILED\n` : "\n  the header bar reads the same on both tiers\n");
 process.exit(bad ? 1 : 0);
