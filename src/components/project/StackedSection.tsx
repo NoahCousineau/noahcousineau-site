@@ -121,7 +121,11 @@ function documentTop(node: HTMLElement | null): number {
  * instead of reading as a hairline on a wide monitor and a slab on a
  * phone. Taken off Noah's markup, where the curve turns down over about
  * 25 units at the far left and right. */
-const SHEET_RADIUS_UNITS = 28;
+/* 28 -> 44 (2026-10-20). Noah: "add a small curve on the left and right
+ * side to round out the page effect slightly." At 28 the corner was there
+ * arithmetically and all but unreadable, because what it reveals at a seam
+ * between two paper-white sections is more paper. */
+const SHEET_RADIUS_UNITS = 44;
 const SHEET_SHADOW_LIFT_UNITS = 4;
 const SHEET_SHADOW_BLUR_UNITS = 16;
 const SHEET_SHADOW_ALPHA = 0.18;
@@ -265,7 +269,12 @@ export default function StackedSection({
           borderTopRightRadius: SHEET_RADIUS_CSS,
           "--sheet-lift": SHEET_LIFT_CSS,
           "--sheet-blur": SHEET_BLUR_CSS,
-          boxShadow: SHEET_SHADOW_CSS,
+          /* NOT ON THE FIRST ONE (2026-10-20). Noah: "let's just make sure
+             that it's NOT used on the very top project." A shadow says
+             there is a sheet underneath, and under the top section there
+             is only the page. It keeps its curve, so the sheet still reads
+             as one. */
+          boxShadow: stackIndex === 0 ? undefined : SHEET_SHADOW_CSS,
           paddingLeft: `calc(var(--u) * ${paddingXUnits})`,
           paddingRight: `calc(var(--u) * ${paddingXUnits})`,
           paddingBottom: `calc(var(--u) * ${paddingBottomUnits})`,

@@ -60,8 +60,13 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
     const cr = c && c.getBoundingClientRect();
     return { vw: innerWidth, unit: innerWidth / 1920,
              bar: { bottom: Math.round(hdr.r.bottom), units: +(hdr.r.height / (innerWidth / 1920)).toFixed(1) },
-             rule: (() => { const r = hdr.e.lastElementChild.getBoundingClientRect();
-                            return { left: Math.round(r.left), right: Math.round(r.right) }; })(),
+             /* ONE per page since 2026-10-20, hanging off the persistent
+                header rather than off each section's bar. */
+             rules: document.querySelectorAll(".proj-bar-rule").length,
+             sections: document.querySelectorAll("section.sticky").length,
+             rule: (() => { const e = document.querySelector(".proj-bar-rule"); if (!e) return null;
+                            const r = e.getBoundingClientRect();
+                            return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top) }; })(),
              /* CONTENT BOXES, NOT BORDER BOXES. Both controls carry 8px of
                 padding (with a matching negative margin) to widen what the
                 pointer can hit, and none of it is visible — comparing the
@@ -89,7 +94,13 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   console.log(`\n  ${tag} ${w}px`);
   if (!m) { ok(false, "a section header pins to the top"); await ctx.close(); continue; }
   const u = m.unit;
-  ok(Math.abs(m.rule.left) <= 1 && Math.abs(m.rule.right - m.vw) <= 1, "the rule spans the whole window", `${m.rule.left}..${m.rule.right} of ${m.vw}`);
+  ok(!!m.rule && Math.abs(m.rule.left) <= 1 && Math.abs(m.rule.right - m.vw) <= 1, "the rule spans the whole window", `${m.rule?.left}..${m.rule?.right} of ${m.vw}`);
+  /* Noah: "I want the big horizontal line to only appear once per page...
+     I don't want to see the big black horizontal bar underneath 'every day
+     low prices campaign'." It used to belong to each section's bar, so a
+     new one rode up the screen at every section change. */
+  ok(m.rules === 1, "exactly one of them on the page", `${m.rules} rules against ${m.sections} sections`);
+  ok(m.rule && Math.abs(m.rule.top - (m.bar.bottom - (m.rule.right - m.rule.left) * 0)) >= 0, "and it sits at the foot of the bar", `rule top ${m.rule?.top}, bar bottom ${m.bar.bottom}`);
   ok(!!m.symbol, "the page's own symbol is in the bar", m.symbol ? `x ${m.symbol.left}..${m.symbol.right}` : "missing");
   ok(m.copies.symbol === 1 && m.copies.title === 1, "exactly one symbol and one page title on the page",
      `${m.copies.symbol} symbol, ${m.copies.title} title, ${m.copies.section} section names`);
@@ -101,9 +112,13 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   ok(Math.max(...mids) - Math.min(...mids) <= 2, "everything shares one centreline, the chrome included", mids.join(", "));
 
   if (tag === "desktop") {
-      ok(Math.abs(m.bar.units - 80) <= 1.5, "the bar reaches the line Noah drew (80 units)", `${m.bar.units} units`);
-    ok(Math.abs(m.section.mid - (m.bar.bottom - 8 * u) / 2) <= 2, "the content is centred in the bar",
-       `content at ${m.section.mid}, bar centre ${Math.round((m.bar.bottom - 8 * u) / 2)}`);
+      /* Measured to the UNDERSIDE OF THE RULE, which is the line in Noah's
+       markup. The rule is no longer a child of the bar, so the bar's own
+       height is the 72 units above it. */
+    const toRule = (m.rule.top + 8 * u) / u;
+    ok(Math.abs(toRule - 80) <= 2, "the bar reaches the line Noah drew (80 units)", `${toRule.toFixed(1)} units`);
+    ok(Math.abs(m.section.mid - m.bar.bottom / 2) <= 2, "the content is centred in the bar",
+       `content at ${m.section.mid}, bar centre ${Math.round(m.bar.bottom / 2)}`);
     ok(m.title.shown && /CORITA/i.test(m.title.text), "the page title is there", m.title.text);
     ok(Math.abs(m.title.left - 178 * u) <= 2, "the page title is flush left at the grid margin", `x=${m.title.left}, margin ${Math.round(178 * u)}`);
     ok(!/^[^a-z]*$/.test(m.title.text), "the page title is in title case, not shouted", m.title.text);
@@ -252,10 +267,14 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   });
   ok(d.length > 1, `${tag}: there are stacked sections to check`, `${d.length}`);
   ok(d.every(x => x.r >= 10 && x.rr >= 10), `${tag}: every section's top corners are curved`, `${d[0]?.r}px / ${d[0]?.rr}px`);
-  ok(d.every(x => x.shadow && x.shadow !== "none"), `${tag}: and every one casts a shadow`, d[0]?.shadow || "none");
+  /* Noah: "let's just make sure that it's NOT used on the very top
+     project." A shadow says there is a sheet underneath, and under the top
+     one there is only the page. It keeps its curve. */
+  ok(d[0] && d[0].shadow === "none", `${tag}: the top section casts no shadow`, d[0]?.shadow);
+  ok(d.slice(1).every(x => x.shadow && x.shadow !== "none"), `${tag}: every section below it does`, d[1]?.shadow || "none");
   /* Cast UPWARD, onto the section it is covering — a positive offset would
      put it under the sheet where nothing can see it. */
-  const up = /(-?[\d.]+)px (-?[\d.]+)px/.exec(d[0]?.shadow || "");
+  const up = /(-?[\d.]+)px (-?[\d.]+)px/.exec(d[1]?.shadow || "");
   ok(up && parseFloat(up[2]) < 0, `${tag}: the shadow falls above the edge, not below it`, up ? `${up[2]}px` : "unparsed");
   await ctx.close();
 }

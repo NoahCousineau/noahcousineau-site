@@ -97,6 +97,8 @@ export function ProjectBarHead({ slug, title }: { slug: string; title: string })
   return (
     <>
       <div className="proj-bar-head" aria-hidden>
+        {/* The page's one big horizontal line — see .proj-bar-rule. */}
+        <div className="proj-bar-rule" />
         {symbol && (
           <Image
             className="proj-bar-symbol"

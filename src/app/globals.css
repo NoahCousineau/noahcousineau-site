@@ -358,7 +358,7 @@ html {
      inside it measures. On a phone the chrome sits low enough that twice
      its centreline already exceeds the desktop figure, so the bar grows
      instead and the padding falls to nothing. */
-  min-height: max(calc(var(--u) * 72), calc(var(--chrome-centre) * 2));
+  min-height: var(--proj-bar-h);
   padding-bottom: max(0px, calc(var(--u) * 72 - var(--chrome-centre) * 2));
 }
 /* ONE HEADER, NOT ONE PER SECTION (2026-10-19). Noah: "when we scroll on
@@ -419,6 +419,26 @@ html {
   height: max(calc(var(--u) * 44), 34px);
   width: auto;
 }
+/* ONE LINE PER PAGE (2026-10-20). Noah: "I want the big horizontal line to
+   only appear once per page... I don't want to see the big black
+   horizontal bar underneath 'every day low prices campaign'."
+
+   It used to belong to each section's bar, so every arriving section
+   brought another one up the screen — the same repetition the symbol and
+   the page title had. It hangs off the one persistent header now, pinned
+   at the top, and the section bars carry no rule at all. It fades with the
+   rest of the strip, so there is none before the sections arrive either.
+
+   Declared after `.proj-bar-head > *` to override the centreline those
+   children get: this one hangs at the bar's foot, not on its middle. */
+.proj-bar-rule {
+  top: var(--proj-bar-h);
+  translate: none;
+  left: 0;
+  right: 0;
+  height: calc(var(--u) * 8);
+  background: var(--color-ink);
+}
 .proj-bar-title {
   left: calc(var(--u) * var(--grid-margin));
   font-weight: 700;
@@ -454,6 +474,19 @@ html {
  */
 .artboard {
   container-type: inline-size;
+  /* The height of a project page's header bar, above its rule. Shared,
+     because two things have to agree on it: the bar itself, and the rule
+     that hangs off the bottom of the one persistent header rather than off
+     each section's.
+
+     DECLARED HERE AND NOT AT :root, because `--u` is a container-query
+     unit published by this class and does not exist up there — a custom
+     property whose value references an undefined var() is invalid at
+     computed-value time and silently resolves to nothing. It did: the bar
+     collapsed from 71px to the 26px of its own type, and the rule landed
+     at the top of the window instead of the foot of the bar. The same trap
+     is recorded at --section-title-top-min further down. */
+  --proj-bar-h: max(calc(var(--u) * 72), calc(var(--chrome-centre) * 2));
 }
 
 

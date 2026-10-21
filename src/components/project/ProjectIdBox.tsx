@@ -52,35 +52,20 @@ export type Credit = { role: string; names: string[] };
 const PHONE_TITLE_SCALE = 2;
 const PHONE_CREDIT_COLUMNS = 1;
 
-/** Credit columns per row. Three since 2026-08-23, when Noah laid out
- *  Sprouts' five categories as a 3-wide block (see the grid note below). */
-const CREDIT_COLUMNS = 3;
+/* Credit columns. Two since 2026-10-20 — Noah, on Sprouts: "let's make the
+ * credits in two columns. On the left column, put design team first, then
+ * photography underneath." Which is a COLUMN-major fill: left to right is
+ * what a grid does by default and would have put photography beside design
+ * team rather than under it. Sprouts is the only page with more than one
+ * credit, so the count only shows there. */
+const CREDIT_COLUMNS = 2;
 
-/**
- * Lays credits into the grid with any SHORT FINAL ROW flushed right,
- * returning the cell sequence with `null` for the blanks.
- *
- * Grid auto-flow fills left to right, so five credits in three columns
- * would naturally leave the gap at the END of row two. Noah wants it at the
+/* The SHORT FINAL ROW flush that used to live here is gone with the switch
+ * to a column-major fill (2026-10-20). It existed because a row-major grid
+ * leaves its gap at the end of the last ROW, and Noah wanted it at the
  * start — "bottom left: nothing, bottom middle: nasdaq board animation,
- * bottom right: storyboards" — so the blanks are spliced in AHEAD of the
- * final row's items rather than appended. Note they go at `length - rem`,
- * not at the front: blanks at the front would push the FIRST row right and
- * leave the last row hanging off the left instead, which is the same bug
- * mirrored.
- *
- * A full final row (or a count that divides evenly) inserts nothing.
- */
-function layoutCredits(credits: Credit[], columns = CREDIT_COLUMNS): (Credit | null)[] {
-  const rem = credits.length % columns;
-  if (rem === 0) return credits;
-  const split = credits.length - rem;
-  return [
-    ...credits.slice(0, split),
-    ...Array.from({ length: columns - rem }, () => null),
-    ...credits.slice(split),
-  ];
-}
+ * bottom right: storyboards". Filling down each column instead puts any gap
+ * at the foot of the last column on its own, with nothing to splice. */
 
 export function ProjectIdBox({
   title,
@@ -176,14 +161,17 @@ export function ProjectIdBox({
         className="grid min-w-0"
         style={{
           gridTemplateColumns: `repeat(${columns}, max-content)`,
+          /* DOWN EACH COLUMN, then across — see CREDIT_COLUMNS. The row
+             count has to be given explicitly for that: with only the
+             columns named, `column` flow would put every credit in one
+             tall column and add more columns as it ran out of rows. */
+          gridTemplateRows: `repeat(${Math.max(1, Math.ceil(credits.length / columns))}, max-content)`,
+          gridAutoFlow: "column",
           columnGap: "calc(var(--u) * 96)",
           rowGap: "calc(var(--u) * 40)",
         }}
       >
-        {layoutCredits(credits, columns).map((c, i) =>
-          c === null ? (
-            <div key={`blank-${i}`} aria-hidden />
-          ) : (
+        {credits.map((c) => (
           <div key={c.role} className="min-w-[7rem]">
             <div
               className="lowercase pb-1 border-b border-[color:var(--color-ink)]"
@@ -203,8 +191,7 @@ export function ProjectIdBox({
               ))}
             </ul>
           </div>
-          )
-        )}
+        ))}
       </div>
     </div>
   );

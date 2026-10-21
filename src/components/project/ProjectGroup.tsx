@@ -558,9 +558,10 @@ export function ProjectGroup({
           {descriptor}
         </h2>
       </div>
-      {/* Full-bleed without any negative margin of its own: the bar it sits
-          in already spans the section's border box. */}
-      <Rule />
+      {/* NO RULE HERE ANY MORE (2026-10-20). It moved to the one persistent
+          header — see .proj-bar-rule — because a rule per section meant a
+          new black bar riding up the screen behind the pinned one at every
+          section change. */}
     </div>
   );
   return (
