@@ -145,7 +145,11 @@ const SHEET_RADIUS_CSS = `max(calc(var(--u) * ${SHEET_RADIUS_UNITS}), 14px)`;
 const SHEET_LIFT_CSS = `max(calc(var(--u) * ${SHEET_SHADOW_LIFT_UNITS}), 2px)`;
 const SHEET_BLUR_CSS = `max(calc(var(--u) * ${SHEET_SHADOW_BLUR_UNITS}), 8px)`;
 const SHEET_SHADOW_CSS =
-  `0 calc(-1 * var(--sheet-lift)) var(--sheet-blur) rgb(0 0 0 / ${SHEET_SHADOW_ALPHA})`;
+  `0 calc(-1 * var(--sheet-lift)) var(--sheet-blur) rgb(0 0 0 / var(--sheet-alpha))`;
+/* How much scrolling the shadow has to fade out over as its edge reaches
+ * the header band. A hard cut would pop; this is about two frames of a
+ * flick. */
+const SHEET_FADE_PX = 40;
 
 export default function StackedSection({
   stackIndex,
@@ -202,6 +206,55 @@ export default function StackedSection({
       ro.disconnect();
     };
   }, []);
+
+  /* THE SHADOW STOPS AT THE HEADER (2026-10-20). Noah: "notice how the
+   * shadow is going into the header area? I don't want this to happen,
+   * it's causing some confusion as the previous project is underneath but
+   * the other header information is over the shadow. Let's try having the
+   * shadow NOT present when it is in the header."
+   *
+   * It got in there because each section carries a higher z-index than the
+   * one before, so an arriving section's shadow paints over the PINNED
+   * section's bar — and the strip above it, which holds the page title and
+   * the rule, paints over the shadow in turn. Three layers disagreeing
+   * about which sheet is on top.
+   *
+   * Covering the band with something opaque was the obvious fix and is
+   * wrong: the section name lives inside its own section, below the strip,
+   * so an opaque strip would hide the thing the header is for. Fading the
+   * shadow out as its edge reaches the band leaves every layer where it
+   * is.
+   *
+   * A scroll listener rather than a ScrollTrigger scrub, because this is a
+   * state that depends on scroll position and not an animation — a reader
+   * who has asked for less motion should still not see a shadow inside the
+   * header, and the effect below returns early for them. */
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || stackIndex === 0) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const rule = document.querySelector<HTMLElement>(".proj-bar-rule");
+      // Measured off the rule's own layout box, which does not move with
+      // the scroll: the strip it sits in is zero-height and pinned.
+      const band = rule ? rule.offsetTop + rule.offsetHeight : 0;
+      const top = el.getBoundingClientRect().top;
+      const t = Math.max(0, Math.min(1, (top - band) / SHEET_FADE_PX));
+      el.style.setProperty("--sheet-alpha", String(t * SHEET_SHADOW_ALPHA));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [stackIndex]);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -269,6 +322,7 @@ export default function StackedSection({
           borderTopRightRadius: SHEET_RADIUS_CSS,
           "--sheet-lift": SHEET_LIFT_CSS,
           "--sheet-blur": SHEET_BLUR_CSS,
+          "--sheet-alpha": SHEET_SHADOW_ALPHA,
           /* NOT ON THE FIRST ONE (2026-10-20). Noah: "let's just make sure
              that it's NOT used on the very top project." A shadow says
              there is a sheet underneath, and under the top section there
