@@ -166,7 +166,12 @@ export default function StackedSection({
    *  value and is what ProjectGroup sends — the phone widens that margin with
    *  a media query and the padding has to follow it. */
   paddingXUnits: number | string;
-  paddingBottomUnits: number;
+  /** Artboard units, or a CSS expression resolving to them — the same
+   *  deal as paddingXUnits above. ProjectGroup sends
+   *  `var(--section-pad-bottom)`, which a media query lengthens on a
+   *  phone so the hold before the next section arrives reads the same
+   *  there as it does on a desktop. */
+  paddingBottomUnits: number | string;
   /** The section's sticky title header — rendered OUTSIDE the recede
    * scale's transform on purpose. See HEADER PLACEMENT above. */
   header: React.ReactNode;

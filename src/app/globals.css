@@ -303,6 +303,16 @@ html {
      left margin, between the fixed C mark and the page title. On a phone it
      moves out to the content margin — see the media query below. */
   --header-symbol-left: 106;
+  /* HOW LONG A SECTION IS HELD before the next one starts sliding over it,
+     as the blank surface under its last row. 150 units is 15.6% of the
+     window on a 1902 desktop and 3.6% on a 390 phone — the same number,
+     but the artboard unit is a fifth the size there, so the hold that
+     reads as a beat on a desktop is four frames of a flick on a phone.
+     Noah: "the next project on project pages can come up too quickly...
+     so it doesn't overlap the previous project too soon." The phone value
+     below restores the desktop PROPORTION rather than the desktop pixel
+     count. */
+  --section-pad-bottom: 150;
   /* How far in from the right edge the theme toggle sits. Halved on
      desktop so it clears the footer's wordmark (see ThemeToggle); the
      phone keeps the original, where there is no wordmark beside it and
@@ -507,6 +517,9 @@ html {
     /* Clear of the symbol on the left and the toggle on the right, applied
        to both sides so the section name stays centred on the page. */
     --proj-bar-side-min: 96px;
+    /* 650 units is 132px at 390 — 15.6% of an 844-tall window, which is
+       what 150 units comes to on the desktop this was tuned against. */
+    --section-pad-bottom: 650;
     --chrome-right: calc(100vw / 40);
     /* "Please also double the size of the section title type on mobile."
        ...and again: "for the mobile project pages, let's double the size of

@@ -587,7 +587,7 @@ export function ProjectGroup({
            written for. GRID_MARGIN_UNITS remains the desktop value the
            variable is initialised to. */
         paddingXUnits="var(--grid-margin)"
-        paddingBottomUnits={SECTION_PADDING_UNITS}
+        paddingBottomUnits="var(--section-pad-bottom)"
         header={header}
       >
         <div className="w-full">
