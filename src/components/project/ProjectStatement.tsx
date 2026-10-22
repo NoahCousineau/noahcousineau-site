@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Stage, Place } from "@/components/Stage";
 import { RULE_WEIGHT_CSS } from "./ProjectGroup";
-import { lockScroll, releaseScroll } from "@/lib/scrollLock";
-import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
+import { useIsPhone } from "@/lib/useIsPhone";
+import { getLenis } from "@/components/SmoothScroll";
 
 /**
  * linkify — auto-links bare domain mentions (e.g. "socalearth.org") and
@@ -86,7 +84,11 @@ function renderWithItalics(text: string, keyPrefix: string): React.ReactNode {
   );
 }
 
-const LABELLED_LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+/* `[label](target)`, where the target is an address or a `#section` on this
+ * page — the second added 2026-10-21 for the More Work copy's list of
+ * projects. Anchored on `https?://` alone it matched neither, and the lines
+ * rendered as literal "[Forced Perspective](#forced-perspective)". */
+const LABELLED_LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|#[^\s)]+)\)/g;
 
 /**
  * renderInline — the original pair of paragraph features: `(...)` for italics
@@ -125,18 +127,86 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
  * need; a blank line still means a new paragraph, and those are separate
  * entries in the `paragraph` array.
  */
+/* IN-PAGE LINKS GO TO THE SECTION'S BAR, not to the top of its box
+ * (2026-10-21). Noah, on the More Work page: "I wrote out links to the
+ * various projects. Have these linked. When clicked on, the page scrolls
+ * down to the corresponding project."
+ *
+ * Two things a plain `#id` jump gets wrong here. The sections are sticky,
+ * so the element itself is rarely where its content begins — the anchor is
+ * on the normal-flow sentinel instead. And every section carries 150 units
+ * of its own above its header, so landing on the sentinel leaves the bar
+ * that names the section still below the fold; adding the bar's own offset
+ * puts it exactly where it pins, which is the state the header fades in
+ * for.
+ *
+ * Through Lenis when it is running, so the page travels rather than jumps;
+ * it is null under prefers-reduced-motion, and the native fallback there is
+ * deliberately instant. */
+function scrollToSection(e: React.MouseEvent<HTMLAnchorElement>) {
+  const id = e.currentTarget.getAttribute("href")?.slice(1);
+  if (!id) return;
+  const mark = document.getElementById(id);
+  if (!mark) return;
+  e.preventDefault();
+
+  /* Measured fresh each time it is asked for, because it MOVES. A link
+     near the top of the page can be a 9,000px jump, and the rows it
+     travels past have not decoded yet — so the document grows under the
+     scroll and a target worked out before setting off lands short. The
+     second section of More Work missed by 884px, every time, while the
+     five below it (by then loaded) landed exactly. */
+  const targetY = () => {
+    const section = mark.nextElementSibling as HTMLElement | null;
+    /* The header's own TOP MARGIN, which is the 150 units each section
+       carries above its bar — read as a resolved length so it is right at
+       any width. Not `offsetTop`: the bar's offsetParent is the sticky
+       header wrapping it, so that measured 0 and every link landed a bar's
+       height short. Not the bar's rect either, which is wherever sticky
+       has it pinned at the moment of the click. */
+    const head = section?.querySelector<HTMLElement>(":scope > .sticky");
+    const lead = head ? parseFloat(getComputedStyle(head).marginTop) || 0 : 0;
+    return mark.getBoundingClientRect().top + window.scrollY + lead;
+  };
+
+  const lenis = getLenis();
+  let tries = 0;
+  /* Re-aim after arriving, up to a few times: each correction is shorter
+     than the last because less is left to load, and it stops as soon as
+     the page is where it should be. */
+  const settle = () => {
+    if (tries >= 3) return;
+    window.setTimeout(() => {
+      if (Math.abs(targetY() - window.scrollY) > 2) go(0.4);
+    }, 140);
+  };
+  const go = (duration: number) => {
+    tries += 1;
+    const y = targetY();
+    if (lenis) lenis.scrollTo(y, { duration, onComplete: settle });
+    else {
+      // No Lenis under prefers-reduced-motion; the jump is instant there.
+      window.scrollTo({ top: y });
+      settle();
+    }
+  };
+  go(1.2);
+}
+
 function renderParagraph(text: string): React.ReactNode[] {
   return text.split("\n").flatMap((line, li) => {
     const out: React.ReactNode[] = [];
     let at = 0;
     for (const m of line.matchAll(LABELLED_LINK)) {
       if (m.index > at) out.push(...renderInline(line.slice(at, m.index), `${li}-${at}`));
+      const inPage = m[2].startsWith("#");
       out.push(
         <a
           key={`${li}-link-${m.index}`}
           href={m[2]}
-          target="_blank"
-          rel="noreferrer"
+          target={inPage ? undefined : "_blank"}
+          rel={inPage ? undefined : "noreferrer"}
+          onClick={inPage ? scrollToSection : undefined}
           className="underline hover:opacity-60 transition-opacity"
         >
           {m[1]}
@@ -424,7 +494,6 @@ export function ProjectStatement({
   paragraph: string | string[];
 }) {
   const phone = useIsPhone();
-  const compact = useIsCompact();
   /** The question's rendered height in artboard units, on phones where the
    *  line count is not known ahead of time. See STAGE_HEIGHT below. */
   const [questionHeight, setQuestionHeight] = useState<number | null>(null);
@@ -481,299 +550,21 @@ export function ProjectStatement({
    * the browser resolves `calc(var(--u) * 100)` to right now, which a
    * static ScrollTrigger position can't express.
    */
-/** How far the pointing fingertip sits below the hand box's own top, as a
- *  fraction of the box's WIDTH. Measured off the asset: it is pre-rotated to
- *  point right at 2696x1490, its rightmost ink is at y 0.322 of the image,
- *  and the image is 0.5527 as tall as it is wide — 0.322 x 0.5527 = 0.178.
- *  Expressed against width because that is the dimension the layout sets. */
-const FINGER_TIP_BELOW_TOP = 0.178;
 
   const handStickyRef = useRef<HTMLDivElement>(null);
-  /** The sticky wrapper's own style attribute, saved while the fall pins it
-   *  to the viewport so it can be handed back afterwards. */
-  const restoreSticky = useRef<string | null>(null);
-  /* WHETHER THE HAND HAS ALREADY FALLEN ON THIS PAGE VIEW. A ref, so it
-   * survives the effect being torn down and rebuilt. */
-  const hasFallen = useRef(false);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (!handRef.current || !paragraphRef.current || !handStickyRef.current) return;
-
-    /* ONCE IT HAS FALLEN IT STAYS DOWN (2026-08-30). Noah: "the hand will
-     * awkwardly appear sometimes on project pages when changing the browser
-     * window size."
-     *
-     * Reproduced exactly: fall the hand at 1512 (it ends `visibility: hidden`),
-     * resize to 1100, and it is `visible, opacity 1` again. `gsap.context`
-     * reverts the inline styles it set when the effect tears down — and
-     * crossing the desktop/compact line is a teardown, because `compact` is in
-     * the deps. The revert is right for everything else the context did; it is
-     * wrong for the one state that is supposed to outlive it.
-     *
-     * So the fall records itself, and a rebuild puts the hand straight back
-     * down instead of creating a trigger that has already had its turn. This
-     * has to sit ABOVE the `compact` bail below, or resizing into the middle
-     * band — which is how Noah found it — skips the hide entirely. */
-    if (hasFallen.current) {
-      gsap.set(handRef.current, { autoAlpha: 0 });
-      return;
-    }
-    /* NOT ON A PHONE (2026-08-25). Noah: "let's not make the hand fall. Let's
-     * just keep it stuck and pointing at the content."
-     *
-     * The whole gesture — the swing, the fall, and the scroll lock that holds
-     * the page still while they play — is skipped, leaving the hand where the
-     * sticky wrapper puts it, pointing at the copy. Returning before the
-     * context is created means there is nothing to revert and nothing that
-     * could leave `lockScroll` engaged on a device where getting the page
-     * moving again matters more. */
-    /* DESKTOP ONLY, 2026-08-29: "let's only have the hand falling animation
-     * play when the screen is in desktop mode." Was `phone`, which left the
-     * whole gesture — swing, fall, and the scroll lock that holds the page
-     * still while they play — running across the entire middle band, where
-     * the hand is small and the lock is most annoying. `compact` is the same
-     * line the footer's own see-saw reflows on. */
-    if (compact) return;
-
-    gsap.registerPlugin(ScrollTrigger);
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: paragraphRef.current,
-          // The hand's own resolved sticky offset, in real px — see the
-          // TRIGGER TIMING FIX note above. A function so it's re-read on
-          // every ScrollTrigger refresh (resize, font load, etc.), the same
-          // way the rest of this codebase keeps --u-derived pixel values
-          // live rather than snapshotting them once.
-          //
-          // GUARD THE REF (2026-08-23, Noah: "the hand on the project pages
-          // also doesn't stop and fall down like it did before"). This ran
-          // as `getComputedStyle(handStickyRef.current!)` — the `!` was a
-          // lie. `start` is a function specifically so ScrollTrigger can
-          // re-call it on ANY refresh anywhere on the page, and StackedSection
-          // triggers exactly that: its ResizeObserver fires
-          // `ScrollTrigger.refresh()` — GLOBAL, every registered trigger,
-          // not just its own — on every section resize, which happens
-          // constantly while a page's images decode in. Navigate away
-          // mid-decode (prev/next project, or straight back to one already
-          // visited) and this component unmounts, `ctx.revert()` kills ITS
-          // trigger, and `handStickyRef.current` goes back to null — but if
-          // a resize on the page you landed on fires its global refresh
-          // before that revert lands, this callback still gets invoked with
-          // the now-null ref, and `getComputedStyle(null)` throws. Uncaught,
-          // inside a ResizeObserver callback, that aborts ScrollTrigger's
-          // refresh pass partway through — leaving OTHER triggers, on the
-          // page you're actually looking at (this same hand-fall one very
-          // much included), holding stale start positions from before
-          // whatever just resized. The fall doesn't "break" so much as
-          // never get a correct trigger point to fire from again. Bailing
-          // to a start position that can never be crossed, rather than
-          // throwing, means a torn-down trigger is inert instead of
-          // poisoning every other trigger's next refresh.
-          /* FIRES WHEN THE READER REACHES THE LAST SENTENCE (2026-08-25).
-           *
-           * Noah: "the scrolling then falling hand is getting messed up.
-           * Let's have it fall right when the user reached the final sentence
-           * in the last paragraph."
-           *
-           * The paragraph's BOTTOM edge is the end of its final sentence, so
-           * the question is where that edge should be on screen when the hand
-           * goes. `bottom bottom-=15%` is the moment it clears the foot of the
-           * window by a sixth of a screen — the last sentence fully in view
-           * and just read, rather than already gone.
-           *
-           * This reverses 2026-08-23's `bottom top-=80`, which held the fall
-           * until the copy had left the screen entirely so the hand would be
-           * the only thing moving. That reading is now superseded: he has seen
-           * both and wants the fall tied to the reader's place in the text.
-           * The hand pins itself to the viewport for the duration either way
-           * (see onStart), so it is still whole and centred while it plays.
-           *
-           * ...AND THEN AT THE FINGERTIP (2026-08-25, second pass). Noah:
-           * "the hand is rotating too early. When the pointer finger reaches
-           * the last line, the hand should rotate then fall." He knows this
-           * reverses the paragraph above — "I know that I'm reversing an
-           * earlier decision, I'm proceeding anyway" — and it is a third
-           * distinct answer to the same question, so it is worth being exact
-           * about what makes it different from the first two.
-           *
-           * `bottom bottom-=15%` and `bottom top-=80` are both positions in
-           * the VIEWPORT: one 15% up from its foot, one just off its top.
-           * Neither has anything to do with where the hand is. This is a
-           * position on the HAND — the fingertip — and the hand is stuck near
-           * the top of the screen while the copy travels up past it, so
-           * "the pointer finger reaches the last line" is literally the
-           * moment the paragraph's bottom edge draws level with the tip.
-           *
-           * Both terms are measured rather than guessed:
-           *
-           *   the element's top   `top: calc(var(--u) * 100)` resolves to a
-           *                       different pixel value at every viewport
-           *                       width, so it is read off getComputedStyle.
-           *   the tip within it   the artwork is pre-rotated to point RIGHT,
-           *                       and its rightmost ink sits at 0.322 of the
-           *                       asset's height (2696x1490, so height is
-           *                       0.5527 of width) — 0.178 of the box's WIDTH
-           *                       below its own top, which is the form that
-           *                       survives the box being sized in units.
-           *
-           * Closest in spirit to 2026-08-20's `bottom ${sticky top}px`, which
-           * used the box's top edge; the tip is ~0.178W lower than that, so
-           * this holds the fall a little longer than that version did. */
-          start: () => {
-            const el = handStickyRef.current;
-            // A trigger position past any real document height — a torn-
-            // down component's dead trigger sits here forever rather than
-            // crashing the refresh that every OTHER trigger on the page
-            // depends on completing.
-            if (!el) return 1e9;
-            const stickyTop = parseFloat(getComputedStyle(el).top) || 0;
-            const tipY = stickyTop + FINGER_TIP_BELOW_TOP * el.getBoundingClientRect().width;
-            return `bottom ${tipY}px`;
-          },
-          once: true,
-        },
-        /* HOLD THE PAGE STILL WHILE IT PLAYS (2026-08-22, per Noah: "I would
-         * like it so the user can't scroll until the hand falling animation
-         * is out of the viewport. Let's have it so the interaction plays,
-         * then the user can scroll down.")
-         *
-         * The whole gesture — swing, then fall — is about 1.7s, and the
-         * lock spans exactly that: `onComplete` is the moment the hand has
-         * left the viewport and hidden itself, so scrolling comes back the
-         * instant there is nothing left to watch.
-         *
-         * The lock releases itself on a timer regardless (see scrollLock),
-         * which matters here specifically because this timeline is driven by
-         * gsap's rAF ticker: background the tab mid-fall and the ticker
-         * stops, so `onComplete` would not arrive until the reader came
-         * back. The failsafe means that can't strand anyone.
-         *
-         * Flagged as an experiment by Noah — "We can revert back if this
-         * doesn't feel natural" — so it is one option on this timeline plus
-         * a standalone module, and removing it is deleting these two
-         * callbacks. */
-        /* PINNED TO THE VIEWPORT FOR THE DURATION (2026-08-25).
-         *
-         * Noah: "When the scrolling/falling hand rotates downwards on the
-         * project pages, about half of it is not visible. Make it so the full
-         * hand can be seen, then it falls down."
-         *
-         * Measured mid-swing: the hand's box sits at top -155 in a 900px
-         * window, so 139 of its ~300px show. The cause is that by the time
-         * this trigger fires — deliberately late, once the last line of copy
-         * has cleared the top of the screen — the sticky wrapper's own
-         * containing block has ALSO ended, so the hand is no longer stuck. It
-         * has gone back to being an ordinary in-flow element and scrolled up
-         * with the page, and where it lands is wherever the reader's scroll
-         * left it. (This is the same mechanism the `visibility: hidden` at the
-         * end of the timeline exists to defend against, at the other end.)
-         *
-         * Extending the sticky range far enough to still be stuck here would
-         * work and would cost 800-odd units of extra page height, all of it
-         * blank. Fixing the hand to the viewport instead makes the position
-         * deterministic rather than a consequence of scroll — and is safe
-         * precisely here, because `lockScroll` means the page cannot move
-         * while it plays.
-         *
-         * The top is computed rather than picked: a 90-degree rotation about
-         * a 22%/50% origin puts the artwork's box from 0.5H - 0.22W to
-         * 0.5H + 0.78W below the element's own top, so its height is W and
-         * its offset is 0.5H - 0.22W. Centring THAT in the window is what
-         * guarantees the whole hand is on screen at any window size. */
-        onStart: () => {
-          lockScroll();
-          const el = handStickyRef.current;
-          if (!el) return;
-          const r = el.getBoundingClientRect();
-          const W = r.width;
-          const H = (W * 1490) / 2696; // the artwork's own aspect
-          const rotTop = 0.5 * H - 0.22 * W;
-          restoreSticky.current = el.getAttribute("style");
-          Object.assign(el.style, {
-            position: "fixed",
-            top: `${Math.max(16, (window.innerHeight - W) / 2 - rotTop)}px`,
-            left: `${r.left}px`,
-            width: `${W}px`,
-          });
-        },
-        onComplete: () => {
-          releaseScroll();
-          // Remembered outside the gsap context, so a later rebuild knows the
-          // gesture is spent — see the note at the top of this effect.
-          hasFallen.current = true;
-          // The hand has hidden itself by now; put the wrapper back so there
-          // is no fixed-position element left over on the page.
-          const el = handStickyRef.current;
-          if (el && restoreSticky.current !== null) {
-            el.setAttribute("style", restoreSticky.current);
-          }
-        },
-      });
-
-      tl.to(handRef.current, {
-        keyframes: [
-          { rotate: 99, duration: 0.28, ease: "power2.out" },
-          { rotate: 80, duration: 0.23, ease: "sine.inOut" },
-          { rotate: 94, duration: 0.19, ease: "sine.inOut" },
-          { rotate: 86.5, duration: 0.16, ease: "sine.inOut" },
-          { rotate: 90, duration: 0.13, ease: "sine.inOut" },
-        ],
-      }).to(
-        handRef.current,
-        { y: "135vh", rotate: 148, duration: 0.6, ease: "power2.in" },
-        "+=0.1"
-      ).to(
-        // Fades out over the fall's last 0.3s — belt-and-suspenders with
-        // the hard hide below, so it visually dissolves rather than
-        // snapping away if anything ever renders a frame right at the
-        // cutoff.
-        handRef.current,
-        { opacity: 0, duration: 0.3, ease: "power1.in" },
-        "-=0.3"
-      ).set(handRef.current, {
-        // DOESN'T JUST STOP (2026-08-20, third pass — Noah: "make sure the
-        // hand doesn't just stop at some point. Right now it's reaching
-        // the first project grid and stopping over it. This is breaking
-        // the illusion that it's falling.")
-        //
-        // The fall's y:135vh transform sends the hand well past the
-        // viewport bottom relative to where it's PINNED at the moment the
-        // fall starts — but "pinned" is `position: sticky`, and sticky
-        // isn't permanent: as the reader keeps scrolling past the
-        // paragraph, the hand's wrapper un-sticks (per ordinary sticky
-        // rules, once its containing block's own bottom edge passes) and
-        // returns to a normal, in-flow document position — with the fall's
-        // transform still sitting on top of it, now just a fixed pixel
-        // offset on an otherwise ordinary scrolling element. From that
-        // point on it scrolls like anything else, and wherever the reader
-        // happens to stop scrolling is wherever it visually ends up —
-        // which can easily be hovering over the first project grid,
-        // exactly the "stopping" Noah saw.
-        //
-        // Fixed by making the disappearance unconditional rather than
-        // relying on the fall having carried it far enough off-screen
-        // before any of that could happen: `visibility: hidden` the
-        // instant this one-time animation completes, permanently, so
-        // there's no scroll position — during the fall, right after, or
-        // much later — where it can be visible again. It isn't needed
-        // again after this: the "landed" payoff is FallenHand.tsx, in the
-        // footer, a separate element entirely.
-        visibility: "hidden",
-      });
-    });
-    return () => {
-      // Navigating away mid-fall kills the timeline, so its onComplete —
-      // which is what normally hands scrolling back — never runs. Release
-      // here too, or the next page inherits a frozen scroll until the
-      // failsafe expires.
-      releaseScroll();
-      ctx.revert();
-    };
-    /* `phone` is false for the server render and the first client render, so
-     * without it here a phone would build the desktop timeline once and keep
-     * it. */
-  }, [phone, compact]);
+  /* THE HAND NO LONGER SWINGS, FALLS, OR HOLDS THE PAGE STILL (2026-10-21).
+   *
+   * Noah: "on the project pages on desktop, stopping the page for the hand
+   * to fall is stopping the flow of things. Let's update the hand that is
+   * still pointing to the description, but make it so the finger doesn't
+   * rotate and then fall down. It should act like how it does on mobile."
+   *
+   * What stood here was the swing, the drop, and a `lockScroll` that held
+   * the page while they played — about 280 lines of it, already skipped on
+   * anything narrower than 1200 (Noah, 2026-08-25: "let's not make the hand
+   * fall. Let's just keep it stuck and pointing at the content"). Desktop
+   * now does what the phone has done since: the sticky wrapper below puts
+   * the hand beside the copy and it stays there, pointing. */
 
   // Hand image (pre-rotated 90° so the finger points right — see
   // public/assets/shared/pointing-hand-static-rotated.webp, cropped tight

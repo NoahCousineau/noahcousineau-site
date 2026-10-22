@@ -458,6 +458,21 @@ function Rule() {
   return <div className="w-full" style={{ height: RULE_WEIGHT_CSS, background: "var(--color-ink)" }} />;
 }
 
+/* The anchor an in-page link uses to reach a section, from the part of its
+ * name before the dash — "Forced Perspective - Graduate Thesis and Artwork"
+ * becomes `forced-perspective`. The short form so the links in the copy read
+ * as names rather than as slugs; unique per page, which is all an id has to
+ * be, and the More Work page is checked for collisions where the links are
+ * written. */
+export function sectionAnchor(descriptor: string): string {
+  return descriptor
+    .split(" - ")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export function ProjectGroup({
   slug,
   descriptor,
@@ -588,6 +603,7 @@ export function ProjectGroup({
            variable is initialised to. */
         paddingXUnits="var(--grid-margin)"
         paddingBottomUnits="var(--section-pad-bottom)"
+        anchorId={sectionAnchor(descriptor)}
         header={header}
       >
         <div className="w-full">

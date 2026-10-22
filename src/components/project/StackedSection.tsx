@@ -156,6 +156,7 @@ export default function StackedSection({
   surface,
   paddingXUnits,
   paddingBottomUnits,
+  anchorId,
   header,
   children,
 }: {
@@ -172,6 +173,8 @@ export default function StackedSection({
    *  phone so the hold before the next section arrives reads the same
    *  there as it does on a desktop. */
   paddingBottomUnits: number | string;
+  /** Anchor for in-page links — see the sentinel below. */
+  anchorId?: string;
   /** The section's sticky title header — rendered OUTSIDE the recede
    * scale's transform on purpose. See HEADER PLACEMENT above. */
   header: React.ReactNode;
@@ -297,8 +300,10 @@ export default function StackedSection({
 
   return (
     <>
-      {/* Normal-flow marker for this section's true document position. */}
-      <div ref={sentinelRef} aria-hidden style={{ height: 0 }} />
+      {/* Normal-flow marker for this section's true document position —
+          which is also exactly what an in-page link wants to scroll to, the
+          section itself being sticky and therefore somewhere else. */}
+      <div id={anchorId} ref={sentinelRef} aria-hidden style={{ height: 0 }} />
       <section
         ref={sectionRef}
         className="sticky"
