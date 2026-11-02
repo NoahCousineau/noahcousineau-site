@@ -26,7 +26,7 @@
  */
 
 import { execSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import readline from "node:readline";
@@ -218,11 +218,46 @@ step("3. Publishing");
  * `%(rest)` in the format is required: paths here contain spaces, and without
  * it cat-file treats the whole line as an object name, silently reports
  * nothing, and this check would cheerfully pass on a repository it cannot
- * push. */
+ * push.
+ *
+ * ONLY WHAT THIS PUBLISH WILL SEND (2026-11-01). It used to look at every
+ * object reachable from every branch and tag on the machine (`--all`). The
+ * history of `main` had long since been cleaned, but old backup tags and a
+ * leftover branch from before the clean-up still hold both files, so every
+ * publish stopped here — while the push itself carried nothing over the
+ * limit, which was verified and then pushed by hand. Now it asks what the
+ * push would actually contain: the commits GitHub does not have yet (all of
+ * them, on a first publish), plus the edits about to be saved with them,
+ * which the old check never looked at — a big new file would have sailed
+ * through to a rejected push. */
+const GITHUB_LIMIT = 104857600;
+const unsentRange = remote && !neverPushed ? `origin/${branch}..${branch}` : branch;
+const tooBigToSave = (shQuiet("git status --porcelain -z -uall") || "")
+  .split("\0")
+  .map((l) => l.slice(3))
+  .filter((f) => {
+    try {
+      const s = statSync(f);
+      return s.isFile() && s.size > GITHUB_LIMIT;
+    } catch {
+      return false; // deleted, or the old half of a rename
+    }
+  });
+if (tooBigToSave.length) {
+  stop("Some of your new files are too big for GitHub.", [
+    "GitHub refuses anything over 100MB. These would be saved and sent",
+    "with this publish:",
+    "",
+    ...tooBigToSave.slice(0, 4).map((n) => `${C.dim}${n}${C.reset}`),
+    "",
+    "Move them out of the project folder, or shrink them, then publish",
+    "again. Nothing has been saved yet.",
+  ]);
+}
 const oversized = shQuiet(
-  "git rev-list --objects --all | git cat-file --batch-check=" +
+  `git rev-list --objects ${unsentRange} | git cat-file --batch-check=` +
     "'%(objecttype) %(objectname) %(objectsize) %(rest)' | " +
-    "awk '$1==\"blob\" && $3 > 104857600 {print $4, $5, $6, $7, $8}'"
+    `awk '$1=="blob" && $3 > ${GITHUB_LIMIT} {print $4, $5, $6, $7, $8}'`
 );
 if (oversized) {
   const names = oversized.split("\n").filter(Boolean).slice(0, 4);
