@@ -139,7 +139,7 @@ const PHONE_BOX_W_FRAC = 1;
 const PHONE_BOX_PAD = 30;
 const PHONE_BOX_PAD_TOP = 44;
 
-function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits: number; heightUnits: number; phone: boolean }) {
+function Cell({ cell, index, widthUnits, heightUnits, phone }: { cell: Cell; index: number; widthUnits: number; heightUnits: number; phone: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // The object is thrown around inside the tile. The <Link> is absolutely
   // positioned, so it is the offsetParent the physics measures against.
@@ -255,6 +255,7 @@ function Cell({ cell, widthUnits, heightUnits, phone }: { cell: Cell; widthUnits
       {objectAnimation && (
         <ProjectFrameAnimation
           animation={objectAnimation}
+          phase={index}
           containerRef={tileRef}
           className="z-10 cursor-grab active:cursor-grabbing"
           style={{
@@ -332,7 +333,7 @@ export default function Projects() {
         return (
           <Place key={cell.slug} x={x} y={y} w={w} h={h} className="z-10">
             <div className="relative w-full h-full overflow-hidden">
-              <Cell cell={cell} widthUnits={w} heightUnits={h} phone={phone} />
+              <Cell cell={cell} index={i} widthUnits={w} heightUnits={h} phone={phone} />
             </div>
           </Place>
         );

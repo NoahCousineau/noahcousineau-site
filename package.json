@@ -19,7 +19,8 @@
     "qa:slow": "node qa/slow-network.mjs",
     "qa:motion": "node qa/motion.mjs && node qa/tilt-permission.mjs",
     "qa:theme": "node qa/head-theme.mjs",
-    "qa:404": "node qa/not-found.mjs"
+    "qa:404": "node qa/not-found.mjs",
+    "qa:objects": "node qa/home-objects.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

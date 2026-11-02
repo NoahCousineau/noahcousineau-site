@@ -695,5 +695,61 @@ export function useThrowable({
     asleep.current = false;
   }, []);
 
-  return { reset, wake, place, rotationRef: rot };
+  /* `wake`, but only for an object that has been MOVED off where it was
+   * placed — thrown, dragged, or slid by a tilting phone (2026-11-01).
+   *
+   * Noah: "let's not have the icons drop unless they are touched or moved.
+   * For example, the apple falls when the first frame of the animation
+   * plays." The home grid woke the physics on every frame change, so a
+   * settled throw would re-settle around a grown shape — but it also woke
+   * objects nobody had touched, and those dropped the few pixels between
+   * their placed position and the floor of their box (further for the heart
+   * and the sun, whose small first frames sit mid-canvas). An object still
+   * at its placed position needs no settling: every frame fits there by
+   * construction, and containment runs while it sleeps regardless.
+   *
+   * Measured by displacement rather than by "was it ever grabbed": a click
+   * is a grab that never moves, and the object it just stepped on should not
+   * drop either. The margins absorb containment's sub-pixel corrections. */
+  const wakeIfMoved = useCallback(() => {
+    if (Math.hypot(pos.current.x, pos.current.y) > 0.5 || Math.abs(rot.current) > 0.1) {
+      asleep.current = false;
+    }
+  }, []);
+
+  /* WHERE IT MEETS THE GROUND, in its own unrotated box (2026-11-01).
+   *
+   * For animating the object as a thing with weight. A squash has to press
+   * into whatever it is resting on, not about the middle of a box that may be
+   * lying on its side in a corner after a throw, or leaning into a wall on a
+   * tilted phone. So this answers in the element's local frame: its centre of
+   * mass, the point on its ground line directly "below" that along gravity,
+   * and which way gravity points, as an angle in that same frame. Read only
+   * when called, so it costs nothing per frame. */
+  const ground = useCallback((): Ground => {
+    const el = elementRef.current;
+    const W = el?.offsetWidth ?? 0;
+    const H = el?.offsetHeight ?? 0;
+    const shape = shapeNow();
+    const g = gravityDir.current;
+    const downDeg = (Math.atan2(g.y, g.x) * 180) / Math.PI - rot.current;
+    const reach = supportAt(shape.support, downDeg) * W;
+    const t = (downDeg * Math.PI) / 180;
+    const pivot = { x: shape.pivot.x * W, y: shape.pivot.y * H };
+    return {
+      pivot,
+      contact: { x: pivot.x + reach * Math.cos(t), y: pivot.y + reach * Math.sin(t) },
+      downDeg,
+    };
+  }, [elementRef, shapeNow]);
+
+  return { reset, wake, wakeIfMoved, place, ground, rotationRef: rot };
 }
+
+/** See `ground` in useThrowable. Pixels, in the element's unrotated box. */
+export type Ground = {
+  pivot: { x: number; y: number };
+  contact: { x: number; y: number };
+  /** Gravity's direction in the element's own frame, degrees (90 = its own down). */
+  downDeg: number;
+};

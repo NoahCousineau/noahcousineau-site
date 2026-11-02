@@ -79,6 +79,7 @@ npm run qa:assets        # every image decodes on every project page (needs dev/
 npm run qa:motion        # Apple's motion sheet on first touch (even mid-load), tilt on from load, objects move
 npm run qa:theme         # the rotating head's sprite sheet matches the active theme
 npm run qa:404           # the 404's clock lockup, and the away screen staying down on it
+npm run qa:objects       # home grid objects autoplay, loop, never cut together, still throw
 ```
 
 All QA scripts hit `http://localhost:3000` unless `QA_BASE` says otherwise, and
@@ -112,6 +113,32 @@ stub applies the spec's activation rules; Chrome's `navigator.userActivation`
 cannot stand in for them.
 
 hem.
+
+## Home grid objects
+
+Each project tile's clay/paper object (`ProjectFrameAnimation.tsx`) plays its
+frames on a loop by itself while on screen, and can still be thrown (desktop)
+or tilted (phone). Each plays at its own pace (`frameMs` in
+`lib/projectObjects.ts`: the apple eaten in ~2s, the ampersand in a third of
+a second, as plain cuts). Each cut lands with a small nudge — the apple's
+bite shake, the heart's hop — defined in `components/home/objectFlourishes.ts`
+and chosen by `flourish`; the sun alone holds a slight final turn and the
+finished flame keeps burning (`FINALES`, `burnPattern`: a stepped boil plus
+flares to the previous photographed frame). Noah turned down squash, stretch and shear as "too cartoony":
+nudges are rigid (rotate and shift only), small, and stepped at 18fps for a
+stop-motion feel. Keep them that way. They animate a wrapper INSIDE the
+throwable element, anchored to where the object is resting (`ground()` from
+`useThrowable`); never animate the throwable element itself, the physics owns
+its transform. A frame change must never drop an icon nobody has moved —
+that is why it calls `wakeIfMoved`, not `wake`. Valley Strong has `strokes`:
+each frame is drawn on through a disc growing from where its new stroke
+starts (measured by `tools/project-animations/stroke_reveals.py`), and its
+physics uses the finished drawing's outline for every frame — per-frame
+outlines made the stick figure fall and bounce on every loop once tilted. The same
+was tried on the ampersand and dropped — its tube is re-laid between shots,
+so the disc's edge showed as a circle. Loops end with a quick stepped rewind.
+Cuts are booked ahead in a page-wide slot book (`bookCut`) so no two objects
+change frame within 250ms of each other — Noah asked for that specifically.
 
 ## Favicon
 
