@@ -53,10 +53,46 @@ export async function generateMetadata(
   const { slug } = await props.params;
   const project = getProject(slug);
   if (!project) return { title: "Not found" };
+  const title = TAB_TITLES[slug] ?? project.title;
+  /* A WRITTEN DESCRIPTION, NOT THE FIRST 160 CHARACTERS (2026-11-09). The
+     slice cut mid-word — Sprouts shared itself as "...and not be just ano"
+     — so each project carries its own `metaDescription`. The fallback still
+     trims the intro for any project that has not been given one, but at a
+     word boundary. */
+  const description = project.metaDescription ?? trimToWord(introPlainText(project.intro), 160);
+  /* ITS OWN PREVIEW IMAGE (2026-11-09). Every page shared the same site-wide
+     card; a project's cover is the picture of that project the site already
+     uses on the work index, so a shared link looks like the thing it points
+     at. `metadataBase` makes the relative path absolute. */
+  const card = project.ogImage ?? project.cover;
+  // SVG is not a share image anywhere that matters; such a project falls
+  // back to the site-wide card rather than to a picture nothing will draw.
+  /* Named even when it is the site-wide one: declaring `openGraph` at all
+     stops the root's file-based opengraph-image from being inherited, and
+     More Work — which has no cover — ended up sharing with no picture at
+     all. */
+  const cover = card && !card.endsWith(".svg")
+    ? `/assets/${slug}/${card}`
+    : "/opengraph-image.png";
   return {
-    title: TAB_TITLES[slug] ?? project.title,
-    description: introPlainText(project.intro).slice(0, 160),
+    title,
+    description,
+    alternates: { canonical: `/work/${slug}` },
+    openGraph: {
+      title: `${title} — Noah Cousineau`,
+      description,
+      url: `/work/${slug}`,
+      images: [{ url: cover }],
+    },
   };
+}
+
+/** Cut to at most `max` characters without splitting a word. */
+function trimToWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:—-]+$/, "")}…`;
 }
 
 export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
@@ -193,6 +229,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
             key={group.descriptor}
             slug={project.slug}
             descriptor={group.descriptor}
+            imageAlt={group.imageAlt}
             rows={group.rows}
             bgColor={group.bgColor}
             stackIndex={i}

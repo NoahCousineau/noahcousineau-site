@@ -4,8 +4,12 @@ import { projects, assetPath } from "@/lib/projects";
 import WorkIndexPhoneGuard from "./WorkIndexPhoneGuard";
 
 export const metadata = {
-  title: "Work — Noah Cousineau",
+  /* The site name comes from the root template now, so this is just the
+     page's own name — it would otherwise read "Work — Noah Cousineau —
+     Noah Cousineau". */
+  title: "Work",
   description: "Selected graphic design, branding, and art direction projects.",
+  alternates: { canonical: "/work" },
 };
 
 export default function WorkIndex() {

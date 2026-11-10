@@ -324,7 +324,14 @@ function ScaledMedia({ scale, bgColor, phoneUnscaled, children }: { scale?: numb
   );
 }
 
-function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: string; slug: string; bgColor?: string }) {
+function Cell({ cell, aspect, slug, bgColor, groupAlt }: { cell: MediaCell; aspect?: string; slug: string; bgColor?: string; groupAlt?: string }) {
+  /* A cell's own `alt` wins; otherwise the section's description, which is
+     true of every image in it. Empty only when neither is given, which now
+     means the picture really is decorative. */
+  // `in` rather than `cell.alt`: MediaCell is a union and the video member
+  // has no such field, so reading it before the branch narrows is a type
+  // error — one tsc catches and `next build` does not.
+  const alt = ("alt" in cell && cell.alt) || groupAlt || "";
   if (cell.type === "video") {
     return (
       <div className="relative w-full h-full overflow-hidden bg-black" style={{ aspectRatio: cell.aspect ?? aspect ?? "16/9" }}>
@@ -400,7 +407,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           // eslint-disable-next-line @next/next/no-img-element
           <img
             {...optimised(`/assets/${slug}/${cell.file}`)}
-            alt={cell.alt || ""}
+            alt={alt}
             loading="lazy"
             decoding="async"
             className={`w-full h-full object-cover object-top${cell.invertOnDark ? " invert-on-dark" : ""}`}
@@ -416,7 +423,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
           // eslint-disable-next-line @next/next/no-img-element
           <img
             {...optimised(`/assets/${slug}/${cell.file}`)}
-            alt={cell.alt || ""}
+            alt={alt}
             loading="lazy"
             decoding="async"
             className={`w-full h-auto${cell.invertOnDark ? " invert-on-dark" : ""}`}
@@ -427,7 +434,7 @@ function Cell({ cell, aspect, slug, bgColor }: { cell: MediaCell; aspect?: strin
         <ScaledMedia scale={cell.scale} bgColor={effectiveBg} phoneUnscaled={cell.phoneUnscaled}>
           <Image
             src={`/assets/${slug}/${cell.file}`}
-            alt={cell.alt || ""}
+            alt={alt}
             fill
             quality={IMAGE_QUALITY}
             sizes="(max-width: 640px) 100vw, (max-width: 1440px) 100vw, 1500px"
@@ -476,6 +483,7 @@ export function sectionAnchor(descriptor: string): string {
 export function ProjectGroup({
   slug,
   descriptor,
+  imageAlt,
   rows,
   topGapUnits,
   bgColor,
@@ -484,6 +492,9 @@ export function ProjectGroup({
   slug: string;
   /** Italic serif label at the top of the grouping, e.g. "Times Square Advertisement". Rendered exactly as typed — write it in Title Case. */
   descriptor: string;
+  /** What a screen reader hears for this section's images — see
+   *  ProjectGroupData.imageAlt. */
+  imageAlt?: string;
   rows: MediaRow[];
   /** Optional artboard-unit gap to render above this group (e.g. the 300u
    * gap after the statement block, only needed on the first group). */
@@ -678,7 +689,7 @@ export function ProjectGroup({
                   >
                     {row.cells.map((cell, j) => (
                       <div key={j} className="relative overflow-hidden">
-                        <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} />
+                        <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} groupAlt={imageAlt} />
                         {/* Hairline seam centered in the gap to the right of
                             every cell but the last — matches the artboard's
                             thin black divider sitting inside the white gap. */}
@@ -703,7 +714,7 @@ export function ProjectGroup({
                 >
                   {row.cells.map((cell, j) => (
                     <div key={j} className="relative overflow-hidden">
-                      <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} />
+                      <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} groupAlt={imageAlt} />
                       {j > 0 && (
                         <div
                           className="js-cell-seam absolute top-0 left-0 h-full"

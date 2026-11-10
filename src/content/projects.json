@@ -218,7 +218,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Sprouts Farmers Market advertising on a Times Square billboard"
         },
         {
           "descriptor": "Southern California Campaign",
@@ -260,7 +261,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Sprouts Farmers Market out-of-home advertising across Southern California"
         },
         {
           "descriptor": "Every Day Low Prices Campaign",
@@ -289,7 +291,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Artwork from the Sprouts Farmers Market Every Day Low Prices campaign"
         },
         {
           "descriptor": "Forager Land Art Direction",
@@ -335,7 +338,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Forager Land art direction photography for Sprouts Farmers Market"
         },
         {
           "descriptor": "Sprouts X The Ultimate Human",
@@ -354,10 +358,12 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Sprouts Farmers Market collaboration with The Ultimate Human"
         }
       ]
-    }
+    },
+    "metaDescription": "Brand identity work for Sprouts Farmers Market, pairing fresh imagery with a forager spirit across Times Square, out-of-home and social campaigns."
   },
   {
     "slug": "corita-art-center",
@@ -585,7 +591,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "A spread from the break bread benefit-dinner zine for the Corita Art Center"
         },
         {
           "descriptor": "Social Media",
@@ -636,7 +643,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Social media graphics designed for the Corita Art Center"
         },
         {
           "descriptor": "Merchandising",
@@ -659,7 +667,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Merchandise designed for the Corita Art Center"
         },
         {
           "descriptor": "Gallery Material",
@@ -737,10 +746,12 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Gallery material designed for the Corita Art Center"
         }
       ]
-    }
+    },
+    "metaDescription": "Design for the Corita Art Center — social assets, gallery materials, merchandise and the break bread benefit-dinner zine, first place at the 2026 PRINT Awards."
   },
   {
     "slug": "socal-earth",
@@ -1193,7 +1204,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "The SoCal Earth teaser video"
         },
         {
           "descriptor": "Logo",
@@ -1223,7 +1235,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "The SoCal Earth logo, a cut-paper sun"
         },
         {
           "descriptor": "Website",
@@ -1272,7 +1285,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "The SoCal Earth website"
         },
         {
           "descriptor": "Website Section Illustrations",
@@ -1330,7 +1344,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "A cut-paper illustration from a section of the SoCal Earth website"
         },
         {
           "descriptor": "Ollie The Burrowing Owl",
@@ -1425,7 +1440,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Ollie the burrowing owl, SoCal Earth's mascot"
         },
         {
           "descriptor": "Merchandise",
@@ -1483,10 +1499,13 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "SoCal Earth merchandise"
         }
       ]
-    }
+    },
+    "metaDescription": "A visual identity for SoCal Earth, the Robert Redford Conservancy's environmental data program, built from loose construction paper in the studio.",
+    "ogImage": "Digital Mockup.png"
   },
   {
     "slug": "cultural-olympiad-poster",
@@ -1601,7 +1620,8 @@
               ],
               "phoneWide": true
             }
-          ]
+          ],
+          "imageAlt": "The Cultural Olympiad poster, connecting Paris 2024 to Los Angeles 2028"
         },
         {
           "descriptor": "Animation",
@@ -1616,7 +1636,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "The animation accompanying the Cultural Olympiad poster"
         },
         {
           "descriptor": "Accolades",
@@ -1631,10 +1652,12 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Recognition for the Cultural Olympiad poster"
         }
       ]
-    }
+    },
+    "metaDescription": "A poster and animation connecting the Paris 2024 Olympics to Los Angeles 2028, shown along the Canal Saint-Martin during the Games."
   },
   {
     "slug": "valley-strong-credit-union",
@@ -1853,7 +1876,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Valley Strong Credit Union home loans visual identity, built on minimal house forms"
         },
         {
           "descriptor": "Style Guide Excerpts",
@@ -1940,10 +1964,12 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "An excerpt from the Valley Strong Credit Union style guide"
         }
       ]
-    }
+    },
+    "metaDescription": "A visual identity for Valley Strong Credit Union that reframes loan anxiety as anticipation, built on minimal houses of every size."
   },
   {
     "slug": "more-work",
@@ -2161,7 +2187,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Artwork from Forced Perspective: An Exhibit on Brand"
         },
         {
           "descriptor": "California State Parks - Student Branding Project",
@@ -2397,7 +2424,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Student branding work for California State Parks"
         },
         {
           "descriptor": "THE TRADE SHOW! - Student Art Catalog Project",
@@ -2549,7 +2577,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "A page from the THE TRADE SHOW! student art catalog"
         },
         {
           "descriptor": "The Walt Disney Company - Misc. Projects",
@@ -2588,7 +2617,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Project work for The Walt Disney Company"
         },
         {
           "descriptor": "KDI - Brand Refresh",
@@ -2658,7 +2688,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Brand refresh work for Kounkuey Design Initiative"
         },
         {
           "descriptor": "10 By Ten Entertainment - Startup Visual Identity",
@@ -2757,9 +2788,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "imageAlt": "Visual identity for 10 By Ten Entertainment"
         }
       ]
-    }
+    },
+    "metaDescription": "Thesis, internship and student projects, including Forced Perspective: An Exhibit on Brand — an ArtCenter graduate thesis documented in a 300-page book."
   }
 ]

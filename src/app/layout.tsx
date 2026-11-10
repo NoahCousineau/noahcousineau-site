@@ -12,14 +12,22 @@ import TiltPrimer from "@/components/TiltPrimer";
 import { TILT_INIT_SCRIPT } from "@/lib/tiltInit";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.noahcousineau.com"),
-  /* Tab names, set by Noah on 2026-08-30. The template is "%s" — a bare
-     passthrough — so a page's own title is the whole tab name with nothing
-     appended. Anything without its own title falls back to the default. */
+  /* THE APEX, NOT www (2026-11-09). www already answers 308 to
+     noahcousineau.com, so the site had one home and advertised another:
+     every share card pointed its image and URL at www.noahcousineau.com and
+     took the reader through a redirect to get there. One domain, named once,
+     and `alternates.canonical` on each page below says so to crawlers. */
+  metadataBase: new URL("https://noahcousineau.com"),
+  /* Tab names. Noah set these on 2026-08-30 as a bare "%s" passthrough; the
+     template adds the site name now (2026-11-09, his ask: "Use 'Sprouts
+     Farmers Market — Noah Cousineau' instead of 'Sprouts Farmers Market'").
+     Pages carry only their own name, and the home page's `default` is used
+     as-is — Next does not apply the template to it. */
   title: {
     default: "Noah Cousineau",
-    template: "%s",
+    template: "%s — Noah Cousineau",
   },
+  alternates: { canonical: "/" },
   description:
     "Portfolio of Noah Cousineau, graphic designer and artist based in Los Angeles.",
   openGraph: {

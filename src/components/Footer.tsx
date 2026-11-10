@@ -48,7 +48,11 @@ const RULE_WIDTH = 204.22; // = the sketch's email-column rule length
 
 type LinkItem = { label: string; href: string };
 
-const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
+/* A column is a pair, except the contact one, which is a single since the
+   phone number came out (2026-11-09). Noah: "I also like the idea of
+   removing my phone number" — an Awwwards listing brings scrapers as well
+   as readers, and the email is the way in. */
+const COLUMNS: { x: number; items: [LinkItem] | [LinkItem, LinkItem] }[] = [
   {
     x: 75.47,
     items: [
@@ -96,7 +100,6 @@ const COLUMNS: { x: number; items: [LinkItem, LinkItem] }[] = [
     x: 1630.09,
     items: [
       { label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" },
-      { label: "(862) 520-8040", href: "tel:+18625208040" },
     ],
   },
 ];
@@ -583,6 +586,8 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                 <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
               </Place>
 
+              {col.items[1] && (
+              <>
               <Place x={col.x} y={ROW2_TEXT_Y}>
                 <Link
                   /* Never prefetched: a project link drags that page's
@@ -601,6 +606,8 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
               <Place x={col.x} y={ROW2_RULE_Y} w={RULE_WIDTH}>
                 <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
               </Place>
+              </>
+              )}
             </div>
           ))}
         </Stage>

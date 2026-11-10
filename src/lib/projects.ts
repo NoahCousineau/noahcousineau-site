@@ -28,6 +28,14 @@ export type ProjectMediaRow = {
 
 export type ProjectGroupData = {
   descriptor: string;
+  /* WHAT A SCREEN READER HEARS FOR THIS SECTION'S IMAGES (2026-11-09).
+     Every work image on every project page carried `alt=""` — marked
+     decorative, when on a case-study page the images ARE the case study.
+     One description per section rather than per image: it is accurate for
+     every picture in the section, it is one line to keep true when the
+     images change, and a per-image `alt` on a cell still wins where a
+     picture deserves its own. */
+  imageAlt?: string;
   rows: ProjectMediaRow[];
   bgColor?: string;
 };
@@ -61,6 +69,13 @@ export type Project = {
      rather than restyling `title`, because that string is the hero's
      wordmark and its capitals are the stylisation there. */
   titleCase?: string;
+  /* A SHORT DESCRIPTION WRITTEN FOR SHARING (2026-11-09), rather than the
+     first 160 characters of `intro`, which cut mid-word — the Sprouts page
+     advertised itself as ending "...and not be just ano". */
+  metaDescription?: string;
+  /* The share card's picture, when the `cover` is not usable as one — SoCal
+     Earth's cover is an SVG, which the social platforms do not render. */
+  ogImage?: string;
   disciplines: string[];
   intro: string;
   protected: boolean;

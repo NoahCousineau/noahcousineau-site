@@ -44,7 +44,8 @@ import SuppressAwayScreen from "@/components/SuppressAwayScreen";
  * phone. Both now read their sizes from lib/clockLockup. See NotFoundLockup.
  */
 
-export const metadata = { title: "404 — Noah Cousineau" };
+// The site name is appended by the root title template.
+export const metadata = { title: "404" };
 
 export default function NotFound() {
   return (

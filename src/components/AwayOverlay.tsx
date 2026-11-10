@@ -96,9 +96,10 @@ const IDLE_POLL_MS = 1000;
  * still lands on the clock. */
 const LEAVE_DELAY_MS = 2500;
 
+/* Email only since 2026-11-09 — the phone number came out ahead of an
+   Awwwards listing, which brings scrapers along with the traffic. */
 const CONTACT_LEFT = [
   { label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" },
-  { label: "(862) 520-8040", href: "tel:+18625208040" },
 ];
 const CONTACT_RIGHT = [
   { label: "LinkedIn", href: "https://www.linkedin.com/in/noah-cousineau/" },
