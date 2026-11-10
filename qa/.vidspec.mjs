@@ -11,7 +11,7 @@ await p.waitForTimeout(600);
 const inp = await p.$("input");
 if (inp && PW) { await inp.fill(PW); await inp.press("Enter"); await p.waitForTimeout(1800); }
 
-await p.goto(BASE + "/work/sprouts-farmers-market", { waitUntil: "domcontentloaded" });
+await p.goto(BASE + "/sprouts-farmers-market", { waitUntil: "domcontentloaded" });
 await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(() => {});
 await p.waitForTimeout(2500);
 for (let s = 0; s < 45; s++) { await p.mouse.wheel(0, 1400); await p.waitForTimeout(200); }

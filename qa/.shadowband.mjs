@@ -10,7 +10,7 @@ const b = await chromium.launch({ executablePath: "/Applications/Google Chrome.a
 const p = await (await b.newContext({ viewport: { width: 1902, height: 950 }, deviceScaleFactor: 1 })).newPage();
 await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(400);
 const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1200); }
-await p.goto(`${BASE}/work/sprouts-farmers-market`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
+await p.goto(`${BASE}/sprouts-farmers-market`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
 const band = await p.evaluate(() => { const r = document.querySelector(".proj-bar-rule");
   return r ? Math.round(r.offsetTop) : 71; });
 let worst = { d: 0, at: null, alpha: null };

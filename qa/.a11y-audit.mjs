@@ -11,7 +11,7 @@ const p = await ctx.newPage();
 await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
 const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
 
-for (const path of ["/", "/about", "/work", "/work/sprouts-farmers-market"]) {
+for (const path of ["/", "/about", "/work", "/sprouts-farmers-market"]) {
   await p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(() => {});
   await p.waitForTimeout(2500);

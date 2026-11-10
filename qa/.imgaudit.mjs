@@ -17,7 +17,7 @@ for (const [w, h, tag] of [[390, 844, "phone 390"], [1512, 950, "desktop 1512"]]
   });
   await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(400);
   const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1200); }
-  for (const path of ["/", "/work/sprouts-farmers-market"]) {
+  for (const path of ["/", "/sprouts-farmers-market"]) {
     got.length = 0;
     await p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(() => {});

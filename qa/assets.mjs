@@ -8,7 +8,7 @@
 import { BASE, assertServesSite, withBrowser } from "./harness.mjs";
 import projects from "../src/content/projects.json" with { type: "json" };
 
-await assertServesSite([`/work/${projects[0].slug}`]);
+await assertServesSite([`/${projects[0].slug}`]);
 
 await withBrowser(async (browser) => {
   const ctx = await browser.newContext({ viewport: { width: 1512, height: 900 } });
@@ -17,7 +17,7 @@ await withBrowser(async (browser) => {
   let checked = 0;
 
   for (const { slug } of projects) {
-    await page.goto(`${BASE}/work/${slug}`, {
+    await page.goto(`${BASE}/${slug}`, {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });

@@ -16,9 +16,9 @@ const pages = [
   ["/", "Noah Cousineau", "https://noahcousineau.com/"],
   ["/about", "About — Noah Cousineau", "https://noahcousineau.com/about"],
   ["/work", "Work — Noah Cousineau", "https://noahcousineau.com/work"],
-  ["/work/sprouts-farmers-market", "Sprouts Farmers Market — Noah Cousineau", "https://noahcousineau.com/work/sprouts-farmers-market"],
-  ["/work/socal-earth", "SoCal Earth — Noah Cousineau", "https://noahcousineau.com/work/socal-earth"],
-  ["/work/more-work", "More Work — Noah Cousineau", "https://noahcousineau.com/work/more-work"],
+  ["/sprouts-farmers-market", "Sprouts Farmers Market — Noah Cousineau", "https://noahcousineau.com/sprouts-farmers-market"],
+  ["/socal-earth", "SoCal Earth — Noah Cousineau", "https://noahcousineau.com/socal-earth"],
+  ["/more-work", "More Work — Noah Cousineau", "https://noahcousineau.com/more-work"],
 ];
 const cards = new Set();
 for (const [path, title, canon] of pages) {
@@ -35,7 +35,7 @@ for (const [path, title, canon] of pages) {
   ok(!!m.canonical && !/www\./.test(m.canonical), `${path}: canonical is the apex`, m.canonical || "");
   ok(!!m.og && !/www\./.test(m.og), `${path}: share image on the apex`, (m.og || "").slice(0, 70));
   ok(m.desc.length > 40 && !/\b\w{1,3}$/.test(m.desc.replace(/[.…]$/, "")) , `${path}: description ends on a word`, JSON.stringify(m.desc.slice(-46)));
-  if (m.og && path.startsWith("/work/")) cards.add(m.og.split("?")[0]);
+  if (m.og && path !== "/" && path !== "/about" && path !== "/work") cards.add(m.og.split("?")[0]);
 }
 /* Only the PROJECT pages were ever going to differ — home, about and the
    work index share the site card by design, and counting those made a

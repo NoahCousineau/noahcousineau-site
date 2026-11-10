@@ -14,7 +14,7 @@ for (const [w, h, tag] of [[1512, 950, "desktop"], [390, 844, "phone"]]) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
   const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
-  await p.goto(`${BASE}/work/corita-art-center`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
+  await p.goto(`${BASE}/corita-art-center`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
   const hand = () => p.evaluate(() => {
     const im = [...document.querySelectorAll("img")].find(x => /hand|finger|pointing/i.test(x.src) && !x.closest("footer"));
     if (!im) return null;

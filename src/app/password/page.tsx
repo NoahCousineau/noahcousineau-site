@@ -70,7 +70,10 @@ function Gate() {
 
   const enter = useCallback(() => {
     const from = params.get("from");
-    router.replace(from && from.startsWith("/work") ? from : "/work");
+    /* Any in-site path is a valid place to land now that the case studies
+       are at the root; only an absolute URL is refused, so this cannot be
+       talked into bouncing someone off-site. */
+    router.replace(from && from.startsWith("/") && !from.startsWith("//") ? from : "/work");
     router.refresh();
   }, [params, router]);
 

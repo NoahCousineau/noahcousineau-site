@@ -65,6 +65,24 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  /* THE CASE STUDIES MOVED TO THE ROOT (2026-11-10). Noah: "in the url
+     names, can we remove /work? Instead of noahcousineau.com/work/
+     sprouts-farmers-market it should just be noahcousineau.com/
+     sprouts-farmers-market".
+
+     308 rather than 302 because the old URLs have been live and indexed —
+     a permanent redirect passes the ranking on and tells a crawler to
+     forget the old path, where a temporary one asks it to keep both.
+     /work itself stays: it is still the index, and Projects in the nav
+     still points at it.
+
+     This is also why nothing had to be renamed in projects.json. The slug
+     is unchanged; only the segment in front of it is gone. */
+  async redirects() {
+    return [
+      { source: "/work/:slug", destination: "/:slug", permanent: true },
+    ];
+  },
   /* Don't advertise the framework on every response. It tells an attacker
      which CVE list to work through and buys the site nothing. */
   poweredByHeader: false,

@@ -23,7 +23,7 @@
 import { chromium } from "playwright-core";
 const BASE = process.env.QA_BASE || "http://localhost:3100";
 const b = await chromium.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" });
-const pages = (process.env.PAGES || "/work/cultural-olympiad-poster,/work/socal-earth,/work/corita-art-center").split(",");
+const pages = (process.env.PAGES || "/cultural-olympiad-poster,/socal-earth,/corita-art-center").split(",");
 const REPEATS = Number(process.env.REPEATS || 1);
 const all = [];
 for (let rep = 0; rep < REPEATS; rep++)
@@ -64,7 +64,7 @@ for (const path of pages) {
   const vals = stops.map(s=>s[1]).sort((a,b)=>a-b);
   const worst = stops.slice().sort((a,b)=>b[1]-a[1]).slice(0,3);
   const turnLast = stops.filter(s=>s[3] > s[2] + 150).length;
-  console.log(`  ${path.replace("/work/","").padEnd(26)} median ${String(vals[vals.length>>1]).padStart(4)}ms  max ${String(vals[vals.length-1]).padStart(4)}ms  turning-after-still ${turnLast}/${stops.length}`);
+  console.log(`  ${path.replace(/^\//,"").padEnd(26)} median ${String(vals[vals.length>>1]).padStart(4)}ms  max ${String(vals[vals.length-1]).padStart(4)}ms  turning-after-still ${turnLast}/${stops.length}`);
   worst.forEach(w=>console.log(`      ${w[0].padEnd(22)} stops ${String(w[1]).padStart(4)}ms   (last slide ${w[2]}ms, last turn ${w[3]}ms)`));
   await ctx.close();
 }

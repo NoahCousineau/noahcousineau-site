@@ -160,7 +160,7 @@ console.log("\n  phone 390x844 — the head is gone, the mark is loose");
   await ctx.close(); }
 
 { // A project page footer has the finger and no mark.
-  const {ctx,p}=await open("/work/socal-earth",390,844);
+  const {ctx,p}=await open("/socal-earth",390,844);
   await toBottom(p);
   const c=await p.evaluate(()=>!!document.querySelector('footer a[aria-label="About me"] svg'));
   const hand=await p.evaluate(()=>[...document.querySelectorAll("footer img")].some(i=>/hand|finger|pointing/i.test(i.src)));
@@ -206,7 +206,7 @@ console.log("\n  three desktop pages in a row, each reached by clicking a link")
        measured the SAME page twice and read a settling thrown mark as "it
        was already rolled in on arrival". Click the words, with a real
        mouse, and skip anything aria-hidden. */
-    const href=await p.evaluate(()=>{ const a=[...document.querySelectorAll('a[href^="/work/"]:not([aria-hidden])')].find(a=>a.getBoundingClientRect().width>0); return a&&a.getAttribute("href"); });
+    const href=await p.evaluate(()=>{ const a=[...document.querySelectorAll('a[href^="/"]:not([href="/"]):not([href="/about"]):not([href="/work"]):not([aria-hidden])')].find(a=>a.getBoundingClientRect().width>0); return a&&a.getAttribute("href"); });
     if(!href){ ok(false, `page ${step}: no project link to click`); break; }
     /* Dispatched on the element rather than aimed at its coordinates: the
        mark has just been thrown and can be lying on top of the link, and a
@@ -226,7 +226,7 @@ console.log("\n  three desktop pages in a row, each reached by clicking a link")
 }
 
 console.log("\n  the finger still works on a desktop project page");
-{ const {ctx,p,errs}=await open("/work/socal-earth",1512,982);
+{ const {ctx,p,errs}=await open("/socal-earth",1512,982);
   await toBottom(p);
   const hand=await p.evaluate(()=>{
     const i=[...document.querySelectorAll("footer img")].find(x=>/hand|finger|pointing/i.test(x.src));
@@ -257,7 +257,7 @@ console.log("\n  the finger still works on a desktop project page");
   await p.mouse.up();
   for(let k=0;k<15;k++){ const s=await handBox(); if(s) hpeak=Math.max(hpeak,Math.abs(s.x-h0.x)); await p.waitForTimeout(100); }
   ok(hpeak>150, "and it can be thrown", `peak ${Math.round(hpeak)}px away`);
-  ok(new URL(p.url()).pathname==="/work/socal-earth", "throwing it does not follow the link", new URL(p.url()).pathname);
+  ok(new URL(p.url()).pathname==="/socal-earth", "throwing it does not follow the link", new URL(p.url()).pathname);
   ok(errs.length===0, "no page errors", errs.join("; "));
   await p.screenshot({path:`${OUT}/clogo-project.png`});
   await ctx.close(); }
@@ -268,7 +268,7 @@ console.log("\n  the finger still works on a desktop project page");
  * to be one-shot: the hand fell the first time and never again, and the
  * mark stopped obeying the scroll the moment it was picked up. */
 console.log("\n  leaving the footer and coming back");
-{ const {ctx,p,errs}=await open("/work/socal-earth",1512,982);
+{ const {ctx,p,errs}=await open("/socal-earth",1512,982);
   const hand=()=>p.evaluate(()=>{ const im=document.querySelector('footer [aria-hidden] img[src*="pointing-hand"]');
     if(!im) return null; const e=im.parentElement, r=e.getBoundingClientRect();
     const m=new DOMMatrixReadOnly(getComputedStyle(e).transform);
@@ -304,7 +304,7 @@ console.log("\n  leaving the footer and coming back");
  * Measured on the build before the toppling torque, four throws came to
  * rest at 93, 75, 280 and 122 degrees — standing on an end every time. */
 console.log("\n  thrown hard, does it come to rest like a thing that fell?");
-{ const {ctx,p}=await open("/work/socal-earth",1512,982);
+{ const {ctx,p}=await open("/socal-earth",1512,982);
   const hand=()=>p.evaluate(()=>{ const im=document.querySelector('footer [aria-hidden] img[src*="pointing-hand"]');
     const e=im.parentElement, r=e.getBoundingClientRect();
     const m=new DOMMatrixReadOnly(getComputedStyle(e).transform);
@@ -361,7 +361,7 @@ console.log("\n  catching the C mark mid-roll");
  * because a border cannot hold a fractional width: Chrome rounded 1.57px
  * down to 1. It is a div now, like the others. */
 console.log("\n  the footer's rules, on desktop");
-{ const {ctx,p}=await open("/work/socal-earth",1512,982);
+{ const {ctx,p}=await open("/socal-earth",1512,982);
   await toBottom(p);
   const d=await p.evaluate(()=>{
     const hs=[];

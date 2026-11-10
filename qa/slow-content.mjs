@@ -16,7 +16,7 @@ const BASE = process.env.QA_BASE || "http://localhost:3100";
 const CHROME =
   process.env.QA_CHROME ||
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const PAGES = (process.env.QA_PAGES || "/,/about,/work/socal-earth").split(",");
+const PAGES = (process.env.QA_PAGES || "/,/about,/socal-earth").split(",");
 const KBPS = Number(process.env.QA_KBPS || 700);
 const LATENCY = Number(process.env.QA_LATENCY || 250);
 

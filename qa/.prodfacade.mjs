@@ -21,7 +21,7 @@ const inp = await p.$("input");
 if (inp && PW) { await inp.fill(PW); await inp.press("Enter"); await p.waitForTimeout(1800); }
 
 yt = 0; ytBytes = 0;
-await p.goto(BASE + "/work/sprouts-farmers-market", { waitUntil: "domcontentloaded" });
+await p.goto(BASE + "/sprouts-farmers-market", { waitUntil: "domcontentloaded" });
 await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(() => {});
 await p.waitForTimeout(2500);
 for (let s = 0; s < 40; s++) { await p.mouse.wheel(0, 1400); await p.waitForTimeout(220); }

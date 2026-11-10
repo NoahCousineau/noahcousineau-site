@@ -21,7 +21,7 @@ const PW = process.env.SITE_PASSWORD;
 const BASE = process.env.QA_BASE || "http://localhost:3000";
 const PAGES = process.argv[2]
   ? [process.argv[2]]
-  : ["/work/socal-earth", "/work/sprouts-farmers-market", "/work/corita-art-center", "/work/more-work"];
+  : ["/socal-earth", "/sprouts-farmers-market", "/corita-art-center", "/more-work"];
 const WIDTH = Number(process.argv[3] || 1400);
 
 const browser = await chromium.launch({

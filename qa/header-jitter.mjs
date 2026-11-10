@@ -41,10 +41,10 @@ const CHROME =
 const PAGES = process.env.QA_PAGES
   ? process.env.QA_PAGES.split(",")
   : [
-      "/work/socal-earth",
-      "/work/sprouts-farmers-market",
-      "/work/corita-art-center",
-      "/work/more-work",
+      "/socal-earth",
+      "/sprouts-farmers-market",
+      "/corita-art-center",
+      "/more-work",
     ];
 const THROWS = Number(process.env.QA_THROWS || 6);
 const ROUNDS = Number(process.env.QA_ROUNDS || 2);

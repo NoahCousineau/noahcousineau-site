@@ -7,7 +7,7 @@ const bad = [];
 p.on("response", r => { if (r.status() >= 400 && !/youtube|ytimg|google/i.test(r.url())) bad.push(r.status()+" "+decodeURIComponent(r.url()).replace("http://localhost:3000","")); });
 await p.goto("http://localhost:3000/password",{waitUntil:"domcontentloaded"}); await p.waitForTimeout(400);
 const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1200); }
-const pages = ["/","/about","/work","/work/sprouts-farmers-market","/work/corita-art-center","/work/socal-earth","/work/cultural-olympiad-poster","/work/valley-strong-credit-union","/work/more-work"];
+const pages = ["/","/about","/work","/sprouts-farmers-market","/corita-art-center","/socal-earth","/cultural-olympiad-poster","/valley-strong-credit-union","/more-work"];
 for (const u of pages) {
   bad.length = 0;
   await p.goto("http://localhost:3000"+u,{waitUntil:"domcontentloaded"});

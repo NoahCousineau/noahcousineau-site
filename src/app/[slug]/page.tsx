@@ -30,14 +30,19 @@ const FIRST_GROUP_TOP_GAP_UNITS = 780;
 
 /* TAB NAMES, given by Noah on 2026-08-30. Kept as their own map rather than
  * derived from `project.title`, because that field is the DISPLAY title —
- * set in caps for the page's own lockup ("SPROUTS FARMERS MARKET"), and it
- * carries "POSTER" on the Cultural Olympiad, which he does not want in the
- * tab. Two different jobs, two different strings. */
+ * set in caps for the page's own lockup ("SPROUTS FARMERS MARKET") — while
+ * these are title case for a browser tab. Two different jobs, two different
+ * strings.
+ *
+ * 2026-11-10: the Cultural Olympiad entry used to drop "Poster" here, which
+ * was Noah's 2026-08-30 preference. He has since asked for "cultural
+ * olympiad poster" at every touchpoint, so it carries the full name now —
+ * don't trim it back. */
 const TAB_TITLES: Record<string, string> = {
   "sprouts-farmers-market": "Sprouts Farmers Market",
   "corita-art-center": "Corita Art Center",
   "socal-earth": "SoCal Earth",
-  "cultural-olympiad-poster": "Cultural Olympiad",
+  "cultural-olympiad-poster": "Cultural Olympiad Poster",
   "valley-strong-credit-union": "Valley Strong Credit Union",
   "more-work": "More Work",
 };
@@ -48,7 +53,7 @@ export function generateStaticParams() {
 
 // Next.js 16: params is a Promise.
 export async function generateMetadata(
-  props: PageProps<"/work/[slug]">
+  props: PageProps<"/[slug]">
 ): Promise<Metadata> {
   const { slug } = await props.params;
   const project = getProject(slug);
@@ -77,11 +82,11 @@ export async function generateMetadata(
   return {
     title,
     description,
-    alternates: { canonical: `/work/${slug}` },
+    alternates: { canonical: `/${slug}` },
     openGraph: {
       title: `${title} — Noah Cousineau`,
       description,
-      url: `/work/${slug}`,
+      url: `/${slug}`,
       images: [{ url: cover }],
     },
   };
@@ -95,7 +100,7 @@ function trimToWord(text: string, max: number): string {
   return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:—-]+$/, "")}…`;
 }
 
-export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
+export default async function ProjectPage(props: PageProps<"/[slug]">) {
   const { slug } = await props.params;
   const project = getProject(slug);
   if (!project) notFound();
@@ -108,7 +113,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
       style={{ fontSize: "var(--text-caption)" }}
     >
       {prev ? (
-        <Link href={`/work/${prev.slug}`} className="hover:opacity-60 transition-opacity">
+        <Link href={`/${prev.slug}`} className="hover:opacity-60 transition-opacity">
           ← {prev.title}
         </Link>
       ) : (
@@ -121,7 +126,7 @@ export default async function ProjectPage(props: PageProps<"/work/[slug]">) {
         All work
       </Link>
       {next ? (
-        <Link href={`/work/${next.slug}`} className="text-right hover:opacity-60 transition-opacity">
+        <Link href={`/${next.slug}`} className="text-right hover:opacity-60 transition-opacity">
           {next.title} →
         </Link>
       ) : (

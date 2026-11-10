@@ -37,7 +37,7 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
   const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
-  await p.goto(`${BASE}/work/corita-art-center`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
+  await p.goto(`${BASE}/corita-art-center`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
   /* Stop the moment a header pins. Scrolling to the bottom first finds
      nothing: the phone page is 9534 tall and its four headers pin between
      2042 and 6807, so a long flick lands past all of them. */
@@ -158,7 +158,7 @@ console.log("\n  desktop 1902 — the header fading in with the first section");
   const p = await ctx.newPage();
   await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
   const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
-  await p.goto(`${BASE}/work/sprouts-farmers-market`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
+  await p.goto(`${BASE}/sprouts-farmers-market`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
   const st = () => p.evaluate(() => { const g = (s) => { const e = document.querySelector(s); if (!e) return null;
     const cs = getComputedStyle(e); return { op: +cs.opacity, fs: cs.fontSize, fw: cs.fontWeight }; };
     return { strip: g(".proj-bar-head"), first: g(".proj-bar-fade"), title: g(".proj-bar-title"),
@@ -212,7 +212,7 @@ console.log("\n  phone 390 — the longest section names on the site");
   const p = await ctx.newPage();
   await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
   const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
-  await p.goto(`${BASE}/work/more-work`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
+  await p.goto(`${BASE}/more-work`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2200);
   const seen = new Map();
   for (let k = 0; k < 400 && seen.size < 6; k++) {
     await p.mouse.wheel(0, 400); await p.waitForTimeout(45);
@@ -259,7 +259,7 @@ for (const [w, h, tag] of [[1902, 950, "desktop"], [390, 844, "phone"]]) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}/password`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(500);
   const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1400); }
-  await p.goto(`${BASE}/work/socal-earth`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
+  await p.goto(`${BASE}/socal-earth`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
   const d = await p.evaluate(() => {
     const all = [...document.querySelectorAll("section.sticky")];
     return all.map(e => { const cs = getComputedStyle(e);

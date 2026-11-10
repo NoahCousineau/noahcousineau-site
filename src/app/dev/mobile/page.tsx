@@ -37,7 +37,7 @@ export default function DevMobilePage() {
     /* Not a route in the real site — see app/dev/clock, which exists purely
        so this bench has something to point a frame at. */
     { href: "/dev/clock", label: "Clock screen" },
-    ...projects.map((p) => ({ href: `/work/${p.slug}`, label: p.title })),
+    ...projects.map((p) => ({ href: `/${p.slug}`, label: p.title })),
   ];
 
   return <MobilePreview routes={routes} />;

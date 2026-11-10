@@ -12,7 +12,7 @@ p.on("response", async (r) => {
 await p.goto("http://localhost:3000/password", { waitUntil: "domcontentloaded" }); await p.waitForTimeout(400);
 const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1200); }
 yt = 0; ytBytes = 0;
-await p.goto("http://localhost:3000/work/sprouts-farmers-market", { waitUntil: "domcontentloaded" });
+await p.goto("http://localhost:3000/sprouts-farmers-market", { waitUntil: "domcontentloaded" });
 await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(()=>{});
 await p.waitForTimeout(2500);
 for (let s = 0; s < 40; s++) { await p.mouse.wheel(0, 1400); await p.waitForTimeout(250); }

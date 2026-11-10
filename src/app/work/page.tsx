@@ -27,7 +27,7 @@ export default function WorkIndex() {
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-(--gutter) list-none p-0 m-0">
         {projects.map((p) => (
           <li key={p.slug}>
-            <Link href={`/work/${p.slug}`} className="group block">
+            <Link href={`/${p.slug}`} className="group block">
               {p.cover && (
                 <div className="overflow-hidden bg-black/5 aspect-[4/3]">
                   <Image

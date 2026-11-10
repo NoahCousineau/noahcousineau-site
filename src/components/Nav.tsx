@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { projectSlugFromPath } from "@/lib/projects";
 import { useState } from "react";
 
 const NAV = [
@@ -13,7 +14,7 @@ const NAV = [
 export default function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const onWork = pathname?.startsWith("/work");
+  const onWork = pathname === "/work" || projectSlugFromPath(pathname ?? "") !== null;
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 mix-blend-difference text-white">

@@ -5,7 +5,7 @@ const b = await chromium.launch({ executablePath: "/Applications/Google Chrome.a
 const p = await (await b.newContext({ viewport:{width:1512,height:950} })).newPage();
 await p.goto("http://localhost:3000/password",{waitUntil:"domcontentloaded"}); await p.waitForTimeout(500);
 const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1500); }
-for (const u of ["/","/about","/work","/work/sprouts-farmers-market"]) {
+for (const u of ["/","/about","/work","/sprouts-farmers-market"]) {
   await p.goto("http://localhost:3000"+u,{waitUntil:"domcontentloaded"});
   await p.waitForFunction(()=>!document.querySelector("[data-page-loader]"),null,{timeout:60000}).catch(()=>{});
   await p.waitForTimeout(2000);

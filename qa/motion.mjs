@@ -26,7 +26,7 @@ const CHROME =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const PAGES = (
   process.env.QA_PAGES ||
-  "/,/about,/work,/work/socal-earth,/work/sprouts-farmers-market,/work/corita-art-center,/work/cultural-olympiad-poster,/work/valley-strong-credit-union,/work/more-work"
+  "/,/about,/work,/socal-earth,/sprouts-farmers-market,/corita-art-center,/cultural-olympiad-poster,/valley-strong-credit-union,/more-work"
 ).split(",");
 
 const PRECHECK = PAGES;

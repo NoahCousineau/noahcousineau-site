@@ -31,7 +31,7 @@ for (const [w, h, tag] of [[390, 844, "phone  "], [1512, 950, "desktop"]]) {
   if (inp && PW) { await inp.fill(PW); await inp.press("Enter"); await p.waitForTimeout(1800); }
 
   console.log(`\n=== ${tag} @ ${BASE} ===`);
-  for (const u of ["/", "/about", "/work", "/work/sprouts-farmers-market"]) {
+  for (const u of ["/", "/about", "/work", "/sprouts-farmers-market"]) {
     bad.length = 0; imgBytes = 0; imgN = 0; ytN = 0; ytBytes = 0;
     await p.goto(BASE + u, { waitUntil: "domcontentloaded" });
     await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(() => {});

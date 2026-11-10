@@ -89,14 +89,14 @@ const PROBE = `(() => {
      text anchors that contain no images at all, and an earlier version of
      this probe dutifully reported every one of them as a blank tile on every
      sample — 300-odd failures that were all the footer being the footer. */
-  const tiles = [...document.querySelectorAll('a[href^="/work/"]')].filter(
+  const tiles = [...document.querySelectorAll('a[href^="/"]:not([href="/"]):not([href="/about"]):not([href="/work"]):not([href^="/assets"])')].filter(
     (a) => !a.closest("footer") && a.querySelector("img")
   );
   for (const t of tiles) {
     const r = t.getBoundingClientRect();
     if (r.bottom < 8 || r.top > vh - 8 || r.width < 4 || r.height < 4) continue;
     out.visibleTiles++;
-    const label = (t.getAttribute("href") || "?").replace("/work/", "");
+    const label = (t.getAttribute("href") || "?").replace(/^\//, "");
     const imgs = [...t.querySelectorAll("img")];
     const drawn = imgs.filter((i) => {
       if (!i.complete || !i.naturalWidth) return false;

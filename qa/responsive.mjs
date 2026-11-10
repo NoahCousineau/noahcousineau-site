@@ -8,9 +8,9 @@ import { BASE, assertServesSite, withBrowser } from "./harness.mjs";
 
 const SIZES = { mobile: [390, 844], tablet: [834, 1112], desktop: [1512, 900] };
 /* Real slugs only — the preflight below now enforces that. This list carried
-   "/work/nobody-cares" long after that project was removed, so a fifth of
+   "/nobody-cares" long after that project was removed, so a fifth of
    every run was measuring the 404 page and reporting it clean. */
-const ROUTES = ["/", "/about", "/work", "/work/socal-earth", "/work/more-work"];
+const ROUTES = ["/", "/about", "/work", "/socal-earth", "/more-work"];
 
 await assertServesSite(ROUTES);
 

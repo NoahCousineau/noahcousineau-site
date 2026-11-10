@@ -18,7 +18,7 @@ for (const [slug, must] of [
   ["cultural-olympiad-poster", ["Canal Saint-Martin", "cheap souvenir"]],
   ["more-work", ["300-page book"]],
 ]) {
-  await p.goto(`${BASE}/work/${slug}`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(1800);
+  await p.goto(`${BASE}/${slug}`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(1800);
   const text = await p.evaluate(() => document.body.innerText);
   for (const phrase of must) ok(text.includes(phrase), `${slug}: "${phrase.slice(0, 26)}…"`);
   if (slug === "corita-art-center") {
@@ -30,7 +30,7 @@ for (const [slug, must] of [
 }
 
 /* the More Work links scroll to their sections */
-await p.goto(`${BASE}/work/more-work`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
+await p.goto(`${BASE}/more-work`, { waitUntil: "domcontentloaded", timeout: 90000 }); await p.waitForTimeout(2000);
 const links = await p.evaluate(() => [...document.querySelectorAll('a[href^="#"]')]
   .map(a => ({ text: a.textContent.trim(), id: a.getAttribute("href").slice(1) })));
 ok(links.length === 6, "six project links in the copy", links.map(l => l.text).join(", "));

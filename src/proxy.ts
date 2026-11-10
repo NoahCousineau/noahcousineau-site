@@ -24,5 +24,22 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // gate /work and every project page; leave home/about password-free
-  matcher: ["/work", "/work/:slug*"],
+  /* The case studies are at the root as of 2026-11-10, so there is no
+     prefix left to match on. This gates /work plus every top-level path
+     that is NOT one of the site's own pages or a static file — which is
+     exactly the set of project slugs, without having to list them here and
+     keep that list in step with projects.json.
+
+     The `.+` matters: it makes the pattern need at least one character, so
+     the home page is not caught by it. about, password, api and dev are
+     named because they are real routes that must stay open; anything with
+     a dot in it is a file (/favicon.ico, /opengraph-image.png, and the
+     whole of /assets).
+
+     Still inert while GATE_ENABLED is false — this keeps the switch honest
+     rather than leaving it pointed at paths that no longer exist. */
+  matcher: [
+    "/work",
+    "/((?!about|password|api|dev|_next|_vercel|assets|videos|images|fonts|.*\\.).+)",
+  ],
 };

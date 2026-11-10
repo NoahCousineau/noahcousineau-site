@@ -9,7 +9,7 @@ p.on("pageerror", e => errs.push(String(e).slice(0,100)));
 await p.goto("http://localhost:3000/password",{waitUntil:"domcontentloaded"}); await p.waitForTimeout(500);
 const i = await p.$("input"); if (i && PW) { await i.fill(PW); await i.press("Enter"); await p.waitForTimeout(1500); }
 console.log("=== prefers-reduced-motion: reduce ===");
-for (const u of ["/","/about","/work","/work/sprouts-farmers-market"]) {
+for (const u of ["/","/about","/work","/sprouts-farmers-market"]) {
   await p.goto("http://localhost:3000"+u,{waitUntil:"domcontentloaded"});
   await p.waitForFunction(()=>!document.querySelector("[data-page-loader]"),null,{timeout:60000}).catch(()=>{});
   await p.waitForTimeout(2500);

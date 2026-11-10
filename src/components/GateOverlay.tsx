@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { projectSlugFromPath } from "@/lib/projects";
 import PasswordHand, { usePasswordArtboard } from "./PasswordHand";
 import { GATE_ENABLED, UI_HINT } from "@/lib/gate";
 
@@ -54,7 +55,11 @@ export default function GateOverlay() {
       const el = (e.target as HTMLElement | null)?.closest?.("a");
       if (!el) return;
       const href = el.getAttribute("href");
-      if (!href || !href.startsWith("/work")) return;
+      /* /work is still the index; the case studies moved to the root on
+         2026-11-10, so a bare slug has to be checked against the project
+         list — otherwise this would intercept /about too. */
+      if (!href) return;
+      if (href !== "/work" && projectSlugFromPath(href) === null) return;
       if (el.getAttribute("target") === "_blank") return;
       if (unlocked()) return;
 

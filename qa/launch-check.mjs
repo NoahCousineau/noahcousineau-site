@@ -2,7 +2,7 @@
  * requests. The things a visitor would hit that a layout audit cannot see. */
 import { chromium } from "playwright-core";
 const PW=process.env.SITE_PASSWORD, B="http://localhost:3100";
-const PAGES=["/","/about","/work","/work/sprouts-farmers-market","/work/corita-art-center","/work/socal-earth","/work/cultural-olympiad-poster","/work/valley-strong-credit-union","/work/more-work","/no-such-page"];
+const PAGES=["/","/about","/work","/sprouts-farmers-market","/corita-art-center","/socal-earth","/cultural-olympiad-poster","/valley-strong-credit-union","/more-work","/no-such-page"];
 const WIDTHS=[390,900,1512];
 const b=await chromium.launch({executablePath:"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"});
 let jsErr=0, hyd=0, netFail=0, loads=0; const details=[];

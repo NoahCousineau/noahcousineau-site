@@ -22,7 +22,7 @@ await p.waitForTimeout(600);
 const inp = await p.$("input");
 if (inp && PW) { await inp.fill(PW); await inp.press("Enter"); await p.waitForTimeout(1800); }
 
-for (const page of ["/work/sprouts-farmers-market", "/"]) {
+for (const page of ["/sprouts-farmers-market", "/"]) {
   vids = new Map(); other = 0;
   await p.goto(BASE + page, { waitUntil: "domcontentloaded" });
   await p.waitForFunction(() => !document.querySelector("[data-page-loader]"), null, { timeout: 60000 }).catch(() => {});

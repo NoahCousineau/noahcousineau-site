@@ -24,11 +24,11 @@ const PW = process.env.SITE_PASSWORD;
 const BASE = process.env.QA_BASE || "http://localhost:3000";
 const PAGES = [
   "/", "/about", "/work",
-  "/work/socal-earth",
-  "/work/cultural-olympiad-poster",
-  "/work/sprouts-farmers-market",
-  "/work/corita-art-center",
-  "/work/more-work",
+  "/socal-earth",
+  "/cultural-olympiad-poster",
+  "/sprouts-farmers-market",
+  "/corita-art-center",
+  "/more-work",
   "/no-such-page",
 ];
 const WIDTHS = [390, 900, 1512];

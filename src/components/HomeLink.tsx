@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { projectSlugFromPath } from "@/lib/projects";
 
 /**
  * A way back to the home page, mirroring the theme toggle.
@@ -45,7 +46,7 @@ import { usePathname } from "next/navigation";
  * everything else rather than fading against a dark background. */
 export default function HomeLink() {
   const pathname = usePathname() ?? "";
-  const show = pathname === "/about" || pathname.startsWith("/work/");
+  const show = pathname === "/about" || projectSlugFromPath(pathname) !== null;
   if (!show) return null;
 
   return (

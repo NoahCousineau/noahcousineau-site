@@ -49,7 +49,7 @@ const CELLS: Cell[] = [
   { slug: "sprouts-farmers-market", line1: "sprouts", line2: "farmers market", disciplines: "print design · motion design · art direction" },
   { slug: "corita-art-center", line1: "corita", line2: "art center", disciplines: "print design · social media · art direction" },
   { slug: "socal-earth", line1: "socal", line2: "earth", disciplines: "visual identity · brand strategy · web design" },
-  { slug: "cultural-olympiad-poster", line1: "cultural", line2: "olympiad", disciplines: "poster · motion design · design contest" },
+  { slug: "cultural-olympiad-poster", line1: "cultural", line2: "olympiad poster", disciplines: "poster · motion design · design contest" },
   { slug: "valley-strong-credit-union", line1: "valley strong", line2: "credit union", disciplines: "visual identity · style guide · marketing" },
   // BUGFIX (2026-08-20, per Noah: "make sure the 'more work' link on the
   // home page goes to the correct more work page"): this tile used to rely
@@ -59,7 +59,7 @@ const CELLS: Cell[] = [
   // content. `isIndex` is kept only for its non-routing behavior (it
   // suppresses the slug-based hover video lookup); the destination is now
   // stated explicitly here.
-  { slug: "other", line1: "more", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true, href: "/work/more-work" },
+  { slug: "other", line1: "more", line2: "work", disciplines: "artwork · commentary · visual identity", isIndex: true, href: "/more-work" },
 ];
 
 // artboard coords — make columns 918u wide, symmetrical around divider
@@ -165,7 +165,7 @@ function Cell({ cell, index, widthUnits, heightUnits, phone }: { cell: Cell; ind
   } else if (!cell.isIndex) {
     vid = HOVER_VIDEO[cell.slug] || null;
   }
-  const href = cell.href ?? (cell.isIndex ? "/work" : `/work/${cell.slug}`);
+  const href = cell.href ?? (cell.isIndex ? "/work" : `/${cell.slug}`);
   
   // Sprouts gets extra zoom (2x = 220%)
   const isSpouts = cell.slug === "sprouts-farmers-market";

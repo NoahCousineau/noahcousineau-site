@@ -56,22 +56,22 @@ const COLUMNS: { x: number; items: [LinkItem] | [LinkItem, LinkItem] }[] = [
   {
     x: 75.47,
     items: [
-      { label: "sprouts farmers market", href: "/work/sprouts-farmers-market" },
-      { label: "corita art center", href: "/work/corita-art-center" },
+      { label: "sprouts farmers market", href: "/sprouts-farmers-market" },
+      { label: "corita art center", href: "/corita-art-center" },
     ],
   },
   {
     x: 296.24,
     items: [
-      { label: "socal earth", href: "/work/socal-earth" },
-      { label: "cultural olympiad", href: "/work/cultural-olympiad-poster" },
+      { label: "socal earth", href: "/socal-earth" },
+      { label: "cultural olympiad poster", href: "/cultural-olympiad-poster" },
     ],
   },
   {
     x: THIRD_COLUMN_X,
     items: [
-      { label: "valley strong credit union", href: "/work/valley-strong-credit-union" },
-      { label: "more work", href: "/work/more-work" },
+      { label: "valley strong credit union", href: "/valley-strong-credit-union" },
+      { label: "more work", href: "/more-work" },
     ],
   },
   /* ABOUT/RÉSUMÉ MOVED LEFT TO MAKE ROOM (2026-10-17). Noah: "Insert the

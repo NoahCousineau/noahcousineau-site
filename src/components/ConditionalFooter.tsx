@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Footer from "./Footer";
-import { getAdjacent } from "@/lib/projects";
+import { getAdjacent, projectSlugFromPath } from "@/lib/projects";
 
 /**
  * The About page used to be excluded here because it carried its own
@@ -26,9 +26,11 @@ export default function ConditionalFooter() {
   /* The gate is a single non-scrolling screen with a hand over it; there is
    * nothing below to put a footer under. */
   if (pathname === "/password") return null;
-  const match = pathname.match(/^\/work\/([^/]+)$/);
-  const slug = match?.[1];
+  /* Project pages are at the root now, so this asks the project list
+     rather than matching a /work/ prefix — /about and /work are not
+     projects and fall through to `undefined`, which is what they always did. */
+  const slug = projectSlugFromPath(pathname);
   const next = slug ? getAdjacent(slug).next : undefined;
 
-  return <Footer nextProjectHref={next ? `/work/${next.slug}` : undefined} />;
+  return <Footer nextProjectHref={next ? `/${next.slug}` : undefined} />;
 }

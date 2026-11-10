@@ -26,7 +26,7 @@ import { chromium } from "playwright-core";
 import { readFileSync } from "node:fs";
 
 const B = process.env.QA_BASE || "http://localhost:3000";
-const PAGES = ["/", "/work/socal-earth"];
+const PAGES = ["/", "/socal-earth"];
 
 for (const path of PAGES) {
   let res;

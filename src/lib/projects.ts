@@ -137,3 +137,19 @@ export function getAdjacent(slug: string) {
     next: projects[(i + 1) % projects.length],
   };
 }
+
+/* IS THIS PATH A PROJECT PAGE? (2026-11-10)
+   Project pages moved from /work/<slug> to /<slug>, so "am I on a project"
+   is no longer a prefix test — a bare slug at the root looks exactly like
+   /about or /work until you check it against the real list. Everything that
+   used to ask `pathname.startsWith("/work/")` asks this instead.
+
+   Takes the whole pathname rather than a slug so no caller has to remember
+   to strip the leading slash, and so a nested path (/foo/bar) is rejected
+   rather than silently matching on its first segment. */
+export function projectSlugFromPath(pathname: string): string | null {
+  const m = /^\/([^/]+)\/?$/.exec(pathname);
+  if (!m) return null;
+  const slug = m[1];
+  return getProject(slug) ? slug : null;
+}
