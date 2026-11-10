@@ -296,7 +296,26 @@ export default function RagdollHead({
   useEffect(() => {
     let cancelled = false;
     const img = new window.Image();
-    img.src = headSrc;
+    /* Through the optimiser, not straight at the file (2026-11-09).
+       Everything below reads the alpha channel after redrawing the artwork
+       at W = 200, so a 200-pixel-wide copy carries every bit of information
+       this measurement can use — and the original is a 2.6MB PNG, which was
+       about ninety per cent of the about page's image weight, downloaded so
+       that a canvas could throw nearly all of it away.
+
+       q=100 because the thing being measured IS the alpha edge: there is no
+       reason to hand a lossy edge to a threshold test when the file is a few
+       kilobytes either way.
+
+       The fallback matters for review builds, where `unoptimized` turns the
+       /_next/image endpoint off and the request below 400s; then we just
+       fetch the file as before. */
+    let usedOriginal = false;
+    img.onerror = () => {
+      if (usedOriginal || cancelled) return;
+      usedOriginal = true;
+      img.src = headSrc;
+    };
     img.onload = () => {
       if (cancelled) return;
       const W = 200;
@@ -408,6 +427,8 @@ export default function RagdollHead({
       if (interacted.current) asleep.current = false;
       else needsSnap.current = true;
     };
+    img.src = `/_next/image?url=${encodeURIComponent(headSrc)}&w=256&q=100`;
+
     return () => {
       cancelled = true;
     };

@@ -244,6 +244,8 @@ export default function ScrollCue() {
               alt=""
               width={ART_W}
               height={ART_H}
+              /* 39px on a phone, 76px on a desktop — it was fetching w=828. */
+              sizes="(max-width: 767px) 11vw, 6vw"
               /* Decoded long before it is ever shown. It is 22KB, and the
                  alternative is the browser fetching and decoding it at the
                  moment the animation starts, which is exactly when it must

@@ -78,6 +78,20 @@ const nextConfig: NextConfig = {
     // (Next.js caps at 100, so this becomes 100; registered here for clarity)
     // 85 is what the grids ask for now — see IMAGE_QUALITY in ProjectGroup.
     qualities: [75, 85, 100],
+    /* A RUNG AT 2560 (2026-11-09). Next's default ladder steps 2048 -> 3840,
+       and a full-width picture on a retina 1512 desktop needs about 2480 —
+       so it took the 3840, nearly twice the pixels in each direction for
+       nothing. Seven images on the Sprouts page were doing it. Purely
+       additive: nothing is served smaller than it was, the ladder just has
+       a step where this site actually lands.
+
+       AVIF ahead of WebP for the same reason the reviewer gives for
+       converting the source files — except the optimiser can do it per
+       request, so the originals stay editable and every size benefits, not
+       only the ones someone remembered to convert. Browsers that cannot
+       read it still get WebP. */
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 2560, 3840],
+    formats: ["image/avif", "image/webp"],
     ...(reviewBuild ? { unoptimized: true } : {}),
   },
   ...(reviewBuild ? { output: "export" as const } : {}),

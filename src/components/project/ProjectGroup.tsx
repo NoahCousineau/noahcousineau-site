@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { InViewVideo } from "./InViewVideo";
+import { YouTubeFacade } from "./YouTubeFacade";
 import { Stage } from "@/components/Stage";
 import StackedSection from "./StackedSection";
 import { videoSrc } from "@/lib/videoSrc";
@@ -89,7 +90,7 @@ export type MediaCell =
       bgColor?: string;
     }
   | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean; objectFit?: "cover" | "contain"; phoneUnscaled?: boolean }
-  | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number; phoneUnscaled?: boolean };
+  | { type: "youtube"; id: string; poster?: string; aspect?: string; scale?: number; colWidth?: number; phoneUnscaled?: boolean };
 
 export type MediaRow = {
   cells: MediaCell[];
@@ -254,15 +255,16 @@ export const IMAGE_QUALITY = 85;
  * screen sat waiting for every one of them on every project page.
  */
 const OPT_WIDTHS = [640, 750, 828, 1080, 1200, 1920];
-function optimised(path: string) {
+function optimised(path: string, sizes: string) {
   const at = (w: number) =>
     `/_next/image?url=${encodeURIComponent(path)}&w=${w}&q=${IMAGE_QUALITY}`;
   return {
     src: at(1920),
     srcSet: OPT_WIDTHS.map((w) => `${at(w)} ${w}w`).join(", "),
-    /* The same sizes the scaled cells already declare, so both paths ask the
-       optimiser for the same widths at the same breakpoints. */
-    sizes: "(max-width: 640px) 100vw, (max-width: 1440px) 100vw, 1500px",
+    /* The cell's real share of the row — see cellSizes. Both paths hand the
+       optimiser the same figure, so a picture in a three-up row stops
+       asking for a full viewport of pixels. */
+    sizes,
   };
 }
 
@@ -324,7 +326,29 @@ function ScaledMedia({ scale, bgColor, phoneUnscaled, children }: { scale?: numb
   );
 }
 
-function Cell({ cell, aspect, slug, bgColor, groupAlt }: { cell: MediaCell; aspect?: string; slug: string; bgColor?: string; groupAlt?: string }) {
+/* WHAT THIS CELL ACTUALLY OCCUPIES, so the browser fetches a file that
+ * size and not the widest one on offer (2026-11-09).
+ *
+ * Every cell declared `100vw` regardless of the row it was in, so each
+ * image in a three-up row asked for three times the pixels it could show —
+ * nine of them came down at w=3840 on a 1512 desktop. The grid's content is
+ * the viewport less its two margins, and a row divides that between its
+ * cells by their `colWidth` weights; below 767 every row collapses to one
+ * column (globals.css), so the phone always gets the full content width.
+ *
+ * Rounded up, and widened by a `scale` over 100 since a scaled cell draws
+ * larger than its column: under-asking shows as a soft image, over-asking
+ * only costs bytes. */
+function cellSizes(row: MediaRow, cell: MediaCell): string {
+  const weight = (c: MediaCell) => ("colWidth" in c && c.colWidth != null ? c.colWidth : 1);
+  const total = row.cells.reduce((a, c) => a + weight(c), 0) || 1;
+  const zoom = "scale" in cell && cell.scale ? Math.max(1, cell.scale / 100) : 1;
+  const desktop = Math.min(100, Math.ceil((82 * weight(cell) * zoom) / total));
+  const phone = Math.min(100, Math.ceil(75 * zoom));
+  return `(max-width: 767px) ${phone}vw, ${desktop}vw`;
+}
+
+function Cell({ cell, aspect, slug, bgColor, groupAlt, sizes }: { cell: MediaCell; aspect?: string; slug: string; bgColor?: string; groupAlt?: string; sizes: string }) {
   /* A cell's own `alt` wins; otherwise the section's description, which is
      true of every image in it. Empty only when neither is given, which now
      means the picture really is decorative. */
@@ -349,12 +373,11 @@ function Cell({ cell, aspect, slug, bgColor, groupAlt }: { cell: MediaCell; aspe
     return (
       <div className="relative w-full h-full overflow-hidden bg-black" style={{ aspectRatio: cell.aspect ?? aspect ?? "16/9" }}>
         <ScaledMedia scale={cell.scale} bgColor={bgColor} phoneUnscaled={cell.phoneUnscaled}>
-          <iframe
-            src={`https://www.youtube.com/embed/${cell.id}`}
-            className="absolute inset-0 w-full h-full"
-            title="YouTube video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+          <YouTubeFacade
+            id={cell.id}
+            poster={cell.poster ?? `https://i.ytimg.com/vi/${cell.id}/maxresdefault.jpg`}
+            alt={alt || "Project video"}
+            sizes={sizes}
           />
         </ScaledMedia>
       </div>
@@ -406,7 +429,7 @@ function Cell({ cell, aspect, slug, bgColor, groupAlt }: { cell: MediaCell; aspe
           // bottom — never stretching the image or cropping from the top).
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            {...optimised(`/assets/${slug}/${cell.file}`)}
+            {...optimised(`/assets/${slug}/${cell.file}`, sizes)}
             alt={alt}
             loading="lazy"
             decoding="async"
@@ -422,7 +445,7 @@ function Cell({ cell, aspect, slug, bgColor, groupAlt }: { cell: MediaCell; aspe
           // image being force-cropped into a fixed-height box.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            {...optimised(`/assets/${slug}/${cell.file}`)}
+            {...optimised(`/assets/${slug}/${cell.file}`, sizes)}
             alt={alt}
             loading="lazy"
             decoding="async"
@@ -437,7 +460,7 @@ function Cell({ cell, aspect, slug, bgColor, groupAlt }: { cell: MediaCell; aspe
             alt={alt}
             fill
             quality={IMAGE_QUALITY}
-            sizes="(max-width: 640px) 100vw, (max-width: 1440px) 100vw, 1500px"
+            sizes={sizes}
             // BUGFIX (2026-08-16k): object-fit must stay "contain" for ANY
             // scaled cell (scale != 100, in either direction) — see
             // ScaledMedia's comment above. Previously this flipped to
@@ -689,7 +712,7 @@ export function ProjectGroup({
                   >
                     {row.cells.map((cell, j) => (
                       <div key={j} className="relative overflow-hidden">
-                        <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} groupAlt={imageAlt} />
+                        <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} groupAlt={imageAlt} sizes={cellSizes(row, cell)} />
                         {/* Hairline seam centered in the gap to the right of
                             every cell but the last — matches the artboard's
                             thin black divider sitting inside the white gap. */}
@@ -714,7 +737,7 @@ export function ProjectGroup({
                 >
                   {row.cells.map((cell, j) => (
                     <div key={j} className="relative overflow-hidden">
-                      <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} groupAlt={imageAlt} />
+                      <Cell cell={cell} aspect={row.aspect} slug={slug} bgColor={bgColor} groupAlt={imageAlt} sizes={cellSizes(row, cell)} />
                       {j > 0 && (
                         <div
                           className="js-cell-seam absolute top-0 left-0 h-full"

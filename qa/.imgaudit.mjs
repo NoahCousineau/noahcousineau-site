@@ -24,13 +24,18 @@ for (const [w, h, tag] of [[390, 844, "phone 390"], [1512, 950, "desktop 1512"]]
     await p.waitForTimeout(2500);
     for (let k = 0; k < 25; k++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(70); }
     await p.waitForTimeout(1500);
+    const isVid = (g) => /\.mp4(\?|$)/i.test(g.url);
+    const imgs = got.filter(g => !isVid(g));
+    const vids = got.filter(isVid);
     const total = got.reduce((a, g) => a + g.bytes, 0);
+    const imgBytes = imgs.reduce((a, g) => a + g.bytes, 0);
+    const vidBytes = vids.reduce((a, g) => a + g.bytes, 0);
     const byW = {};
     for (const g of got) { const k = g.w || "raw"; byW[k] = (byW[k] || 0) + 1; }
     const biggest = [...got].sort((a, z) => z.bytes - a.bytes).slice(0, 4)
       .map(g => `${(g.bytes / 1024 | 0)}KB ${decodeURIComponent(g.url).split("/").pop().slice(0, 44)}`);
     console.log(`\n  ${tag}  ${path}`);
-    console.log(`     ${got.length} image/video responses, ${(total / 1048576).toFixed(1)}MB`);
+    console.log(`     ${imgs.length} images ${(imgBytes / 1048576).toFixed(2)}MB   +   ${vids.length} videos ${(vidBytes / 1048576).toFixed(1)}MB   = ${(total / 1048576).toFixed(1)}MB`);
     console.log(`     widths requested: ${Object.entries(byW).sort((a, z) => z[1] - a[1]).map(([k, n]) => `${k}:${n}`).join("  ")}`);
     console.log(`     heaviest: ${biggest.join(" | ")}`);
   }

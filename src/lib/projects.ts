@@ -18,7 +18,7 @@ export type ProjectCredit = { role: string; names: string[] };
 export type ProjectMediaCell =
   | { type: "image"; file: string; alt?: string; w?: number; h?: number; scale?: number; colWidth?: number; fit?: boolean; cropAspect?: string }
   | { type: "video"; src: string; aspect?: string; scale?: number; colWidth?: number; fit?: boolean }
-  | { type: "youtube"; id: string; aspect?: string; scale?: number; colWidth?: number };
+  | { type: "youtube"; id: string; poster?: string; aspect?: string; scale?: number; colWidth?: number };
 
 export type ProjectMediaRow = {
   cells: ProjectMediaCell[];

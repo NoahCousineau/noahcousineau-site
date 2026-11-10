@@ -239,7 +239,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Sprouts Custom Graphics-03.png"
+                  "file": "sprouts-custom-graphics-03.png"
                 }
               ]
             },
@@ -248,7 +248,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Sprouts Custom Graphics-05.png"
+                  "file": "sprouts-custom-graphics-05.png"
                 }
               ]
             },
@@ -257,7 +257,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Sprouts Custom Graphics-01.png"
+                  "file": "sprouts-custom-graphics-01.png"
                 }
               ]
             }
@@ -272,7 +272,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Sprouts Custom Graphics.png"
+                  "file": "sprouts-custom-graphics.png"
                 }
               ]
             },
@@ -332,7 +332,7 @@
                 },
                 {
                   "type": "image",
-                  "file": "Sprouts_Forager_Land-226_EDIT edit.jpg",
+                  "file": "sprouts-forager-land-226.jpg",
                   "scale": 120,
                   "colWidth": 0.99
                 }
@@ -349,11 +349,12 @@
               "cells": [
                 {
                   "type": "youtube",
-                  "id": "ZDCGdQLjw-s"
+                  "id": "ZDCGdQLjw-s",
+                  "poster": "/assets/sprouts-farmers-market/ultimate-human-video-poster.jpg"
                 },
                 {
                   "type": "image",
-                  "file": "TUH Endcap.png",
+                  "file": "tuh-endcap.png",
                   "scale": 78
                 }
               ]
@@ -602,7 +603,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Corita Art Center Custom Graphics.png",
+                  "file": "corita-art-center-custom-graphics.png",
                   "scale": 106
                 }
               ]
@@ -654,7 +655,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Corita Art Center Custom Graphics Stickers.png"
+                  "file": "corita-art-center-custom-graphics-stickers.png"
                 }
               ]
             },
@@ -663,7 +664,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Corita Art Center Custom Graphics Pennant.png"
+                  "file": "corita-art-center-custom-graphics-pennant.png"
                 }
               ]
             }
@@ -678,7 +679,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Corita Art Center Custom Graphics-03.png",
+                  "file": "corita-art-center-custom-graphics-03.png",
                   "scale": 110
                 }
               ]
@@ -688,7 +689,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Unordinary Days Transcription Sheet.jpg",
+                  "file": "unordinary-days-transcription-sheet.jpg",
                   "fit": true,
                   "shadow": true
                 }
@@ -734,13 +735,13 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Corita Day 2026 Merch Menu Revised_Page_1.jpg",
+                  "file": "corita-day-2026-merch-menu-revised-page-1.jpg",
                   "fit": true,
                   "cropAspect": "2550/3300"
                 },
                 {
                   "type": "image",
-                  "file": "Corita Day 2026 Merch Menu Revised_Page_2.jpg",
+                  "file": "corita-day-2026-merch-menu-revised-page-2.jpg",
                   "fit": true,
                   "cropAspect": "2550/3300"
                 }
@@ -1246,7 +1247,7 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "Digital Mockup.png",
+                  "file": "digital-mockup.png",
                   "scale": 93.75
                 }
               ]
@@ -1505,7 +1506,7 @@
       ]
     },
     "metaDescription": "A visual identity for SoCal Earth, the Robert Redford Conservancy's environmental data program, built from loose construction paper in the studio.",
-    "ogImage": "Digital Mockup.png"
+    "ogImage": "digital-mockup.png"
   },
   {
     "slug": "cultural-olympiad-poster",

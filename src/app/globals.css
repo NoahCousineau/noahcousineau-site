@@ -1003,3 +1003,26 @@ body {
     z-index: auto;
   }
 }
+
+/* KEYBOARD FOCUS (2026-11-09)
+   ---------------------------
+   Nothing styled focus site-wide, so every ring was whatever the browser
+   drew for itself — Chrome's `outline: auto` in #005fcc, something else
+   again in Safari and Firefox, none of them belonging on a black-and-white
+   portfolio.
+
+   `currentColor` rather than a token: the ring is then ink on the light
+   theme and paper on the dark one, with no second rule and no chance of the
+   two drifting apart. `:focus-visible` rather than `:focus` keeps it to
+   people navigating by keyboard, so a mouse click never draws a ring — which
+   is why adding this changes nothing about how the site looks in use.
+
+   In `base` deliberately: components that style their own focus (HomeLink,
+   ThemeToggle) use Tailwind utilities, and the utilities layer outranks this,
+   so those keep their own treatment. */
+@layer base {
+  :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+}

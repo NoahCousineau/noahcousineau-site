@@ -14,6 +14,15 @@ import {
   HEADER_INSET_UNITS,
 } from "@/components/project/headerLayout";
 
+/* FLIP-CARD IMAGE WIDTHS (2026-11-09)
+   The card grows as it scrolls in: 6px -> 203px on a 390px phone, 24px ->
+   394px on a 1512px desktop, so the honest figures are 52vw and 26vw at the
+   peak. Rounded up slightly so the picture is never the thing that limits
+   sharpness. Before this it had no `sizes` at all, took `fill`'s 100vw
+   default, and fetched a 3840px file to paint 394 CSS pixels. */
+const CARD_SIZES = "(max-width: 767px) 55vw, 28vw";
+
+
 /*
  * About Me page — built from Noah's design file
  * (~/Desktop/portfolio/design/02-about-me/About Me Design.svg, viewBox
@@ -288,11 +297,11 @@ function DraggableResumeCard({
       >
         {/* Front face */}
         <div className="absolute inset-0" style={{ backfaceVisibility: "hidden" }}>
-          <Image src={frontSrc} alt={`${alt} — front`} fill className={`object-contain pointer-events-none${invertOnDark ? " invert-on-dark" : ""}`} />
+          <Image src={frontSrc} alt={`${alt} — front`} fill sizes={CARD_SIZES} className={`object-contain pointer-events-none${invertOnDark ? " invert-on-dark" : ""}`} />
         </div>
         {/* Back face — rotated 180deg so it faces outward on the opposite side */}
         <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-          <Image src={backSrc} alt={`${alt} — back`} fill className={`object-contain pointer-events-none${invertOnDark ? " invert-on-dark" : ""}`} />
+          <Image src={backSrc} alt={`${alt} — back`} fill sizes={CARD_SIZES} className={`object-contain pointer-events-none${invertOnDark ? " invert-on-dark" : ""}`} />
         </div>
         {/* Edge strips — approximate paper thickness along all 4 sides */}
         {/* Paper thickness. Skipped for line artwork — see the `edge`

@@ -233,7 +233,7 @@ function TrackedEye({
           overflow: "hidden",
         }}
       >
-        <Image src={src} alt="" fill className="object-cover" />
+        <Image src={src} alt="" fill sizes="(max-width: 767px) 10vw, 4vw" className="object-cover" />
       </div>
     </>
   );
@@ -286,6 +286,10 @@ export default function HeadWithEyes({
         src={head.src}
         alt={alt}
         fill
+        /* Measured, not guessed: the head peaks at 82vw on a 390px phone and
+           28vw on a 1512px desktop. Without this it inherited the `fill`
+           default of 100vw and pulled w=3840 for an 424px picture. */
+        sizes="(max-width: 767px) 85vw, 30vw"
         className="object-contain relative z-10 pointer-events-none"
         priority={priority}
         draggable={false}

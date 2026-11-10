@@ -50,7 +50,7 @@ const PHOTOS: Photo[] = [
   { src: "/assets/01-about/01-about_02_mgl6437-copy.webp", x: 60, yPct: 4, w: 430, depth: 0.15, rotate: -5 },
   { src: "/assets/forced-perspective/forced-perspective_02_11x17-poster.webp", x: 1420, yPct: 14, w: 380, depth: 0.7, rotate: 6 },
   { src: "/assets/big-tech-art/big-tech-art_02_big-tech-art-display-spreads-01-copy.webp", x: 150, yPct: 34, w: 400, depth: 0.85, rotate: 4 },
-  { src: "/assets/corita-art-center/Corita Art Center Custom Graphics Pennant.png", x: 1370, yPct: 46, w: 460, depth: 0.3, rotate: -7 },
+  { src: "/assets/corita-art-center/corita-art-center-custom-graphics-pennant.png", x: 1370, yPct: 46, w: 460, depth: 0.3, rotate: -7 },
   { src: "/assets/forced-perspective/forced-perspective_03_shoes-2-no-background-copy.webp", x: 90, yPct: 64, w: 420, depth: 0.5, rotate: 8 },
   { src: "/assets/big-tech-art/big-tech-art_03_big-tech-art-display-spreads-08.webp", x: 1400, yPct: 76, w: 390, depth: 0.9, rotate: -4 },
   { src: "/assets/01-about/01-about_01_webclip.webp", x: 210, yPct: 88, w: 350, depth: 0.25, rotate: -9 },
