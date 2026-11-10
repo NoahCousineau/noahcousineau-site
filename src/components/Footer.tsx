@@ -3,7 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Stage, Place, uFont, uFontMin } from "./Stage";
-import { useIsPhone, useIsCompact } from "@/lib/useIsPhone";
+import {
+  useIsPhone,
+  useBelow,
+  FOOTER_STACK_MAX_WIDTH,
+  FOOTER_SPREAD_MAX_WIDTH,
+} from "@/lib/useIsPhone";
 import FallenHand from "./FallenHand";
 import FooterCLogo from "./FooterCLogo";
 import { useRef } from "react";
@@ -270,6 +275,97 @@ const rowRuleY = (n: number) => ROW1_RULE_Y + n * ROW_PITCH;
    with a floor for the same reason the links have one. */
 const HEADING_FONT = 28;
 
+/* THE LINK BLOCK'S TYPE SIZE, in one place because three tiers now share it.
+   The artboard unit is a linear zoom, so a 17.9u label is 17.9px at the 1920
+   artboard and 7px in a 750 window; the floor is what keeps it readable on a
+   narrow one. Unchanged from what the desktop columns have always used. */
+const LINK_FONT = uFontMin(17.9, 11);
+
+/* A COMPRESSED WINDOW IS NOT A PHONE (2026-11-10). Noah, on a ~640px window:
+   "It gets a little awkward when I have to compress the browser window...
+   Instead of acting like the mobile in this situation, make the footer text
+   smaller and more like the desktop."
+
+   There was one fallback below 1200 — the phone's two columns with the type
+   clamped at 15px — so half a desktop window got a blown-up phone footer.
+   There are three tiers now:
+
+     >= 1180    the full six-column desktop block, untouched.
+     600-1179   THE SPREAD: the same four sections in the same order, left to
+                right, each flattened to a single column, sharing the width
+                evenly. Desktop proportions at desktop type sizes; only Work's
+                three columns of two become one column of six.
+     < 600      the phone's 2x2, untouched. Noah: "I like the footer on mobile
+                so let's keep that the same" — and 600 is clear of every phone
+                in portrait (the largest is 430).
+
+   BOTH BOUNDARIES ARE MEASURED, not picked. Every label's width is a fixed
+   multiple of the type size, measured in the browser at the 1920 artboard:
+   "sprouts farmers market" is 9.59 font-widths, "cultural olympiad poster"
+   9.92, "valley strong credit union" 10.31, "noah@noahcousineau.com" 11.34.
+   The design's own rule is that a column's rule is as long as the longest
+   label in it — 204.22u against the email's 202.9u at the artboard — and that
+   holds for exactly as long as the type is still scaling with the window.
+
+     1180 is where it stops: 17.9u is 11px there, so below it the floor takes
+     over, the labels hold still while the rules keep shrinking, and every
+     long label starts hanging off the end of its own rule. (Tried it at 1024
+     first: "valley strong credit union" overshot by a fifth of its width and
+     "cultural olympiad poster" came within 8px of the next column.)
+
+     The spread's pitch is a third of what is left after one rule width, and
+     its widest label is the email: 11.34 x 11px = 124.7px, plus a rule's
+     worth of gap, runs out just under 600.
+
+   The two tiers meet seamlessly BECAUSE 1180 is the floor's own crossover:
+   at that width the spread's type, headings, rule width and row pitch all
+   work out to exactly the artboard values the desktop block uses, so the
+   only thing that changes across the line is Work folding from three columns
+   into one. (The older note under useIsCompact reached 1180 from the rule
+   against the column pitch and drew a layout line at 1200. Same number, and
+   it is the right line — but for the reason above, and the fallback below it
+   was the wrong one.)
+
+   THE SPREAD IS WRITTEN AS MULTIPLES OF ITS OWN TYPE SIZE rather than in
+   artboard units, which is the whole trick. Units keep shrinking, the type
+   stops at 11px, and anything still measured in units — the gap under the
+   wordmark, the row pitch, the rule, the hairline itself — drifts away from
+   type that is no longer shrinking with it. Pegging every one of them to the
+   type keeps the desktop's exact proportions at whatever size the type has
+   settled to, so the block reads as the desktop footer, smaller. */
+const relToType = (units: number) =>
+  `calc(${LINK_FONT} * ${+(units / 17.9).toFixed(5)})`;
+
+/** The wordmark's height in units: 1774.62 wide at the asset's 711x119. */
+const WORDMARK_H = 297;
+/** Where the wordmark sits on every tier but the phone. */
+const DESKTOP_LOGO_Y = 21.44;
+/** Desktop's gap from the bottom of the wordmark's box to the headings. */
+const WORDMARK_GAP = HEADING_TEXT_Y - (DESKTOP_LOGO_Y + WORDMARK_H);
+/** 1920 less Contact's right edge: the spread keeps both of the sketch's
+ *  margins and only redistributes what is between them. */
+const SPREAD_GUTTER = 1920 - CONTACT_RIGHT_EDGE;
+/** Four columns, so three pitches plus the last column's own rule. */
+const SPREAD_RULE_W = relToType(RULE_WIDTH);
+const SPREAD_PITCH = `calc((100% - var(--u) * ${(WORK_X + SPREAD_GUTTER).toFixed(
+  2
+)} - ${SPREAD_RULE_W}) / 3)`;
+const spreadX = (i: number) =>
+  i === 0
+    ? `calc(var(--u) * ${WORK_X})`
+    : `calc(var(--u) * ${WORK_X} + ${i} * ${SPREAD_PITCH})`;
+/* The headings hang off the wordmark rather than off an artboard y, because
+   the wordmark itself sits lower on a phone-width window (PHONE_LOGO_Y, to
+   clear the theme toggle) and the block has to follow it there. */
+const spreadHeadY = (logoY: number) =>
+  `calc(var(--u) * ${logoY + WORDMARK_H} + ${relToType(WORDMARK_GAP)})`;
+const spreadRowY = (logoY: number, n: number) =>
+  `calc(${spreadHeadY(logoY)} + ${relToType(HEADING_DROP + n * ROW_PITCH)})`;
+const spreadRuleY = (logoY: number, n: number) =>
+  `calc(${spreadHeadY(logoY)} + ${relToType(
+    HEADING_DROP + n * ROW_PITCH + (ROW1_RULE_Y - ROW1_TEXT_Y)
+  )})`;
+
 /* LINK BLOCK (2026-08-20, per Noah: "Move the Cousineau logo up more so it
  * sits just below the top of the browser. Move all the links upwards with
  * it. Have the links just a little closer to the logo.")
@@ -320,11 +416,14 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
   const pathname = usePathname();
   const artboardRef = useRef<HTMLDivElement>(null);
   const phone = useIsPhone();
-  /* BELOW 1200 THE LINKS USE THE PHONE'S TWO COLUMNS, phones included — see
-   * the note on useIsCompact for the arithmetic. Five columns of legible type
-   * do not fit under a 1180px window at any size, so this is a reflow rather
-   * than a resize. Everything else in the footer still keys off `phone`. */
-  const compact = useIsCompact();
+  /* THE LINKS HAVE THEIR OWN THREE TIERS — see the long note above GROUPS.
+   * Everything else in the footer still keys off `phone`, and the rest of the
+   * site still keys off useIsCompact's 1200. */
+  const stack = useBelow(FOOTER_STACK_MAX_WIDTH);
+  const spread = useBelow(FOOTER_SPREAD_MAX_WIDTH) && !stack;
+  /* The spread's vertical rhythm starts from the bottom of the wordmark, and
+   * the wordmark moves down on a phone-width window. */
+  const logoY = phone ? PHONE_LOGO_Y : DESKTOP_LOGO_Y;
   // The fixed footer can't drive a ScrollTrigger of its own, so the spacer
   // — which does scroll — is what tells the fallen hand it has arrived.
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -542,7 +641,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
               logo, scaled to the sketch's exact bbox. y nudged 41.44 ->
               21.44 on 2026-08-20 (Noah: "Shift the 'cousineau' logo up just
               a tad"). */}
-          <Place x={72.68} y={phone ? PHONE_LOGO_Y : 21.44} w={1774.62}>
+          <Place x={72.68} y={logoY} w={1774.62}>
             <Link href="/" className="block">
               {/* The wordmark asset is a single #fff fill, so in dark mode —
                   where the footer's own background flips to white — it would
@@ -566,7 +665,7 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
           {/* Four named sections. Work spans three columns of two; the
               other three are a single column each. Below 1200 the same four
               sections lay out as a 2x2 instead. */}
-          {compact
+          {stack
             ? GROUPS.map((group, gi) => {
                 /* 2x2 (2026-11-10). Noah: "On mobile have these four
                    sections laid out in a 2x2 configuration." Work and More
@@ -651,45 +750,103 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
                   </div>
                 );
               })
-            : GROUPS.map((group) => (
-                <div key={group.heading}>
-                  <Place x={group.columns[0].x} y={HEADING_TEXT_Y}>
-                    <span
-                      className="whitespace-nowrap block"
-                      style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(HEADING_FONT, 15) }}
+            : GROUPS.map((group, gi) => {
+                /* The spread flattens each section to one column and anchors
+                   it to a CSS position, since its pitch is a share of the
+                   window rather than an artboard coordinate. Desktop keeps
+                   the exact x's the sketch was drawn on. */
+                const cols: {
+                  key: string;
+                  x: number;
+                  xCss?: string;
+                  items: LinkItem[];
+                }[] = spread
+                  ? [
+                      {
+                        key: group.heading,
+                        x: 0,
+                        xCss: spreadX(gi),
+                        items: group.columns.flatMap((c) => c.items),
+                      },
+                    ]
+                  : group.columns.map((c) => ({
+                      key: String(c.x),
+                      x: c.x,
+                      items: c.items,
+                    }));
+                return (
+                  <div key={group.heading}>
+                    <Place
+                      x={cols[0].x}
+                      xCss={cols[0].xCss}
+                      y={HEADING_TEXT_Y}
+                      yCss={spread ? spreadHeadY(logoY) : undefined}
                     >
-                      {group.heading}
-                    </span>
-                  </Place>
-                  {group.columns.map((col) => (
-                    <div key={col.x}>
-                      {col.items.map((item, n) => (
-                        <div key={item.href}>
-                          <Place x={col.x} y={rowTextY(n)}>
-                            <Link
-                              /* Never prefetched: a project link drags that
-                                 page's priority images along, and the résumé
-                                 is a PDF rather than a route. See the note on
-                                 the phone columns above. */
-                              prefetch={false}
-                              href={item.href}
-                              target={isExternal(item.href) ? "_blank" : undefined}
-                              rel={isExternal(item.href) ? "noreferrer" : undefined}
-                              className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                              style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(17.9, 11) }}
+                      <span
+                        className="whitespace-nowrap block"
+                        style={{
+                          fontFamily: "var(--font-sans)",
+                          /* Pegged to the links in the spread so the heading
+                             keeps its designed 28:17.9 relationship to type
+                             that has stopped scaling; a floor of its own
+                             would close that gap as the window narrows. */
+                          fontSize: spread
+                            ? relToType(HEADING_FONT)
+                            : uFontMin(HEADING_FONT, 15),
+                        }}
+                      >
+                        {group.heading}
+                      </span>
+                    </Place>
+                    {cols.map((col) => (
+                      <div key={col.key}>
+                        {col.items.map((item, n) => (
+                          <div key={item.href}>
+                            <Place
+                              x={col.x}
+                              xCss={col.xCss}
+                              y={rowTextY(n)}
+                              yCss={spread ? spreadRowY(logoY, n) : undefined}
                             >
-                              {item.label}
-                            </Link>
-                          </Place>
-                          <Place x={col.x} y={rowRuleY(n)} w={RULE_WIDTH}>
-                            <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
-                          </Place>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ))}
+                              <Link
+                                /* Never prefetched: a project link drags that
+                                   page's priority images along, and the résumé
+                                   is a PDF rather than a route. See the note on
+                                   the phone columns above. */
+                                prefetch={false}
+                                href={item.href}
+                                target={isExternal(item.href) ? "_blank" : undefined}
+                                rel={isExternal(item.href) ? "noreferrer" : undefined}
+                                className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
+                                style={{ fontFamily: "var(--font-sans)", fontSize: LINK_FONT }}
+                              >
+                                {item.label}
+                              </Link>
+                            </Place>
+                            <Place
+                              x={col.x}
+                              xCss={col.xCss}
+                              y={rowRuleY(n)}
+                              yCss={spread ? spreadRuleY(logoY, n) : undefined}
+                              w={RULE_WIDTH}
+                              wCss={spread ? SPREAD_RULE_W : undefined}
+                            >
+                              <div
+                                className="w-full bg-[color:var(--color-paper)]"
+                                /* 2u is a third of a pixel in a 640 window —
+                                   a hairline that rounds away on some
+                                   displays. Pegged to the type like the rest
+                                   of the spread, it lands near 1.2px. */
+                                style={{ height: spread ? relToType(2) : uFont(2) }}
+                              />
+                            </Place>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
         </Stage>
         </div>
       </div>

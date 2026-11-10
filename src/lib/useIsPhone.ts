@@ -66,12 +66,14 @@ export function useIsPhone(): boolean {
  * so exactly: each column's rule is RULE_WIDTH = 204.22 units and its label is
  * 17.9 units, a ratio fixed by the design. Holding the label at a legible 11px
  * therefore needs the column to be at least 204.22/17.9 x 11 = 125.5px, which
- * needs `--u` >= 0.615 — a 1180px window. Below that, five columns of legible
- * type do not fit at any size, so flooring the label alone just runs each one
- * into its neighbour (which is what the first attempt at this did).
+ * needs `--u` >= 0.615 — a 1180px window. Below that, the desktop block's six
+ * columns stop working at any legible size.
  *
- * So below 1200 the footer uses the PHONE's two-column arrangement, which has
- * room, with the label size clamped rather than scaled — see Footer.tsx.
+ * THIS IS NO LONGER THE FOOTER'S LAYOUT LINE (2026-11-10). It still governs
+ * AwayOverlay, FallenHand, LoadingWorm and the 404 lockup, but the footer's
+ * links moved to FOOTER_SPREAD_MAX_WIDTH / FOOTER_STACK_MAX_WIDTH below —
+ * a compressed desktop window gets a spread of the same four sections rather
+ * than the phone's two columns. See the long note in Footer.tsx.
  */
 export const MID_MAX_WIDTH = 1199;
 const MID_QUERY = `(max-width: ${MID_MAX_WIDTH}px)`;
@@ -90,4 +92,48 @@ export function useIsCompact(): boolean {
     () => window.matchMedia(MID_QUERY).matches,
     () => false
   );
+}
+
+/* THE FOOTER'S THREE TIERS (2026-11-10). Noah, on a ~640px window: "It gets
+ * a little awkward when I have to compress the browser window... Instead of
+ * acting like the mobile in this situation, make the footer text smaller and
+ * more like the desktop."
+ *
+ * So the footer no longer has one fallback. Below 1024 its four sections
+ * spread out as single columns, and only a genuinely phone-sized window gets
+ * the 2x2. Both numbers are measured rather than picked — the arithmetic,
+ * and every label width it is based on, is in the note in Footer.tsx.
+ *
+ * These are the FOOTER'S lines, not the site's. useIsCompact above is still
+ * the 1200 tier that AwayOverlay, FallenHand, LoadingWorm and the 404 lockup
+ * key off, and it has not moved. */
+export const FOOTER_STACK_MAX_WIDTH = 599;
+export const FOOTER_SPREAD_MAX_WIDTH = 1179;
+
+/* One MediaQueryList per width, cached: useSyncExternalStore resubscribes
+ * whenever `subscribe` changes identity, and a fresh mql per render would
+ * mean a fresh listener per render. */
+const mqlCache = new Map<number, MediaQueryList>();
+function mqlFor(maxWidth: number): MediaQueryList {
+  let mql = mqlCache.get(maxWidth);
+  if (!mql) {
+    mql = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    mqlCache.set(maxWidth, mql);
+  }
+  return mql;
+}
+
+/** True at or below `maxWidth`. Same hydration-safe shape as the two hooks
+ *  above: false on the server and on the first client render. */
+export function useBelow(maxWidth: number): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const mql = mqlFor(maxWidth);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    [maxWidth]
+  );
+  const getSnapshot = useCallback(() => mqlFor(maxWidth).matches, [maxWidth]);
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
