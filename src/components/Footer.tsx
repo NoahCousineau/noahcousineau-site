@@ -67,14 +67,39 @@ type Group = { heading: string; columns: { x: number; items: LinkItem[] }[] };
 
 /** The pitch every column in the sketch sits on: 75.47 -> 296.24 -> 516.99. */
 const COLUMN_PITCH = 220.77;
-const MORE_INFO_X = THIRD_COLUMN_X + COLUMN_PITCH;
+
+/* EVEN GAPS BETWEEN THE FOUR SECTIONS (2026-11-10). Noah: "On desktop,
+   let's distribute the content evenly horizontally. There should be an even
+   gap between each section."
+
+   The two margins are the fixed points — Work still starts at 75.47 and
+   Contact's rule still ends at 1834.31, exactly where the sketch put them.
+   Between those, the only thing that varies is the gap, so it is solved for
+   rather than guessed: take the span, subtract Work's three-column block and
+   the three single-column blocks, and divide what is left by the three gaps.
+
+   It lands on 166.81, which puts Contact back at 1630.09 — the x it already
+   had. That is the arithmetic agreeing with the original design rather than a
+   coincidence: the sketch's right-hand block was already evenly spaced, and
+   all that was ever uneven was the hole left when More Info moved left. */
+const WORK_X = 75.47;
+const WORK_COLUMNS = 3;
+/** Right edge of Work's block — its last column's x plus that column's rule. */
+const WORK_END = WORK_X + (WORK_COLUMNS - 1) * COLUMN_PITCH + RULE_WIDTH;
+/** Unchanged from the sketch, and the mirror of WORK_X against 1920. */
+const CONTACT_RIGHT_EDGE = 1834.31;
+const SECTION_GAP = (CONTACT_RIGHT_EDGE - WORK_END - 3 * RULE_WIDTH) / 3;
+
+const MORE_INFO_X = WORK_END + SECTION_GAP;
+const SOCIAL_X = MORE_INFO_X + RULE_WIDTH + SECTION_GAP;
+const CONTACT_X = SOCIAL_X + RULE_WIDTH + SECTION_GAP;
 
 const GROUPS: Group[] = [
   {
     heading: "Work",
     columns: [
       {
-        x: 75.47,
+        x: WORK_X,
         items: [
           { label: "sprouts farmers market", href: "/sprouts-farmers-market" },
           { label: "corita art center", href: "/corita-art-center" },
@@ -109,10 +134,10 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    heading: "Hear From Me",
+    heading: "Social",
     columns: [
       {
-        x: 1409.32,
+        x: SOCIAL_X,
         items: [
           { label: "linkedin", href: "https://www.linkedin.com/in/noah-cousineau/" },
           { label: "instagram", href: "https://www.instagram.com/cousineau_design/" },
@@ -131,7 +156,7 @@ const GROUPS: Group[] = [
     heading: "Contact",
     columns: [
       {
-        x: 1630.09,
+        x: CONTACT_X,
         items: [{ label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" }],
       },
     ],

@@ -18,7 +18,7 @@ for (const w of [390, 768, 900, 1024, 1199, 1280, 1512, 1920]) {
   await p.waitForTimeout(3000);
 
   const r = await p.evaluate(() => {
-    const names = ["Work", "More Info", "Hear From Me", "Contact"];
+    const names = ["Work", "More Info", "Social", "Contact"];
     const boxes = [];
     const foot = document.querySelector("footer");
     if (!foot) return { err: "no footer" };

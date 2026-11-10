@@ -19,7 +19,7 @@ for (const [w, h, tag] of [[1512, 950, "desktop"], [390, 844, "phone"]]) {
   await p.waitForTimeout(2500);
 
   const info = await p.evaluate(() => {
-    const want = ["Work", "More Info", "Hear From Me", "Contact"];
+    const want = ["Work", "More Info", "Social", "Contact"];
     const heads = [];
     for (const el of document.querySelectorAll("span,div,h1,h2,h3,p")) {
       const t = (el.textContent || "").trim();

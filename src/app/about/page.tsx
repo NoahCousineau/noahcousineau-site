@@ -712,7 +712,11 @@ export default function About() {
         <ApproachOnScroll>
           <div className="relative w-full flex flex-col items-center">
             <a
-              href="https://docs.google.com/forms/d/e/1FAIpQLSdVU0sAC4ZmMUfeLH3tRPOqwPQC1v7MzKLoMk5YxFoA7Sy3Gg/viewform?usp=header"
+              /* The newsletter itself, not the Google Form that stood in for
+                 it (2026-11-10). "Cousineau's Irregular" now exists on
+                 beehiiv, and the footer's newsletter link points at this same
+                 address — keep the two in step if a custom domain is added. */
+              href="https://noahs-newsletter-4eac34.beehiiv.com/"
               target="_blank"
               rel="noreferrer"
               className="block no-underline"
