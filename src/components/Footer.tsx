@@ -48,61 +48,101 @@ const RULE_WIDTH = 204.22; // = the sketch's email-column rule length
 
 type LinkItem = { label: string; href: string };
 
-/* A column is a pair, except the contact one, which is a single since the
-   phone number came out (2026-11-09). Noah: "I also like the idea of
-   removing my phone number" — an Awwwards listing brings scrapers as well
-   as readers, and the email is the way in. */
-const COLUMNS: { x: number; items: [LinkItem] | [LinkItem, LinkItem] }[] = [
-  {
-    x: 75.47,
-    items: [
-      { label: "sprouts farmers market", href: "/sprouts-farmers-market" },
-      { label: "corita art center", href: "/corita-art-center" },
-    ],
-  },
-  {
-    x: 296.24,
-    items: [
-      { label: "socal earth", href: "/socal-earth" },
-      { label: "cultural olympiad poster", href: "/cultural-olympiad-poster" },
-    ],
-  },
-  {
-    x: THIRD_COLUMN_X,
-    items: [
-      { label: "valley strong credit union", href: "/valley-strong-credit-union" },
-      { label: "more work", href: "/more-work" },
-    ],
-  },
-  /* ABOUT/RÉSUMÉ MOVED LEFT TO MAKE ROOM (2026-10-17). Noah: "Insert the
-     links for the LinkedIn and Instagram pages in the footer, in between the
-     two columns. Shift the column with 'about me' and 'resume' to the left to
-     allow the two new links to be there."
+/* FOUR NAMED SECTIONS (2026-11-10). Noah: "I want to add categories to the
+   pages. There will now be text over sections called 'work', which contains
+   the project links, 'more info' which has the about me page link and the
+   resume, 'Hear from me' which will be links to my linkedin instagram AND a
+   newsletter signup link... and then 'contact' which will just be my email."
 
-     The right-hand block is now three columns on the same 220.77u pitch the
-     contact pair already sat on, so the new one lands exactly where
-     about/résumé used to be and nothing else moves. */
+   A group owns a heading and one or more sub-columns, which is what lets
+   Work span three columns of two while the other three are a single column
+   each. Items per column are no longer capped at two — Hear From Me needs
+   three — so rows are computed from the index rather than written out.
+
+   MORE INFO SITS BESIDE WORK, one column-pitch (220.77u) past the third
+   project column, per "Move the new 'more info' column next to the 'work'
+   section." Hear From Me and Contact stay on the right where they were, so
+   the right-hand block does not drift. */
+type Group = { heading: string; columns: { x: number; items: LinkItem[] }[] };
+
+/** The pitch every column in the sketch sits on: 75.47 -> 296.24 -> 516.99. */
+const COLUMN_PITCH = 220.77;
+const MORE_INFO_X = THIRD_COLUMN_X + COLUMN_PITCH;
+
+const GROUPS: Group[] = [
   {
-    x: 1188.55,
-    items: [
-      { label: "about me", href: "/about" },
-      { label: "résumé", href: "/assets/_documents/noah-cousineau-resume.pdf" },
+    heading: "Work",
+    columns: [
+      {
+        x: 75.47,
+        items: [
+          { label: "sprouts farmers market", href: "/sprouts-farmers-market" },
+          { label: "corita art center", href: "/corita-art-center" },
+        ],
+      },
+      {
+        x: 296.24,
+        items: [
+          { label: "socal earth", href: "/socal-earth" },
+          { label: "cultural olympiad poster", href: "/cultural-olympiad-poster" },
+        ],
+      },
+      {
+        x: THIRD_COLUMN_X,
+        items: [
+          { label: "valley strong credit union", href: "/valley-strong-credit-union" },
+          { label: "more work", href: "/more-work" },
+        ],
+      },
     ],
   },
   {
-    x: 1409.32,
-    items: [
-      { label: "linkedin", href: "https://www.linkedin.com/in/noah-cousineau/" },
-      { label: "instagram", href: "https://www.instagram.com/cousineau_design/" },
+    heading: "More Info",
+    columns: [
+      {
+        x: MORE_INFO_X,
+        items: [
+          { label: "about me", href: "/about" },
+          { label: "résumé", href: "/assets/_documents/noah-cousineau-resume.pdf" },
+        ],
+      },
     ],
   },
   {
-    x: 1630.09,
-    items: [
-      { label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" },
+    heading: "Hear From Me",
+    columns: [
+      {
+        x: 1409.32,
+        items: [
+          { label: "linkedin", href: "https://www.linkedin.com/in/noah-cousineau/" },
+          { label: "instagram", href: "https://www.instagram.com/cousineau_design/" },
+          /* "Cousineau's Irregular", the publication's own canonical URL —
+             it has no custom domain yet, so this is the address beehiiv
+             reports for it. Swap it here if one is added later. */
+          { label: "newsletter", href: "https://noahs-newsletter-4eac34.beehiiv.com/" },
+        ],
+      },
+    ],
+  },
+  {
+    /* A single since the phone number came out (2026-11-09). Noah: "I also
+       like the idea of removing my phone number" — an Awwwards listing
+       brings scrapers as well as readers, and the email is the way in. */
+    heading: "Contact",
+    columns: [
+      {
+        x: 1630.09,
+        items: [{ label: "noah@noahcousineau.com", href: "mailto:noah@noahcousineau.com" }],
+      },
     ],
   },
 ];
+
+/** A PDF and an off-site address both want a new tab; a route never does.
+    mailto: is deliberately NOT here — it hands off to a mail client, and
+    target="_blank" would leave an empty tab sitting behind it. */
+const isExternal = (href: string) =>
+  href.startsWith("http") || href.endsWith(".pdf");
 
 // Row y-positions (top of the text glyphs, i.e. baseline minus an ascender
 // allowance) and rule y-positions, from the sketch's text baselines
@@ -173,10 +213,37 @@ const PHONE_TOP_Y = 680;
 const PHONE_FONT = 72;
 const PHONE_RULE_W = 820;
 
-const ROW1_TEXT_Y = 353.5; // was 373.5, was 391.5, was 431.5 — see LINK BLOCK note below
-const ROW1_RULE_Y = 381.49;
-const ROW2_TEXT_Y = 402.5;
-const ROW2_RULE_Y = 429.4;
+/* WHERE THE SECOND ROW OF THE 2x2 STARTS, in phone row-slots. The top row
+   is as tall as its tallest cell — Work, with six project links — plus the
+   heading above it and one blank slot between the rows. Derived rather than
+   written down so adding a project cannot quietly push Work's last link
+   into Hear From Me. */
+const PHONE_ROW2_SLOT =
+  1 +
+  Math.max(...GROUPS.slice(0, 2).map((g) => g.columns.flatMap((c) => c.items).length)) +
+  1;
+
+/* HEADINGS TOOK THE LINKS' OLD TOP LINE (2026-11-10). The first row of
+   links used to start at 353.5, just under the wordmark's box; the section
+   names sit there now and the rows moved down by HEADING_DROP to make room.
+   The pitch between rows is unchanged at 49, so the block reads exactly as
+   designed — it is only lower, and one row taller where Hear From Me needs
+   a third line. */
+const HEADING_TEXT_Y = 353.5; // was ROW1_TEXT_Y — see LINK BLOCK note below
+const HEADING_DROP = 42;
+const ROW_PITCH = 49;
+const ROW1_TEXT_Y = 353.5 + HEADING_DROP;
+const ROW1_RULE_Y = 381.49 + HEADING_DROP;
+/** Row n's label and the rule under it, counting from 0. */
+const rowTextY = (n: number) => ROW1_TEXT_Y + n * ROW_PITCH;
+const rowRuleY = (n: number) => ROW1_RULE_Y + n * ROW_PITCH;
+
+/* Title case and the site's own sans, which is Akzidenz falling back to
+   Helvetica — Noah asked for "title case helvetica", and the project keeps
+   to exactly two faces (see CLAUDE.md), so this is that face rather than a
+   third one. Larger than the 17.9u links so the names read as headings,
+   with a floor for the same reason the links have one. */
+const HEADING_FONT = 28;
 
 /* LINK BLOCK (2026-08-20, per Noah: "Move the Cousineau logo up more so it
  * sits just below the top of the browser. Move all the links upwards with
@@ -471,145 +538,133 @@ export default function Footer({ nextProjectHref }: { nextProjectHref?: string }
             </Link>
           </Place>
 
-          {/* Five link columns, each 2 stacked links + rule, positioned at
-              their exact sketch x-coordinates. */}
+          {/* Four named sections. Work spans three columns of two; the
+              other three are a single column each. Below 1200 the same four
+              sections lay out as a 2x2 instead. */}
           {compact
-            ? COLUMNS.flatMap((col, ci) =>
-                col.items.map((item, ii) => ({ item, ci, ii }))
-              ).map(({ item, ci, ii }, flatIndex) => {
-                // Columns 0-2 are the project links (left), 3-4 the contact
-                // details (right); the running index within each side is what
-                // gives the row.
-                const right = ci >= 3;
-                const row = right
-                  ? (ci - 3) * 2 + ii
-                  : ci * 2 + ii;
-                /* THE RIGHT COLUMN HANGS OFF THE RIGHT EDGE (2026-08-29).
-                   Noah: "for the in-between footers, make sure the column on
-                   the right side is always on the right side of the browser
-                   window."
-
-                   Its x was 1010 artboard units, which is 205px on a 390
-                   phone and 630px at 1199 — so as the band widened the column
-                   drifted toward the middle and left a third of the window
-                   empty beside it. Anchoring its RIGHT edge to the same inset
-                   the left column uses for its LEFT edge makes the pair
-                   symmetrical at every width, which is what "always on the
-                   right side" means. The rule's own capped width is what the
-                   column is offset by (see PHONE_RULE_W below). */
+            ? GROUPS.map((group, gi) => {
+                /* 2x2 (2026-11-10). Noah: "On mobile have these four
+                   sections laid out in a 2x2 configuration." Work and More
+                   Info take the top row, Hear From Me and Contact the
+                   bottom; the right-hand pair hangs off the right edge the
+                   same way the old contact column did. */
+                const right = gi % 2 === 1;
+                const items = group.columns.flatMap((c) => c.items);
+                const slotBase = gi < 2 ? 0 : PHONE_ROW2_SLOT;
                 const ruleW = `min(calc(var(--u) * ${PHONE_RULE_W}), 200px)`;
                 const xCss = right
                   ? `calc(100% - ${ruleW} - var(--u) * ${PHONE_COL_X[0]})`
                   : undefined;
                 const x = PHONE_COL_X[right ? 1 : 0];
-                const rowY = phoneRowY(row);
-                /* The label-to-rule offset is capped for the same reason the
-                   pitch is: 102 units is 20.7px on a phone and would be 63.6
-                   at 1199, floating each rule away from type that is clamped
-                   at 15px. */
-                const ruleY = `calc(${rowY} + min(calc(var(--u) * ${PHONE_FONT + 30}), 24px))`;
-                const external =
-                  item.href.startsWith("http") || item.href.endsWith(".pdf");
                 return (
-                  <div key={`${flatIndex}-${item.href}`}>
-                    <Place x={x} xCss={xCss} y={0} yCss={rowY}>
-                      <Link
-                        /* NOT PREFETCHED (2026-08-30). Noah: "terribly clunky when in mobile."
-                           Next prefetches every Link it can see, and a project
-                           page's RSC payload carries preload hints for its own
-                           priority images — so a footer linking six projects
-                           made every page quietly download five other pages'
-                           artwork. Measured on a phone: 75MB of images that
-                           were never in this page's DOM at all.
-                           It is doubly pointless while the gate is locked,
-                           where the prefetch only ever caches a redirect —
-                           which is the same stale entry that sent a
-                           just-unlocked reader back to the password screen.
-                           It also fixes a 404 on every single page load: the
-                           résumé link is a PDF rather than a route, and
-                           asking the server for one as an RSC payload can
-                           only ever fail. */
-                        prefetch={false}
-                        href={item.href}
-                        target={external ? "_blank" : undefined}
-                        rel={external ? "noreferrer" : undefined}
-                        className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                        /* CLAMPED, NOT SCALED, across the middle band. The
-                           phone value is 72 units, which is 14.6px on a 390
-                           screen and would be 45px at 1199 — the linear zoom
-                           running away in the other direction. The floor keeps
-                           it legible at the narrow end and the ceiling stops it
-                           overtaking the desktop's own 17.9px at the wide end;
-                           in between it tracks the artboard as usual. */
+                  <div key={group.heading}>
+                    <Place x={x} xCss={xCss} y={0} yCss={phoneRowY(slotBase)}>
+                      <span
+                        className="whitespace-nowrap block"
                         style={{
                           fontFamily: "var(--font-sans)",
-                          fontSize: `clamp(14.6px, calc(var(--u) * ${PHONE_FONT}), 15px)`,
+                          fontSize: `clamp(18px, calc(var(--u) * ${PHONE_FONT * 1.25}), 19px)`,
                         }}
                       >
-                        {item.label}
-                      </Link>
+                        {group.heading}
+                      </span>
                     </Place>
-                    {/* The rule is capped in px for the same reason the
-                        label is clamped: 820 units is 166px on a phone and
-                        512px at 1199, which would leave a 15px label sitting
-                        under a rule three times too long for it. 200px holds
-                        the phone's own label-to-rule proportion across the
-                        band, and is below 820 units at every phone width so
-                        nothing there moves. */}
-                    <Place x={x} xCss={xCss} y={0} yCss={ruleY} wCss={ruleW}>
-                      <div
-                        className="w-full bg-[color:var(--color-paper)]"
-                        style={{ height: uFont(6) }}
-                      />
-                    </Place>
+                    {items.map((item, n) => {
+                      const rowY = phoneRowY(slotBase + 1 + n);
+                      /* The label-to-rule offset is capped for the same
+                         reason the pitch is: 102 units is 20.7px on a phone
+                         and would be 63.6 at 1199, floating each rule away
+                         from type that is clamped at 15px. */
+                      const ruleY = `calc(${rowY} + min(calc(var(--u) * ${PHONE_FONT + 30}), 24px))`;
+                      return (
+                        <div key={item.href}>
+                          <Place x={x} xCss={xCss} y={0} yCss={rowY}>
+                            <Link
+                              /* NOT PREFETCHED (2026-08-30). Noah: "terribly
+                                 clunky when in mobile." Next prefetches every
+                                 Link it can see, and a project page's RSC
+                                 payload carries preload hints for its own
+                                 priority images — so a footer linking six
+                                 projects made every page quietly download
+                                 five other pages' artwork. Measured on a
+                                 phone: 75MB of images that were never in this
+                                 page's DOM at all. It also fixes a 404 on
+                                 every page load: the résumé is a PDF rather
+                                 than a route, and asking the server for one
+                                 as an RSC payload can only ever fail. */
+                              prefetch={false}
+                              href={item.href}
+                              target={isExternal(item.href) ? "_blank" : undefined}
+                              rel={isExternal(item.href) ? "noreferrer" : undefined}
+                              className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
+                              /* CLAMPED, NOT SCALED, across the middle band.
+                                 The phone value is 72 units, which is 14.6px
+                                 on a 390 screen and would be 45px at 1199 —
+                                 the linear zoom running away in the other
+                                 direction. */
+                              style={{
+                                fontFamily: "var(--font-sans)",
+                                fontSize: `clamp(14.6px, calc(var(--u) * ${PHONE_FONT}), 15px)`,
+                              }}
+                            >
+                              {item.label}
+                            </Link>
+                          </Place>
+                          {/* The rule is capped in px for the same reason the
+                              label is clamped: 820 units is 166px on a phone
+                              and 512px at 1199, which would leave a 15px
+                              label under a rule three times too long. */}
+                          <Place x={x} xCss={xCss} y={0} yCss={ruleY} wCss={ruleW}>
+                            <div
+                              className="w-full bg-[color:var(--color-paper)]"
+                              style={{ height: uFont(6) }}
+                            />
+                          </Place>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })
-            : COLUMNS.map((col) => (
-            <div key={col.x}>
-              <Place x={col.x} y={ROW1_TEXT_Y}>
-                <Link
-                  /* Never prefetched: a project link drags that page's
-                     priority images along, and the résumé is a PDF rather
-                     than a route. See the note on the phone columns above. */
-                  prefetch={false}
-                  href={col.items[0].href}
-                  target={col.items[0].href.startsWith("http") ? "_blank" : undefined}
-                  rel={col.items[0].href.startsWith("http") ? "noreferrer" : undefined}
-                  className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                  style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(17.9, 11) }}
-                >
-                  {col.items[0].label}
-                </Link>
-              </Place>
-              <Place x={col.x} y={ROW1_RULE_Y} w={RULE_WIDTH}>
-                <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
-              </Place>
-
-              {col.items[1] && (
-              <>
-              <Place x={col.x} y={ROW2_TEXT_Y}>
-                <Link
-                  /* Never prefetched: a project link drags that page's
-                     priority images along, and the résumé is a PDF rather
-                     than a route. See the note on the phone columns above. */
-                  prefetch={false}
-                  href={col.items[1].href}
-                  target={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "_blank" : undefined}
-                  rel={col.items[1].href.startsWith("http") || col.items[1].href.endsWith(".pdf") ? "noreferrer" : undefined}
-                  className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
-                  style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(17.9, 11) }}
-                >
-                  {col.items[1].label}
-                </Link>
-              </Place>
-              <Place x={col.x} y={ROW2_RULE_Y} w={RULE_WIDTH}>
-                <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
-              </Place>
-              </>
-              )}
-            </div>
-          ))}
+            : GROUPS.map((group) => (
+                <div key={group.heading}>
+                  <Place x={group.columns[0].x} y={HEADING_TEXT_Y}>
+                    <span
+                      className="whitespace-nowrap block"
+                      style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(HEADING_FONT, 15) }}
+                    >
+                      {group.heading}
+                    </span>
+                  </Place>
+                  {group.columns.map((col) => (
+                    <div key={col.x}>
+                      {col.items.map((item, n) => (
+                        <div key={item.href}>
+                          <Place x={col.x} y={rowTextY(n)}>
+                            <Link
+                              /* Never prefetched: a project link drags that
+                                 page's priority images along, and the résumé
+                                 is a PDF rather than a route. See the note on
+                                 the phone columns above. */
+                              prefetch={false}
+                              href={item.href}
+                              target={isExternal(item.href) ? "_blank" : undefined}
+                              rel={isExternal(item.href) ? "noreferrer" : undefined}
+                              className="lowercase whitespace-nowrap hover:opacity-60 transition-opacity block"
+                              style={{ fontFamily: "var(--font-sans)", fontSize: uFontMin(17.9, 11) }}
+                            >
+                              {item.label}
+                            </Link>
+                          </Place>
+                          <Place x={col.x} y={rowRuleY(n)} w={RULE_WIDTH}>
+                            <div className="w-full bg-[color:var(--color-paper)]" style={{ height: uFont(2) }} />
+                          </Place>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
         </Stage>
         </div>
       </div>
