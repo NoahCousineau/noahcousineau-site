@@ -37,6 +37,7 @@
       "https://www.youtube.com/watch?v=ZDCGdQLjw-s"
     ],
     "cover": "sprouts-farmers-market_02_sprouts-marquee.webp",
+    "ogImage": "share-card.jpg",
     "images": [
       {
         "file": "sprouts-farmers-market_02_sprouts-marquee.webp",
@@ -350,7 +351,8 @@
                 {
                   "type": "youtube",
                   "id": "ZDCGdQLjw-s",
-                  "poster": "/assets/sprouts-farmers-market/ultimate-human-video-poster.jpg"
+                  "poster": "/assets/sprouts-farmers-market/ultimate-human-video-poster.jpg",
+                  "alt": "Sprouts Farmers Market and The Ultimate Human"
                 },
                 {
                   "type": "image",
@@ -395,6 +397,7 @@
       "https://vimeo.com/1151079715"
     ],
     "cover": "corita-art-center_02_cac-stationery-01.webp",
+    "ogImage": "share-card.jpg",
     "images": [
       {
         "file": "corita-art-center_02_cac-stationery-01.webp",
@@ -532,7 +535,8 @@
                 {
                   "type": "image",
                   "file": "corita-art-center_07_front-cover.png",
-                  "scale": 110
+                  "scale": 110,
+                  "alt": "The front cover of the break bread benefit-dinner zine, photographed on a board with sliced bread"
                 }
               ]
             },
@@ -578,7 +582,8 @@
                 {
                   "type": "image",
                   "file": "corita-art-center_09_full-cover.png",
-                  "scale": 108
+                  "scale": 108,
+                  "alt": "The break bread zine’s cover opened flat, back and front"
                 }
               ]
             },
@@ -588,7 +593,8 @@
                 {
                   "type": "image",
                   "file": "corita-art-center_18_print-awards-first-place.png",
-                  "scale": 88
+                  "scale": 88,
+                  "alt": "A first-place certificate for the break bread zine from the 2026 PRINT Awards"
                 }
               ]
             }
@@ -763,7 +769,7 @@
       "Illustration",
       "Visual Identity"
     ],
-    "intro": "SoCal Earth is an environmental data program created by the Robert Redford Conservancy. The conservancy asked me to develop a visual identity for the program’s initial website launch—one that would appeal to Southern Californians while expressing resourcefulness through design.\n\nTo turn the abstract idea of “resourcefulness” into something tangible, I started with what I had in my studio: loose construction paper. My cut-paper logos and illustrations put the program’s philosophy into practice—use what’s already available. I digitized and refined the collages and pencil drawings into website graphics, including Ollie, a burrowing owl mascot for children. All handmade. All for the environment. To get the full experience, visit socalearth.org",
+    "intro": "SoCal Earth is an environmental data program created by the Robert Redford Conservancy. The conservancy asked me to develop a visual identity for the program’s initial website launch—one that would appeal to Southern Californians while expressing resourcefulness through design.\n\nTo turn the abstract idea of “resourcefulness” into something tangible, I started with what I had in my studio: loose construction paper. My cut-paper logos and illustrations put the program’s philosophy into practice—use what’s already available. I digitized and refined the collages and pencil drawings into website graphics, including Ollie, a burrowing owl mascot for children. All handmade. All for the environment. To get the full experience, visit socalearth.org.",
     "protected": false,
     "sections": [
       {
@@ -807,6 +813,7 @@
       "https://vimeo.com/1018768640"
     ],
     "cover": "socal-earth_03_bright-background-horizontal.svg",
+    "ogImage": "share-card.jpg",
     "images": [
       {
         "file": "socal-earth_03_bright-background-horizontal.svg",
@@ -1190,7 +1197,7 @@
       },
       "paragraph": [
         "SoCal Earth is an environmental data program created by the Robert Redford Conservancy. The conservancy asked me to develop a visual identity for the program’s initial website launch—one that would appeal to Southern Californians while expressing resourcefulness through design.",
-        "To turn the abstract idea of “resourcefulness” into something tangible, I started with what I had in my studio: loose construction paper. My cut-paper logos and illustrations put the program’s philosophy into practice—use what’s already available. I digitized and refined the collages and pencil drawings into website graphics, including Ollie, a burrowing owl mascot for children. All handmade. All for the environment. To get the full experience, visit socalearth.org"
+        "To turn the abstract idea of “resourcefulness” into something tangible, I started with what I had in my studio: loose construction paper. My cut-paper logos and illustrations put the program’s philosophy into practice—use what’s already available. I digitized and refined the collages and pencil drawings into website graphics, including Ollie, a burrowing owl mascot for children. All handmade. All for the environment. To get the full experience, visit socalearth.org."
       ],
       "groups": [
         {
@@ -1357,7 +1364,8 @@
                 {
                   "type": "image",
                   "file": "socal-earth_18_owl-default.png",
-                  "scale": 86
+                  "scale": 86,
+                  "alt": "Ollie the burrowing owl, SoCal Earth’s mascot, standing in profile"
                 }
               ]
             },
@@ -1367,22 +1375,26 @@
                 {
                   "type": "image",
                   "file": "socal-earth_19_owl-happy.png",
-                  "scale": 90
+                  "scale": 90,
+                  "alt": "Ollie with his wings thrown open"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_20_owl-flying.png",
-                  "scale": 90
+                  "scale": 90,
+                  "alt": "Ollie in flight, his eyes closed"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_21_owl-scholar.png",
-                  "scale": 68
+                  "scale": 68,
+                  "alt": "Ollie in a graduation cap"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_22_owl-writer.png",
-                  "scale": 82
+                  "scale": 82,
+                  "alt": "Ollie as a writer, in a beret and round glasses with a cup of coffee"
                 }
               ]
             },
@@ -1392,17 +1404,20 @@
                 {
                   "type": "image",
                   "file": "socal-earth_23_owl-under-tree.png",
-                  "scale": 90
+                  "scale": 90,
+                  "alt": "Ollie dozing at the foot of a tree"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_25_owl-weatherman.png",
-                  "scale": 90
+                  "scale": 90,
+                  "alt": "Ollie as a weather presenter, pointing at a forecast map"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_28_owl-driving.png",
-                  "scale": 90
+                  "scale": 90,
+                  "alt": "Ollie driving a small car"
                 }
               ]
             },
@@ -1412,22 +1427,26 @@
                 {
                   "type": "image",
                   "file": "socal-earth_26_owl-farmer.png",
-                  "scale": 86
+                  "scale": 86,
+                  "alt": "Ollie as a farmer, in a straw hat with a hoe"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_24_owl-plumber.png",
-                  "scale": 90
+                  "scale": 90,
+                  "alt": "Ollie as a plumber, with a wrench and a toolbox"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_27_owl-basking.png",
-                  "scale": 84
+                  "scale": 84,
+                  "alt": "Ollie in sunglasses, stretched out on a deck chair"
                 },
                 {
                   "type": "image",
                   "file": "socal-earth_29_owl-ranger.png",
-                  "scale": 88
+                  "scale": 88,
+                  "alt": "Ollie in a park ranger’s hat"
                 }
               ]
             },
@@ -1437,7 +1456,8 @@
                 {
                   "type": "image",
                   "file": "socal-earth_54_owl-mganifying-glass.png",
-                  "scale": 76
+                  "scale": 76,
+                  "alt": "Ollie peering through a magnifying glass"
                 }
               ]
             }
@@ -1505,8 +1525,7 @@
         }
       ]
     },
-    "metaDescription": "A visual identity for SoCal Earth, the Robert Redford Conservancy's environmental data program, built from loose construction paper in the studio.",
-    "ogImage": "digital-mockup.png"
+    "metaDescription": "A visual identity for SoCal Earth, the Robert Redford Conservancy's environmental data program, built from loose construction paper in the studio."
   },
   {
     "slug": "cultural-olympiad-poster",
@@ -1537,6 +1556,7 @@
       "https://vimeo.com/968497539"
     ],
     "cover": "cultural-olympiad-poster_02_noah-cousineau-poster-online.webp",
+    "ogImage": "share-card.jpg",
     "images": [
       {
         "file": "cultural-olympiad-poster_02_noah-cousineau-poster-online.webp",
@@ -1616,7 +1636,8 @@
               "cells": [
                 {
                   "type": "image",
-                  "file": "cultural-olympiad-poster_03_olympics-poster-on-display-2.jpg"
+                  "file": "cultural-olympiad-poster_03_olympics-poster-on-display-2.jpg",
+                  "alt": "The Cultural Olympiad poster on an outdoor display board along the canal in Paris"
                 }
               ],
               "phoneWide": true
@@ -1649,7 +1670,8 @@
                 {
                   "type": "image",
                   "file": "cultural-olympiad-poster_06_wbds-badge.png",
-                  "scale": 75
+                  "scale": 75,
+                  "alt": "The poster’s World Brand Design Society Bronze Award badge"
                 }
               ]
             }
@@ -1687,6 +1709,7 @@
     ],
     "videos": [],
     "cover": "valley-strong-credit-union_02_vscuhl-logo.webp",
+    "ogImage": "share-card.jpg",
     "images": [
       {
         "file": "valley-strong-credit-union_02_vscuhl-logo.webp",
@@ -1982,6 +2005,7 @@
     "sections": [],
     "videos": [],
     "cover": null,
+    "ogImage": "share-card.jpg",
     "images": [],
     "pageData": {
       "heroImage": "header.png",
@@ -1997,7 +2021,7 @@
       ],
       "groups": [
         {
-          "descriptor": "Forced Perspective - Graduate Thesis and Artwork",
+          "descriptor": "Forced Perspective — Graduate Thesis and Artwork",
           "rows": [
             {
               "aspect": "16/9",
@@ -2192,7 +2216,7 @@
           "imageAlt": "Artwork from Forced Perspective: An Exhibit on Brand"
         },
         {
-          "descriptor": "California State Parks - Student Branding Project",
+          "descriptor": "California State Parks — Student Branding Project",
           "rows": [
             {
               "aspect": "974/291.55",
@@ -2429,7 +2453,7 @@
           "imageAlt": "Student branding work for California State Parks"
         },
         {
-          "descriptor": "THE TRADE SHOW! - Student Art Catalog Project",
+          "descriptor": "THE TRADE SHOW! — Student Art Catalog Project",
           "rows": [
             {
               "aspect": "974/483.88",
@@ -2579,10 +2603,10 @@
               ]
             }
           ],
-          "imageAlt": "A page from the THE TRADE SHOW! student art catalog"
+          "imageAlt": "A page from THE TRADE SHOW! student art catalog"
         },
         {
-          "descriptor": "The Walt Disney Company - Misc. Projects",
+          "descriptor": "The Walt Disney Company — Misc. Projects",
           "rows": [
             {
               "aspect": "16/9",
@@ -2622,7 +2646,7 @@
           "imageAlt": "Project work for The Walt Disney Company"
         },
         {
-          "descriptor": "KDI - Brand Refresh",
+          "descriptor": "KDI — Brand Refresh",
           "rows": [
             {
               "aspect": "16/9",
@@ -2693,14 +2717,14 @@
           "imageAlt": "Brand refresh work for Kounkuey Design Initiative"
         },
         {
-          "descriptor": "10 By Ten Entertainment - Startup Visual Identity",
+          "descriptor": "10 By Ten Entertainment — Startup Visual Identity",
           "rows": [
             {
               "aspect": "858/482",
               "cells": [
                 {
                   "type": "image",
-                  "file": "10-by-ten-entertainment/10-by-ten-entertainment_02_10-by-ten-logo-animation-v8-6.gif",
+                  "file": "10-by-ten-entertainment/10-by-ten-entertainment_02_10-by-ten-logo-animation.webp",
                   "fit": true
                 }
               ]

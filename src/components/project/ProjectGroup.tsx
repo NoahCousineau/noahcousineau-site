@@ -489,14 +489,21 @@ function Rule() {
 }
 
 /* The anchor an in-page link uses to reach a section, from the part of its
- * name before the dash — "Forced Perspective - Graduate Thesis and Artwork"
+ * name before the dash — "Forced Perspective — Graduate Thesis and Artwork"
  * becomes `forced-perspective`. The short form so the links in the copy read
  * as names rather than as slugs; unique per page, which is all an id has to
  * be, and the More Work page is checked for collisions where the links are
- * written. */
+ * written.
+ *
+ * EITHER DASH (2026-11-11). The More Work section names were typed with a
+ * hyphen while every page title on the site uses an em dash, so they now use
+ * one too — and this split, which was looking for " - " exactly, would
+ * otherwise have swallowed the whole descriptor and silently broken all six
+ * in-page links in that page's own intro. Both spellings are accepted rather
+ * than only the new one, so a section typed either way still resolves. */
 export function sectionAnchor(descriptor: string): string {
   return descriptor
-    .split(" - ")[0]
+    .split(/\s[\u2014\u2013-]\s/)[0]
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-+/g, "-")

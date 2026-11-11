@@ -69,9 +69,18 @@ export async function generateMetadata(
      card; a project's cover is the picture of that project the site already
      uses on the work index, so a shared link looks like the thing it points
      at. `metadataBase` makes the relative path absolute. */
+  /* A CARD BUILT FOR THE JOB (2026-11-11). This used to be the project's
+     `cover` — the same file the work index draws — which made it whatever
+     shape and format that artwork happened to be. Two problems: the image
+     pass had converted four of the five covers to .webp, which browsers all
+     read and link unfurlers are much less reliable with (LinkedIn in
+     particular), and a portrait poster or a 3.3:1 logo lockup handed to a
+     platform that crops to 1.91:1 is a platform choosing what to cut off.
+     Every project now carries a purpose-built 1200x630 JPEG instead — see
+     tools/build-share-cards.mjs, which also says how each one meets the
+     frame. The .svg guard and the site-wide fallback stay as a backstop for
+     a project added without one. */
   const card = project.ogImage ?? project.cover;
-  // SVG is not a share image anywhere that matters; such a project falls
-  // back to the site-wide card rather than to a picture nothing will draw.
   /* Named even when it is the site-wide one: declaring `openGraph` at all
      stops the root's file-based opengraph-image from being inherited, and
      More Work — which has no cover — ended up sharing with no picture at
